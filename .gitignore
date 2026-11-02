@@ -1,6 +1,5 @@
 .cache
 .DS_Store
-.githooks
 .idea
 *.log
 *.tgz
@@ -8,5 +7,11 @@ coverage
 lib-cov
 logs
 node_modules
-**/skills/npm-*
 temp
+
+# Ignore generated npm skills, while keeping project-owned skills visible
+.agents/skills
+**/skills/*
+!**/skills/*/
+!**/skills/*/**
+**/skills/npm-*

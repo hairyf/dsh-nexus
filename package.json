@@ -16,7 +16,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./client": "./dist/client.js",
+    "./client": "./dist/client.cjs",
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -50,7 +50,8 @@
     "start": "tsx src/index.ts",
     "test": "pnpm run build && vitest",
     "typecheck": "tsc",
-    "prepare": "git config core.hooksPath .githooks && simple-git-hooks && skills-npm"
+    "postinstall": "skills-npm && pnpx skills experimental_install",
+    "prepare": "git config core.hooksPath .githooks && simple-git-hooks"
   },
   "scripts-info": {
     "build": "Build the library for publishing",
@@ -115,9 +116,11 @@
     "bumpp": "catalog:cli",
     "eslint": "catalog:cli",
     "nano-staged": "catalog:cli",
+    "playwright": "catalog:testing",
     "publint": "catalog:cli",
     "simple-git-hooks": "catalog:cli",
     "skills-npm": "catalog:cli",
+    "tinyexec": "catalog:",
     "tsdown": "catalog:cli",
     "tsdown-stale-guard": "catalog:testing",
     "tsnapi": "catalog:testing",

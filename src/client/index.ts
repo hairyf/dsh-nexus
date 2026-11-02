@@ -1,4 +1,4 @@
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context } from '@deepseek-ai/cordis'
 
-export function apply(_ctx: ClientContext): void {
+export function apply(_ctx: Context): void {
 }

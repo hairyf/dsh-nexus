@@ -39,6 +39,7 @@ export default defineConfig([
     // Client bundles are classic scripts consumed by dsh-client-modules.
     // CJS output is required so its exports remain inside the loader factory.
     format: 'cjs',
+    outExtensions: () => ({ js: '.cjs' }),
     define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     banner: `window.__ModuleLoader__.load({id:${id},factory:(require)=>{var module={exports:{}};var exports=module.exports;`,
     footer: 'return module.exports;}});',

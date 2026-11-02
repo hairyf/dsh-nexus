@@ -1,4 +1,4 @@
-name: Unit Test
+name: Test
 
 on:
   push:
@@ -9,11 +9,30 @@ on:
 permissions: {}
 
 jobs:
-  unit-test:
-    uses: sxzz/workflows/.github/workflows/unit-test.yml@main
+  test:
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: ['24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Setup JS
+        uses: sxzz/workflows/setup-js@main
+        with:
+          node-version: ${{ matrix.node-version }}
 
-  # coverage:
-  #   uses: sxzz/workflows/.github/workflows/coverage.yml@main
-  #   needs: unit-test
-  #   permissions:
-  #     id-token: write
+      - name: Install DSH and Playwright
+        run: pnpm install -g @deepseek-ai/dsh@0.2.1-rc.5 && pnpm exec playwright install chromium
+
+      - name: Lint and typecheck
+        run: pnpm run lint && pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        run: pnpm run test -- --run
+        env:
+          DSH_E2E_REQUIRED: '1'
