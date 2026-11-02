@@ -22,7 +22,7 @@ const common: UserConfig = {
   outExtensions: () => ({ js: '.js' }),
   publint: true,
   external: dshExternal,
-  plugins: [StaleGuardRecorder],
+  plugins: [StaleGuardRecorder()],
 }
 
 export default defineConfig([
