@@ -7,7 +7,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['test/**/*.test.ts'],
-          exclude: ['test/e2e/**'],
+          exclude: ['test/e2e/**', 'test/browser/**'],
           sequence: {
             groupOrder: 0,
           },

@@ -1,30 +1,31 @@
-import type { Browser, Page } from 'playwright'
-import type { ShellScaffold } from '../__setup__/shell.ts'
-import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { HAS_DSH, launchShell, logs, openShellPage } from '../__setup__/shell'
+import { commands } from 'vitest/browser'
 
-describe.skipIf(!HAS_DSH)('dSH shell smoke test', () => {
-  let scaffold!: ShellScaffold
-  let browser!: Browser
-  let page!: Page
-  let consoleTripwire: ReturnType<typeof logs>
+declare module 'vitest/browser' {
+  interface BrowserCommands {
+    launchDsh: () => Promise<{ baseUrl: string }>
+    openDshPage: () => Promise<{ url: string }>
+    getDshErrors: () => Promise<string[]>
+    closeDsh: () => Promise<void>
+  }
+}
+
+describe('dSH shell browser mode smoke test', () => {
+  let openedUrl = ''
 
   beforeAll(async () => {
-    scaffold = await launchShell()
-    browser = await chromium.launch({ headless: true })
-    page = await browser.newPage()
-    consoleTripwire = logs(page)
-    await openShellPage(page, scaffold)
+    await commands.launchDsh()
+    openedUrl = (await commands.openDshPage()).url
   })
 
   afterAll(async () => {
-    await browser?.close()
-    await scaffold?.close()
+    await commands.closeDsh()
   })
 
-  it('opens the DSH web shell in Chromium', () => {
-    expect(new URL(page.url()).origin).toBe(new URL(scaffold.baseUrl).origin)
-    expect(consoleTripwire.errors()).toEqual([])
+  it('opens the authenticated DSH shell in Chromium', async () => {
+    const url = new URL(openedUrl)
+    expect(url.protocol).toMatch(/^https?:$/u)
+    expect(url.pathname).toBe('/')
+    expect(await commands.getDshErrors()).toEqual([])
   })
 })

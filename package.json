@@ -113,6 +113,7 @@
     "@genapi/pipeline": "catalog:cli",
     "@genapi/presets": "catalog:cli",
     "@types/node": "catalog:types",
+    "@vitest/browser-playwright": "catalog:testing",
     "bumpp": "catalog:cli",
     "eslint": "catalog:cli",
     "nano-staged": "catalog:cli",

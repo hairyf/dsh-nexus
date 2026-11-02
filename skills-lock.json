@@ -4,7 +4,7 @@
     "testing": {
       "source": "./skills",
       "sourceType": "local",
-      "computedHash": "1cb2b1b1f3069ef898f8db80bbda5cc73bec5e6fbd1e43db0c863c9032812724"
+      "computedHash": "d850ba10a19b93548c8d16f0bead6959a1ff6f8ddac8ffee9fc1cc6454bc7880"
     },
     "unjs": {
       "source": "hairyf/skills",
