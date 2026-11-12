@@ -1,0 +1,58 @@
+// ===========================================================================
+// 临时 Supervisor
+// ===========================================================================
+
+/// 一个临时 Supervisor：一件工作跨了两个以上项目时，主编排临时拉起来的协调者。
+/// 它是真实的第四条 DSH 会话，有自己的预设和收件箱。
+///
+/// 只在两种情况才存在：一个任务必须改两个以上仓库才能完成，
+/// 或者两个项目各自有活但必须互相等。一个 Worker 只有一个 worktree，
+/// 所以跨项目没有别的路。
+///
+/// 生命周期「用完即弃」：关联的工单全部落地（PR 合并）之后就收工。
+/// 行不删 —— 那几张工单还指着它说明自己当初为什么存在。
+model Supervisor {
+  id String @id
+
+  /// 它的 DSH 会话 id；还没起会话时为空
+  sessionId String?
+
+  /// 一句话说明它在协调什么，例如「T-105 需要 B/x 配合」
+  title String
+
+  /// 为什么拉起来的；写清卡在哪，方便它自己和主编排事后回溯
+  reason String
+
+  status    SupervisorStatus @default(active)
+  createdAt String
+  closedAt  String?
+
+  tickets SupervisorTicket[]
+  inbox   Inbox[]
+
+  @@index([status])
+  @@map("supervisor")
+}
+
+/// Supervisor 关联了哪些工单（通常每个项目一张）。
+/// 全部走到终态，Supervisor 就该收工 —— 这个判断不存字段，直接查这张表。
+model SupervisorTicket {
+  supervisorId String
+  ticketId     String
+  createdAt    String
+
+  supervisor Supervisor @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  ticket     Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([supervisorId, ticketId])
+  @@index([ticketId])
+  @@map("supervisor_ticket")
+}
+
+/// Supervisor 的存活状态。
+enum SupervisorStatus {
+  /// 在协调
+  active
+  /// 已收工：从此从界面消失，只留在历史里
+  closed
+}

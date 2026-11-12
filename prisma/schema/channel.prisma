@@ -1,0 +1,60 @@
+// ===========================================================================
+// 渠道
+// ===========================================================================
+
+/// 一个渠道：Github、Gitlab、飞书、QQ、微信 Claw。
+/// 它既是「事件从哪来」，也是「回复往哪发」。
+/// 渠道的监听开关也记在这里，对应概览页的「监听渠道 (2/4)」。
+model Channel {
+  /// 'github' | 'gitlab' | 'feishu' | 'qq' | 'wechat'
+  /// 故意保持 String：这是身份而非状态，新增渠道只要插一行，不该逼一次迁移。
+  id        String  @id
+  /// 展示名
+  name      String
+  /// 是否开启监听；关掉的渠道不会再产生触发
+  enabled   Boolean @default(false)
+  createdAt String
+
+  accounts ChannelAccount[]
+  projects Project[]
+  threads  Thread[]
+  triggers Trigger[]
+  tickets  Ticket[]
+
+  @@map("channel")
+}
+
+/// 渠道里的一个账号，对应渠道页的「机器人账号（谁去执行）」与「管理员账号（谁去派活）」。
+model ChannelAccount {
+  id        String        @id
+  channelId String
+  role      AccountRole
+  /// 渠道侧的显示名，例如 GitHub 登录名、飞书用户名
+  name      String
+  avatar    String?
+  status    AccountStatus @default(offline)
+  createdAt String
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  /// 同一个渠道里同类账号不重名
+  @@unique([channelId, role, name])
+  @@index([channelId, role])
+  @@map("channel_account")
+}
+
+/// 账号在渠道里扮演的角色。
+enum AccountRole {
+  /// 机器人：在渠道里替我们说话、执行动作
+  bot
+  /// 管理员：允许给我们派活的人，属于准入名单
+  admin
+}
+
+/// 账号的登录状态。
+enum AccountStatus {
+  /// 已登录，可以收发
+  online
+  /// 未登录；这个渠道不会产生触发，也发不出去
+  offline
+}

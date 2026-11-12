@@ -64,6 +64,9 @@ catalogs:
     kysely-model:
       specifier: ^0.1.0
       version: 0.1.0
+    prisma:
+      specifier: 7.10.1
+      version: 7.10.1
     prisma-kysely:
       specifier: ^3.2.1
       version: 3.2.1
@@ -385,7 +388,7 @@ importers:
         specifier: catalog:testing
         version: 1.64.1
       prisma:
-        specifier: ^7.10.1
+        specifier: 'catalog:'
         version: 7.10.1(@types/node@26.1.1)(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(typescript@6.0.3)
       prisma-kysely:
         specifier: 'catalog:'

@@ -1,0 +1,110 @@
+// ===========================================================================
+// 话题与触发
+// ===========================================================================
+
+/// 一个话题：一个 Issue、一个 PR、或飞书里的一个话题串。
+/// 它是触发的容器，也是「这件事谈过什么」的最小单位。
+///
+/// 草稿里的 ThreadRef 已经合并进来了：`key` 就是 `${channelId}:${refId}`，
+/// 所以不需要再多一张表来记「原始引用」。
+model Thread {
+  /// `${channelId}:${refId}`，由来源事实派生，重复事件得到同一个 key
+  id        String     @id
+  channelId String
+  /// 归哪个项目；triage = claimed 时必填
+  projectId String?
+  /// 渠道里的原始标识，例如 GitHub 的 issue 号、飞书的话题 id
+  refId     String
+  kind      ThreadKind
+  title     String
+  url       String?
+  createdAt String
+  /// 本话题最新一条触发的时间；列表按它倒序
+  updatedAt String
+
+  /// 主编排的分诊结论。它既是「已经认领过这件事」的凭据，
+  /// 也是不让主编排被同一条话题反复叫醒的东西
+  triage    ThreadTriage @default(pending)
+  /// 分诊时间；还是 pending 时为空
+  triagedAt String?
+
+  channel  Channel        @relation(fields: [channelId], references: [id])
+  project  Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  triggers Trigger[]
+  tickets  TicketThread[]
+  inbox    Inbox[]
+
+  @@unique([channelId, refId])
+  @@index([updatedAt])
+  @@index([projectId])
+  @@index([triage])
+  @@map("thread")
+}
+
+/// 一条触发：渠道里发生的、不可变的一件事。
+/// 一条触发只属于一个话题（官方允许一条触发挂多个话题，我们不做那个关联图）。
+///
+/// `id` 由来源事实派生（例如 `github:hairyf/x:issue-1511:comment-42`），
+/// 所以同一条消息重复推送时得到的还是同一行，天然幂等。
+model Trigger {
+  id        String      @id
+  channelId String
+  threadId  String
+  kind      TriggerKind
+  /// 谁发的，用渠道侧的身份，例如 GitHub 登录名。跨渠道从不做身份映射
+  actorName String?
+  /// 是人发的，而不是 bot / CI / 我们自己
+  human     Boolean     @default(true)
+  /// 有没有 @ 我们（GitHub 是 @提及，飞书是直接 si/at）。没 @ 的触发不会叫醒代理
+  mentioned Boolean     @default(false)
+  /// 触发正文，来自外部，不可信
+  text      String
+  url       String?
+  /// 发生时间
+  at        String
+
+  channel Channel @relation(fields: [channelId], references: [id])
+  thread  Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  inbox   Inbox[]
+
+  @@index([threadId, at])
+  @@index([channelId, at])
+  @@index([at])
+  @@map("trigger")
+}
+
+/// 话题的形态。
+enum ThreadKind {
+  /// 议题
+  issue
+  /// 合并请求
+  pull
+  /// 会话话题（飞书那类话题串）
+  chat
+}
+
+/// 主编排对一条话题的分诊结论。只写一次，之后一直有效。
+enum ThreadTriage {
+  /// 还没分诊，新触发投给主编排
+  pending
+  /// 已归项目（看 projectId），新触发直接投给该项目编排
+  claimed
+  /// 判定无需处理，新触发不投递；除非有人又 @ 了我们
+  ignored
+}
+
+/// 触发的形态。
+enum TriggerKind {
+  /// 评论
+  comment
+  /// 新开
+  open
+  /// 关闭
+  close
+  /// 合并
+  merge
+  /// CI 结果变化
+  ci
+  /// 推送
+  push
+}

@@ -1,0 +1,151 @@
+// ===========================================================================
+// 收件箱
+// ===========================================================================
+
+/// 一条投给某个代理——或者人类——的消息。
+///
+/// 我们是长驻代理：代理在跑的时候，消息不打断它，先落进收件箱；代理自己用
+/// inbox_list 随时取，取完用 inbox_kill 标记为已处理。会话结束（或空闲）时，
+/// 框架数一下自己名下 status = pending 的条数，提示「你有 N 条消息未处理」。
+///
+/// 一条 Inbox 干完了官方五张表（TicketInput / UndeliveredInput / Outbox /
+/// DispositionFanout / Attention）干的事：投递、未读、消费状态、等待回答。
+///
+/// 升级不新建行，就地改 type —— 一个问题从头到尾只有一条记录、一个身份，
+/// 任何时刻都只有一个处理者，永远不会出现两条 pending 抢同一件事。
+///
+/// 渠道收尾只有一条规则：**只有从 user 升级出去的那一次，要回渠道补一句话**。
+/// 因为只有 type = user 意味着问题已经问出口了；没问出口的直接在代理间流转，
+/// 不必打扰人。超时检查不靠后台定时器，和「你有 N 条未处理」共用同一次会话钩子。
+model Inbox {
+  id String @id
+
+  /// 此刻轮到谁处理。
+  /// Worker 没有收件箱：它短命、被动、在等的时候是阻塞的，
+  /// 所以上级的话必须直接 prompt 进会话，不能进队列等它来取。
+  type InboxTarget
+
+  /// 关于哪个项目。type = project 时必填；type = main 时为空表示全局事务，
+  /// 有值表示这条是某个项目升上来的（主编排据此知道该翻哪个项目的上下文）
+  projectId String?
+
+  /// 临时 Supervisor；type = supervisor 时必填
+  supervisorId String?
+
+  origin InboxOrigin
+  status InboxStatus @default(pending)
+  kind   InboxKind
+
+  /// 一行摘要，列表展示用
+  title String?
+
+  /// 正文，代理读到的内容；ask 时就是那个问题本身
+  message String
+
+  createdAt String
+
+  /// 被标记为已处理的时间
+  doneAt String?
+
+  // ── 以下是 kind = ask 专用 ────────────────────────────────────────────
+
+  /// 到这个时刻还没人回答，就看「代理选择」开关要不要升级给上一级。
+  /// 人在 UI / 渠道里随时可以抢答，所以它是「升级时间」而不是「失效时间」。
+  /// 已升到主编排的 ask 不再需要它，置空即可
+  deadline String?
+
+  /// 升过几次级；0 表示一次没升过。面板可以显示「已升级 2 次」
+  escalations     Int     @default(0)
+  lastEscalatedAt String?
+
+  /// 回答。填上它就把 status 置为 done，同时把答案顺着 workerId 送回发起方
+  answer     String?
+  answeredBy InboxAnsweredBy?
+  answeredAt String?
+
+  // ── 溯源 ────────────────────────────────────────────────────────────────
+
+  /// 这条消息是由哪条触发 / 哪个话题 / 哪个任务 / 哪个 Worker 冒出来的，都可能为空。
+  /// 代理靠它决定「要不要去看那条触发 / 那个任务的上下文」，而不是靠猜正文。
+  ///
+  /// 对 ask 来说 triggerId 还有第二个用处：它是「这个问题往哪个渠道发」的锚点。
+  /// 一条任务可以有好几个消息源，但一个问题只会锚在一条触发上 ——
+  /// 这就是官方 attentionTriggerId 的做法，也是多消息源下唯一不歧义的答案。
+  triggerId String?
+  threadId  String?
+  ticketId  String?
+  workerId  String?
+
+  project    Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supervisor Supervisor? @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  trigger    Trigger?    @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  thread     Thread?     @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  ticket     Ticket?     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  worker     Worker?     @relation(fields: [workerId], references: [id], onDelete: SetNull)
+
+  /// 代理列未读消息永远带 (type, projectId, status)，这条索引就够了
+  @@index([type, projectId, status])
+  /// 面板问「人类现在欠着几个问题」：type + status
+  @@index([type, status, createdAt])
+  /// 「你有 N 条消息未处理」只需要 status 前缀
+  @@index([status, createdAt])
+  /// 扫超时的 ask：status + deadline
+  @@index([kind, status, deadline])
+  @@map("inbox")
+}
+
+/// 此刻轮到谁处理。把人类也算成一个收件人，是为了让「问人类」和「问上级」
+/// 变成同一件事的不同取值，而不是两套流程。
+enum InboxTarget {
+  /// 在人类手上。**只有这一步会往渠道里发东西**
+  user
+  /// 主编排
+  main
+  /// 项目编排（projectId 必填）
+  project
+  /// 临时 Supervisor（supervisorId 必填）
+  supervisor
+}
+
+/// 谁发起的。它和 InboxTarget 一起确定了这条消息的方向：
+///   origin 是上级、type 是下级 → 往下派活
+///   origin 是下级、type 是上级 → 往上提问
+enum InboxOrigin {
+  /// 渠道来的触发（有人在外边说话）
+  channel
+  main
+  project
+  worker
+  supervisor
+  /// 插件自己的提醒，例如渠道掉线、并发打满
+  system
+}
+
+/// 消息是否已被处理。
+enum InboxStatus {
+  /// 未读 / 未答
+  pending
+  /// 已处理（被 inbox_kill 掉，或问题已回答）
+  done
+}
+
+/// 消息的类型，只用来给列表加角标；代理真正读的是 message。
+enum InboxKind {
+  /// 有新触发待处理
+  trigger
+  /// 任务状态变化
+  ticket
+  /// 问题待回答
+  ask
+  /// 系统提醒
+  notice
+}
+
+/// 谁回答的 ask。只有 kind = ask 且已答时才有值。
+enum InboxAnsweredBy {
+  user
+  main
+  project
+  supervisor
+  worker
+}

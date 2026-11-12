@@ -1,0 +1,79 @@
+// ===========================================================================
+// Worker（执行会话）
+// ===========================================================================
+
+/// 一个 Worker（执行会话）：任务在某个 DSH 会话里真正干活的那一段。
+/// 一个任务可以先后有好几个（重试、换人），对应详情页的「执行会话 (1~5) 个」。
+/// 官方把这件事叫 Assignment，字段多得多；我们只留最有用的几个。
+///
+/// **一个 Worker 只对应一个 worktree**，所以分支和路径直接放在这一行上，
+/// 不再单开一张「会话挂了哪些仓库」的表。跨项目协作靠 Supervisor，
+/// 不靠一个会话改多个仓库。
+model Worker {
+  /// DSH 会话 id，直接就是主键
+  id          String           @id
+  ticketId    String
+  status      WorkerStatus
+  createdAt   String
+  /// 会话真正开始跑的时间
+  startedAt   String?
+  endedAt     String?
+  /// 会话标题。面板上显示的名字，编排可以用 rename 改，方便人一眼看懂它在干嘛
+  title       String?
+  endedReason WorkerEndReason?
+
+  /// 它独占的那个 worktree：分支名 + 绝对路径。
+  /// 还没建 worktree（status = queued）时这两个为空
+  branch   String?
+  worktree String?
+
+  /// 最近一次汇报：状态 + 一句话摘要，详情页直接显示
+  reportState ReportState?
+  report      String?
+  reportAt    String?
+
+  ticket Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  /// 这个会话冒出来的消息（开工、汇报、失败）
+  inbox  Inbox[]
+
+  @@index([ticketId, createdAt])
+  @@index([status])
+  @@map("worker")
+}
+
+/// Worker 会话本身的存活状态。
+enum WorkerStatus {
+  /// 排队中：已登记，会话还没真正起来
+  queued
+  /// 运行中
+  running
+  /// 已结束
+  ended
+}
+
+/// Worker 是怎么结束的；还开着时为空。
+enum WorkerEndReason {
+  /// 正常结束
+  completed
+  /// 被停
+  stopped
+  /// 失败
+  failed
+  /// 宿主重启打断
+  restarted
+}
+
+/// Worker 最近一次汇报的状态。
+/// 注意它和「会话正文」是两条通道：这里只有状态，正文靠 view 读。
+enum ReportState {
+  /// 还在跑，阶段性推进
+  progress
+  /// 停在等人（配合 ask）
+  waiting
+  /// 干完了，PR 已开，可以审
+  ready
+  /// 卡住，自己解不了
+  blocked
+  /// 失败了，需要重试或人介入
+  failed
+}

@@ -1,0 +1,29 @@
+// ===========================================================================
+// 项目
+// ===========================================================================
+
+/// 一个项目 = 一个 git 仓库 + 一个 DSH 工作区。
+/// 侧边栏里的 `[路由] owner/project-1` 就是它。项目编排会话挂在这个工作区上。
+model Project {
+  id                    String  @id
+  /// 项目挂在哪条 git 渠道下
+  channelId             String
+  /// 仓库全名，例如 `hairyf/dsh-third-kernel`
+  name                  String
+  /// 对应的 DSH 工作区 id；一个工作区最多属于一个项目
+  workspaceId           String  @unique
+  /// 本地克隆目录
+  directory             String
+  /// 项目编排会话 id；为空表示还没起过。冒号后面的 session 可以随时换，这里只记最近一次
+  orchestratorSessionId String?
+  createdAt             String
+  updatedAt             String
+
+  channel Channel  @relation(fields: [channelId], references: [id])
+  threads Thread[]
+  tickets Ticket[]
+  inbox   Inbox[]
+
+  @@unique([channelId, name])
+  @@map("project")
+}

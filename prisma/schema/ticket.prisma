@@ -1,0 +1,125 @@
+// ===========================================================================
+// 任务
+// ===========================================================================
+
+/// 任务之间的关联类型。
+enum TicketLinkKind {
+  /// 前置依赖：relatedId 没做完，ticketId 就停在「等待触发」
+  depends
+  /// 平行关联：只是相关，谁都不等谁（对称，存一条就够）
+  relates
+}
+
+/// 一个任务（官方叫工单）。主编排分诊出来的一件具体工作，最终落在某个项目里执行。
+model Ticket {
+  /// 任务编号，也是人类和代理互相指代的短 id，例如 `T-105`
+  id          String       @id
+  projectId   String
+  /// 触发它的渠道，对应详情页的「触发渠道」。可以和项目的渠道不同（飞书上报，GitHub 干活）
+  channelId   String
+  title       String
+  /// 需求正文
+  description String?
+  status      TicketStatus
+  createdAt   String
+  updatedAt   String
+  /// 第一次真正开跑的时间；为空表示还没跑过
+  startedAt   String?
+  /// 结束（完成 / 取消）的时间；为空表示还没结束
+  endedAt     String?
+
+  /// PR 已创建时才有
+  prUrl   String?
+  prState PullRequestState?
+  ciState CiState?
+
+  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  channel     Channel            @relation(fields: [channelId], references: [id])
+  threads     TicketThread[]
+  links       TicketLink[]       @relation("LinkOwner")
+  linkedBy    TicketLink[]       @relation("LinkTarget")
+  workers     Worker[]
+  inbox       Inbox[]
+  supervisors SupervisorTicket[]
+
+  @@index([projectId, status])
+  @@index([status, updatedAt])
+  @@map("ticket")
+}
+
+/// 任务 ↔ 话题。这就是官方那套 Subscription：
+/// 任务订阅这些话题之后，话题上再来新触发，就该冒到编排的收件箱里。
+model TicketThread {
+  ticketId  String
+  threadId  String
+  /// 关联建立时间；最早的那条就是该任务的「触发来源」
+  createdAt String
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, threadId])
+  @@index([ticketId, createdAt])
+  @@index([threadId])
+  @@map("ticket_thread")
+}
+
+/// 任务 ↔ 任务。一个表两种用法，靠 kind 区分，省掉两张几乎一样的表。
+/// 方向永远是 `ticketId` 指向 `relatedId`。
+model TicketLink {
+  ticketId  String
+  relatedId String
+  kind      TicketLinkKind
+  createdAt String
+
+  ticket  Ticket @relation("LinkOwner", fields: [ticketId], references: [id], onDelete: Cascade)
+  related Ticket @relation("LinkTarget", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, relatedId, kind])
+  @@index([relatedId])
+  @@map("ticket_link")
+}
+
+/// 任务的状态机。
+///
+/// 没有 draft：任务一旦存在，projectId 就必须是确定的，
+/// 「还没想好归谁」属于话题分诊阶段（见 ThreadTriage），不该污染任务列表。
+///
+/// 没有 attention：一张工单可以一边 running 一边等人，把 status 覆盖掉会丢掉
+/// 它本来跑到哪一步。所以「需介入」是派生出来的 —— 存在指向它的 pending ask 即是。
+enum TicketStatus {
+  /// 等待触发：等前置任务完成，或者因为某些原因还没建 Worker
+  waiting
+  /// 排队中：项目编排并发已满，等前面的任务腾出位置
+  queued
+  /// 运行中：已经交给 Worker，正在跑
+  running
+  /// 待审核：分支/PR 已创建，等人类审核
+  review
+  /// 已完成
+  done
+  /// 已取消：人类放弃
+  cancelled
+}
+
+/// 关联的合并请求状态；还没开 PR 时整个字段为空。
+enum PullRequestState {
+  /// 打开中
+  open
+  /// 已合并
+  merged
+  /// 已关闭
+  closed
+}
+
+/// CI 状态；为空表示暂无状态。
+enum CiState {
+  /// 排队中
+  pending
+  /// 跑着
+  running
+  /// 通过
+  passing
+  /// 失败
+  failing
+}
