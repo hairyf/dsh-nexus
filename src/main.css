@@ -1,1 +1,72 @@
 @import "tailwindcss";
+
+/*
+ * 面板样式。
+ *
+ * **不定义 `@theme` 变量。** dsh-taiwind 合并多插件样式时不带 `@theme` 里的
+ * 变量定义，`var(--color-nx-*)` 在运行时是空值 —— 表现为边框宽度 0、背景透明。
+ * 所以组件里的语义色一律写成 `bg-[var(--dsw-alias-*)]` 这种任意值形式，
+ * 这里的 utility 也直接引 `--dsw-*`。
+ *
+ * 好处是只有一个间接层：宿主换主题时颜色跟着变，中间没有我们能弄丢的环节。
+ */
+
+/* 面板内的滚动条沿用官方观感，不引入浏览器默认样式。 */
+@utility nx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2) transparent;
+}
+
+/* 卡片：面板里所有分区共用这一种外观。 */
+@utility nx-card {
+  border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  background-color: var(--dsw-alias-bg-layer-1);
+  /* 圆角要能裁掉子元素的直角边，否则首尾两行的分隔线会戳出来 */
+  overflow: hidden;
+}
+
+/* 层级图里的节点底色比卡片再深一档，避免和容器糊在一起。 */
+@utility nx-node {
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background-color: var(--dsw-alias-bg-layer-2);
+}
+
+/*
+ * 面板根节点：把列表符号和默认缩进收掉。
+ *
+ * 宿主没有加载 Preflight（它不重置宿主界面），所以 `ul` 会带上浏览器默认的
+ * 圆点和 padding-left —— 在卡片里就是一排诡异的小点。这一条只在面板自己的
+ * 根节点下生效，不外溢到宿主。
+ *
+ * `p` 也要收：浏览器默认 1em 上下的段距会把每一行说明文字撑成两倍高。
+ */
+.nx-root ul,
+.nx-root ol {
+  list-style: none;
+  padding-left: 0;
+}
+
+.nx-root p,
+.nx-root dl,
+.nx-root dd {
+  margin: 0;
+}
+
+/*
+ * 面板里的按钮只承载排版，不承载外观。
+ *
+ * 宿主没加载 Preflight，`button` 会带浏览器默认的边框、背景和内边距 ——
+ * 一个本该是纯文本的行标题会画成一个输入框。这里统一归零，
+ * 需要按钮外观的地方用官方的 `Button`。
+ */
+.nx-root button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}

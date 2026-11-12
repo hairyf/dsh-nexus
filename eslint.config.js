@@ -9,8 +9,10 @@ export default antfu(
       'pnpm/yaml-enforce-settings': 'off',
     },
     ignores: [
+      // 生成物：Prisma 与 GenAPI 的输出，不手改也不按手写规则约束
       'src/database/types.ts',
-      'soruce/*',
+      'src/client/apis/**',
+      'source/**',
     ],
   },
 )

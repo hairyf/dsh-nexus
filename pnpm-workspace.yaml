@@ -13,6 +13,9 @@ packages:
   - packages/*
   - examples/*
 
+overrides:
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
 allowBuilds:
   '@prisma/engines': true
   esbuild: true
@@ -63,6 +66,36 @@ catalogs:
     tsx: ^4.23.1
     typescript: ^6.0.3
     vite: ^8.1.5
+  conflicts_@types/react-dom_19_3_0:
+    '@types/react-dom': 19.3.0
+  conflicts_@types/react_19_3_0:
+    '@types/react': 19.3.0
+  conflicts_cli_0_22_14:
+    tsdown: 0.22.14
+  conflicts_cli_6_0_3:
+    typescript: 6.0.3
+  conflicts_dsh_0_2_1malpha_2:
+    '@deepseek-ai/dsh-agent': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-api-session-controller': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-locale': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-ui-layout': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-ui-renderer': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-ui-settings': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-ui-slots': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-client-ui-workspace': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-host-webserver': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-llm': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-permission-presets': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-session': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-session-persistence': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-tools': 0.2.1-alpha.2
+    '@deepseek-ai/dsh-workspace': 0.2.1-alpha.2
+  conflicts_dsh_4_0_5malpha_1:
+    '@deepseek-ai/cordis': 4.0.5-alpha.1
+  conflicts_testing_4_1_8:
+    vitest: 4.1.8
+  conflicts_types_22_20_0:
+    '@types/node': 22.20.0
   dsh:
     '@deepseek-ai/cordis': 4.0.5
     '@deepseek-ai/cordis-plugin-group': 1.0.5
@@ -114,29 +147,3 @@ catalogs:
     dsh-h3: ^0.2.2
     dsh-taiwind: ^0.3.3
     h3: ^2.0.8
-  conflicts_dsh_4_0_5malpha_1:
-    '@deepseek-ai/cordis': 4.0.5-alpha.1
-  conflicts_dsh_0_2_1malpha_2:
-    '@deepseek-ai/dsh-agent': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-api-session-controller': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-locale': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-ui-layout': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-ui-renderer': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-ui-settings': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-ui-slots': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-client-ui-workspace': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-host-webserver': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-llm': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-permission-presets': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-session': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-session-persistence': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-tools': 0.2.1-alpha.2
-    '@deepseek-ai/dsh-workspace': 0.2.1-alpha.2
-  conflicts_types_22_20_0:
-    '@types/node': 22.20.0
-  conflicts_cli_0_22_14:
-    tsdown: 0.22.14
-  conflicts_cli_6_0_3:
-    typescript: 6.0.3
-  conflicts_testing_4_1_8:
-    vitest: 4.1.8

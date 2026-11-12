@@ -1,121 +1,91 @@
-# Nexus 代理
+# 四个角色
 
-```
-主编排 main      全局唯一，只分诊派活
- ├─ 项目编排 project   每项目一个，管任务、指挥 Worker
- │    └─ Worker        真正干活，独占一个 worktree
- └─ Supervisor         跨项目时临时拉起，用完即弃
-```
+**提示词和工具都在代码里**，不在这份文档里：
 
-| 文件 | 收件箱 | 改代码 |
-| --- | --- | --- |
-| [main.md](main.md) | `type=main` | ❌ 只写笔记 |
-| [project.md](project.md) | `type=project` | ❌ 只写笔记 |
-| [worker.md](worker.md) | **无**，上级直接插话 | ✅ |
-| [supervisor.md](supervisor.md) | `type=supervisor` | ❌ 只写笔记 |
-
-## 工作目录
-
-cwd 是**笔记区**，不是仓库。仓库在 `Project.directory`，用绝对路径读。
-
-| 代理 | cwd |
+| 内容 | 位置 |
 | --- | --- |
-| main / supervisor | `~/.nexus/notes/<role>/` |
-| project | `~/.nexus/notes/project/<id>/` |
-| worker | 任务 worktree（就脚下） |
+| 提示词 | `src/agents/main.ts`、`project.ts`、`worker.ts`、`supervisor.ts` |
+| 工具定义 | `src/agents/tools.ts`，每个工具用 `roles` 声明谁有它 |
+| 装配 | `src/agents/index.ts` |
 
-`write` 因此天然被关在笔记里 —— 想写代码得用绝对路径，而那要走沙箱。
+文档只讲**为什么这样分**。改提示词去改代码，别在这儿抄一遍。
 
-## 工具矩阵
+## 一条链
 
-| | main | project | worker | supervisor |
+```
+主编排 ──dispatch──▶ 项目编排 ──create_worker──▶ Worker
+   │                    │
+   └──supervise────────▶ Supervisor（临时，跨项目才拉）
+```
+
+后面的只向上汇报，不横向对话。Worker 不知道别的 Worker 存在。
+
+## 谁有哪个工具
+
+`✓` 是有，`—` 是没有。
+
+| 工具 | main | project | worker | supervisor |
 | --- | :-: | :-: | :-: | :-: |
-| `read` `glob` `grep` | ✅ | ✅ | ✅ | ✅ |
-| `write` `edit` | 笔记 | 笔记 | worktree | 笔记 |
-| `pwsh` | 只读 | ✅ | ✅ | 只读 |
-| `job_*` | ❌ | ✅ | ✅ | ❌ |
-| `subagent` | ❌ | ✅ | ✅ | ❌ |
-| `report` | ❌ | ✅ | ✅ | ✅ |
-| `ask` | ❌ | ✅ | ✅ | ✅ |
-| `ask_user` | ✅ | ❌ | ❌ | ❌ |
-| `escalate` | ❌ | ✅ | ❌ | ❌ |
-| `answer` | ✅ | ❌ | ❌ | ✅ |
-| `read_channel` | ✅ | ✅ | 限本任务 | ✅ |
-| `reply_channel` | ✅ | ✅ | ✅ | ❌ |
-| `ask_user_question` `present` | ❌ | ❌ | ❌ | ❌ |
+| `inbox_list` / `inbox_kill` | ✓ | ✓ | — | ✓ |
+| `report` / `ask` | — | ✓ | ✓ | ✓ |
+| `escalate` | — | ✓ | — | — |
+| `answer` | ✓ | — | — | ✓ |
+| `ask_user` | ✓ | — | — | — |
+| `list_tasks` | ✓ | ✓ | — | — |
+| `triage_thread` | ✓ | — | — | — |
+| `create_ticket` / `dispatch_ticket` | ✓ | — | — | — |
+| `link_thread` | — | ✓ | ✓ | — |
+| `update_ticket` | — | ✓ | — | — |
+| `create_worker` | — | ✓ | — | — |
+| `send` / `view` / `cancel` / `rename` | — | ✓ | — | — |
+| `supervisor_list` | ✓ | ✓ | — | — |
+| `create_supervisor` / `close_supervisor` / `attach_*` / `detach_*` | ✓ | — | — | — |
+| `list_tickets` / `dispatch_to_project` | — | — | — | ✓ |
+| `link_dependency` / `close_self` | — | — | — | ✓ |
+| `list_unbound_workspaces` / `create_project` / `create_in_workspace_project` | ✓ | — | — | — |
+| `read_channel` | ✓ | ✓ | ✓ | ✓ |
+| `reply_channel` | ✓ | ✓ | ✓ | — |
 
-几条不显然的：
+## 几个不显然的取舍
 
-- **`job_*` 不给 main / supervisor**：它们一挂起，就没人分诊、没人协调。
-- **`reply_channel` 不给 supervisor**：对外只有一个声音，由 main 说。
-- **main 没有 `report` 也没有 `ask`**：它是终点，没有上级。
-- **`ask_user_question` 全都不给**：问人只有 `ask_user` 一条路。
+**Worker 没有收件箱。** 它短命、被动、在等的时候是阻塞的，
+上级的话必须直接 prompt 进会话 —— 进队列等它来取，它永远不会来取。
 
-## 汇报与求助
+**只有 main 能 `ask_user`。** 它是唯一还有「人」这个上级的角色。
+其他角色要问人，只能往上递，让人替它转达。
 
-| 工具 | 发给谁 | 等不等 |
+**只有 main 和 project 能写 `reply_channel` 之外的东西。**
+`reply_channel` 是「以 bot 身份在渠道里说话」，四个角色里三个有，
+**supervisor 没有** —— 对外只能有一个声音。
+
+**`escalate` 只有 project 有。** 它转发的是一条已经存在的 ask：
+问题原文一个字都不改，只换回答的人。这样「问过没有」永远只有一份记录。
+
+**`send` 的 `interrupt` 是例外手段。** 默认 `queue`。
+只有确定 Worker 正在把事情做错、需要立刻止损才打断 ——
+打断会留下半成品。
+
+## 汇报与求助的区别
+
+| | `report` | `ask` |
 | --- | --- | --- |
-| `report(state, summary, supervisorId?)` | 上级 | ❌ 发完继续 |
-| `ask(question, supervisorId?)` | 上级 | ✅ 这条线停下 |
-| `escalate(askId)` | 上级 | — 转发已有问题 |
-| `ask_user(question, triggerId?)` | 人类（只有 main） | ✅ |
+| 干什么 | 讲事实 | 要决定 |
+| 之后 | 继续干 | 这条线停下 |
+| 状态位 | 占 `ReportState` | 不占 |
 
-**`report` 说事实，`ask` 要决定。** `state` 有 `progress` / `ready` / `failed` / `dropped`；
-「我在等答复」不占状态位，那是 `ask` 的事。
+`report` 的四个状态：`progress` / `ready` / `failed` / `dropped`。
 
-默认路由：
+`dropped` 是「这事不用做」的合法表达 —— 没有它，遇到复现不了或已被别人
+修好的活，Worker 只能谎报 `ready` 或者白问一次人。
 
-```
-worker     → project
-project    → main          （给 supervisorId 则 → supervisor）
-supervisor → main
-main       → user（ask_user）
-```
+## 项目与工作区
 
-`supervisorId` **只有 project 能用**。Worker 不知道 Supervisor 存不存在。
+`Project` 绑一个 DSH 工作区（`workspaceId @unique`），由主编排建：
 
-`ask` 发出后**这条工作线**挂起、会话不挂起：Worker 停下等，项目编排继续处理别的票。
-
-## 渠道
-
-工具只有一对，细节由 `assets/skills/nexus-channel-<id>/SKILL.md` 教。
-
-### `read_channel(resource, offset?, limit?)`
-
-靠路径前缀分发，不给每个渠道造一对工具。
-
-| 前缀 | 例子 |
+| 工具 | 什么时候用 |
 | --- | --- |
-| `github/` | `github/pulls/81/thread/123`、`.../checks` |
-| `feishu/` | `feishu/<trigger-id>/message` · `/root` · `/parent` · `/thread` · `/around` |
-| `trigger/` `thread/` `ticket/` | 我们自己的领域数据 |
+| `list_unbound_workspaces` | 先看哪些工作区还没绑项目 |
+| `create_project` | 新仓库，连目录带工作区一起建 |
+| `create_in_workspace_project` | 工作区已经在系统里了，绑过去 |
 
-返回形状统一：
-
-```
-{ items, next_offset: number | null, next_resource: string | null }
-```
-
-两条翻页轴**都要跟完**，否则会误判「读完了」。offset 0 重读，之后的 offset 读同一份快照。
-
-Worker 只能读本任务来源的内容，其余角色不限。
-
-### `reply_channel(triggerId, text)`
-
-锚点是 `triggerId`。bot 身份发言、像人话、100 词上限、不重复对方说过的话。
-排队成功 ≠ 送达。
-
-## skill
-
-渠道说明是 `assets/skills/nexus-channel-<id>/SKILL.md`，三段式：
-frontmatter `name` + `description` + 正文。
-
-**所有角色都能读，不按角色分配** —— catalog 里只暴露 `description`，
-模型按当前任务自己决定 load 哪份。见 [prisma/README.md](../../prisma/README.md#渠道提示词)。
-
-## 为什么没有 `wait`
-
-依赖关系已经在库里（`TicketLink`、`SupervisorTicket`），再在会话里存一份「我在等谁」，
-两份状态必然漂移，且不跨重启。
-
-唤醒靠两件事：**下级主动上报** + **系统兜底通知**（见 [supervisor.md](supervisor.md#唤醒)）。
+绑之前必须先 `list_unbound_workspaces` 拿 id —— **不要猜工作区 id**。

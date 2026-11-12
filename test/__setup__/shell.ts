@@ -1,6 +1,6 @@
 import type { Page } from 'playwright'
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -8,6 +8,56 @@ import { x } from 'tinyexec'
 import { dshCommand, exchangeProcessLaunchToken, freePort, stop, trustedProcessLaunchUrl } from './shell.utils'
 
 export const HAS_DSH = dshCommand()
+
+/**
+ * `dsh plugin --profile web` 固定写真实用户目录，**不认 `DSH_HOME`**。
+ * 所以装插件之前要先备份 profile 的两个文件，收尾时还原 ——
+ * 否则每次 E2E 都会在 profile 里留下一条指向已删除临时 tarball 的依赖，
+ * 下次 `pnpm add` 直接失败，而且污染开发者自己的环境。
+ */
+const PROFILE_DIR = join(homedir(), '.dsh', 'profiles', 'web')
+const PROFILE_FILES = ['package.json', 'cordis.patch.yml'] as const
+
+interface ProfileSnapshot {
+  dir: string
+  files: Map<string, string | undefined>
+}
+
+function snapshotProfile(): ProfileSnapshot {
+  const files = new Map<string, string | undefined>()
+  for (const name of PROFILE_FILES) {
+    const path = join(PROFILE_DIR, name)
+    files.set(name, existsSync(path) ? readFileSync(path, 'utf8') : undefined)
+  }
+  return { dir: PROFILE_DIR, files }
+}
+
+/** 还原 profile；原来不存在的文件直接删掉。返回是否需要收尾安装。 */
+async function restoreProfile(snapshot: ProfileSnapshot): Promise<void> {
+  let touched = false
+  for (const [name, content] of snapshot.files) {
+    const path = join(snapshot.dir, name)
+    if (content === undefined) {
+      if (existsSync(path)) {
+        rmSync(path, { force: true })
+        touched = true
+      }
+      continue
+    }
+    if (existsSync(path) && readFileSync(path, 'utf8') === content)
+      continue
+    writeFileSync(path, content)
+    touched = true
+  }
+  if (!touched)
+    return
+  // 依赖树也要跟着剪掉，否则 lockfile 仍指着旧 tarball
+  await x('pnpm', ['install', '--ignore-scripts'], {
+    timeout: 300_000,
+    throwOnError: false,
+    nodeOptions: { cwd: snapshot.dir, stdio: 'ignore' },
+  })
+}
 
 export interface ShellScaffold {
   baseUrl: string
@@ -62,6 +112,7 @@ export async function launchShell(): Promise<ShellScaffold> {
     nodeOptions: { cwd: REPO_ROOT, env, stdio: 'inherit' },
   })
   const tarball = join(home, readdirSync(home).find(name => name.endsWith('.tgz'))!)
+  const profile = snapshotProfile()
   await x(command, ['plugin', '--profile', 'web', 'add', '--ignore-scripts', tarball], {
     timeout: 300_000,
     throwOnError: true,
@@ -145,6 +196,7 @@ export async function launchShell(): Promise<ShellScaffold> {
       closed = true
       await stop(child)
       rmSync(home, { recursive: true, force: true })
+      await restoreProfile(profile)
     },
   }
 }
