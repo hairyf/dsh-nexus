@@ -56,6 +56,9 @@ flowchart TB
 **代号约定**：`main` / `project` / `worker` / `supervisor` 是 Inbox 的 `type` 与 `origin` 取值，
 也是四个代理在库里互相指代的名字。
 
+> 图上只画了往外写的 `reply_channel`。**读方向 `read_channel` 四个角色都有**，
+> 都指向同一个渠道，画出来会变成四根交叉的线，反而看不清。
+
 ---
 
 ## 2. 触发与分诊

@@ -5,9 +5,14 @@
 /// 一个渠道：Github、Gitlab、飞书、QQ、微信 Claw。
 /// 它既是「事件从哪来」，也是「回复往哪发」。
 /// 渠道的监听开关也记在这里，对应概览页的「监听渠道 (2/4)」。
+///
+/// 注意：这里**没有**提示词字段。渠道的用法说明是 `assets/skills/nexus-channel-<id>/SKILL.md`，
+/// 一个 Markdown 文件，和官方 `skills/dsh-superagent-<name>/SKILL.md` 同一套形式。
+/// 说明书归仓库（跟着代码评审、跟着版本走），运行状态归数据库，两边不混。
 model Channel {
   /// 'github' | 'gitlab' | 'feishu' | 'qq' | 'wechat'
   /// 故意保持 String：这是身份而非状态，新增渠道只要插一行，不该逼一次迁移。
+  /// 它同时是 skill 文件名的后缀：`github` → `nexus-channel-github`
   id        String  @id
   /// 展示名
   name      String

@@ -10,7 +10,7 @@ SQLite + Prisma。这份映射参考官方的 dsh-superagent（`prisma_ref_to_pr
 | 文件 | 模型 | 说明 |
 | --- | --- | --- |
 | `schema/.conf.prisma` | — | 数据源与生成器（datasource / generator） |
-| `schema/channel.prisma` | `Channel`、`ChannelAccount` | 渠道与账号 |
+| `schema/channel.prisma` | `Channel`、`ChannelAccount` | 渠道与账号（含渠道提示词） |
 | `schema/project.prisma` | `Project` | 项目（git 仓库 + DSH 工作区） |
 | `schema/thread.prisma` | `Thread`、`Trigger` | 话题与触发 |
 | `schema/ticket.prisma` | `Ticket`、`TicketThread`、`TicketLink` | 任务 |

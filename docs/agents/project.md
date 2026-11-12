@@ -69,6 +69,16 @@ ask(to='main')，由主编排决定拉 Supervisor 还是另开任务。
 | `ask` | `question, to, triggerId?/threadId?` | `to='user'` 需锚点；`to='main'` 问上级一件新事 |
 | `escalate` | `askId` | 原样上交：`type='main'`、`escalations+1`、重置 `deadline`。**问题文本不改** |
 
+### 渠道
+
+| 工具 | 参数 | 行为 |
+| --- | --- | --- |
+| `read_channel` | `resource, offset?, limit?` | 读渠道原文。路径表见 [README](README.md#渠道读写read_channel--reply_channel) |
+| `reply_channel` | `triggerId, text` | 按触发找到渠道地址发一条 |
+
+判重时先 `read_channel('thread/<key>')` 看这个话题谈过什么，
+比翻 git log 更能判断"这是不是同一件事"。
+
 ### 基础工具
 
 | 工具 | 用途 |

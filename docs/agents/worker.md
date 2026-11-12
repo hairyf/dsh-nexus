@@ -36,14 +36,19 @@ ask(askTo='project') 说明为什么要改，由编排去协调。
 
 ## 工具列表
 
-### 领域工具（只有 4 个）
+### 领域工具（只有 5 个）
 
 | 工具 | 参数 | 行为 |
 | --- | --- | --- |
 | `ask` | `question, askTo` | `'user'` 锚定一条触发发到渠道；`'project'` 绕过人类只走代理 |
 | `report` | `state, summary` | 更新 `Worker.report` + `reportAt`，同时往项目编排收件箱投一条 `kind='ticket'` |
 | `link_thread` | `threadId` | 建 `TicketThread`。之后该话题的新触发归本任务 |
+| `read_channel` | `resource, offset?, limit?` | 读渠道原文。**只能读本任务来源的**，读别人的会被拒 |
 | `reply_channel` | `triggerId, text` | 按触发找到渠道地址发一条 |
+
+`read_channel` 的路径表见 [README](README.md#渠道读写read_channel--reply_channel)。
+派工里带的触发往往是截断的，`read_channel('trigger/<id>')` 读全文；
+遇到「把上面那个修了」这类有歧义的请求，读 `feishu/<id>/parent` 或 `/root` 再动手。
 
 ### 基础工具（全套）
 

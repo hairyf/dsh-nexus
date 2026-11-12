@@ -49,6 +49,8 @@
 | `answer` | `askId, text` | 回答下级升上来的 ask |
 | `link_dependency` | `ticketId, dependsOn` | 建 `TicketLink(kind='depends')`，方向是「后来的指向先要做的」 |
 | `close_self` | — | `status='closed'` + `closedAt`，会话归档 |
+| `read_channel` | `resource, offset?, limit?` | 读渠道原文。路径表见 [README](README.md#渠道读写read_channel--reply_channel) |
+| `reply_channel` | `triggerId, text` | 按触发找到渠道地址发一条 |
 
 ### 基础工具
 

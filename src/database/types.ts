@@ -76,6 +76,11 @@ export const TriggerKind = {
     push: "push"
 } as const;
 export type TriggerKind = (typeof TriggerKind)[keyof typeof TriggerKind];
+export const TicketLinkKind = {
+    depends: "depends",
+    relates: "relates"
+} as const;
+export type TicketLinkKind = (typeof TicketLinkKind)[keyof typeof TicketLinkKind];
 export const TicketStatus = {
     waiting: "waiting",
     queued: "queued",
@@ -98,11 +103,6 @@ export const CiState = {
     failing: "failing"
 } as const;
 export type CiState = (typeof CiState)[keyof typeof CiState];
-export const TicketLinkKind = {
-    depends: "depends",
-    relates: "relates"
-} as const;
-export type TicketLinkKind = (typeof TicketLinkKind)[keyof typeof TicketLinkKind];
 export const WorkerStatus = {
     queued: "queued",
     running: "running",
@@ -128,6 +128,7 @@ export type Channel = {
     /**
      * 'github' | 'gitlab' | 'feishu' | 'qq' | 'wechat'
      * 故意保持 String：这是身份而非状态，新增渠道只要插一行，不该逼一次迁移。
+     * 它同时是 skill 文件名的后缀：`github` → `nexus-channel-github`
      */
     id: string;
     /**

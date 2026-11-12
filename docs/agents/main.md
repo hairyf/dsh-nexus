@@ -47,6 +47,7 @@
 | `create_supervisor` | `title, reason, ticketIds[]` | 建 Supervisor + 关联 + 起会话 |
 | `close_supervisor` | `supervisorId` | `status='closed'`，关联工单退回各自项目编排 |
 | `list_tasks` | `status?, projectId?, attentionOnly?` | 全局任务。`attentionOnly` 只列有 pending ask 的 |
+| `read_channel` | `resource, offset?, limit?` | 读渠道原文。路径表见 [README](README.md#渠道读写read_channel--reply_channel) |
 | `reply_channel` | `triggerId, text` | 按触发找到渠道地址发一条 |
 
 ### 基础工具

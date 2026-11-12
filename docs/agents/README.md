@@ -35,6 +35,7 @@
 | `read` `glob` `grep` | ✅ | ✅ | ✅ | ✅ |
 | `write` `edit` | ✅ 笔记 | ✅ 笔记 | ✅ worktree | ✅ 笔记 |
 | `pwsh` | ✅ 只读 | ✅ | ✅ | ✅ 只读 |
+| `read_channel` `reply_channel` | ✅ | ✅ | ✅ 只读本任务来源 | ✅ |
 | `job_*` | ❌ | ✅ | ✅ | ❌ |
 | `subagent` | ❌ | ✅ | ✅ | ❌ |
 | `ask_user_question` `present` | ❌ | ❌ | ❌ | ❌ |
@@ -44,6 +45,17 @@
 - **`job_*` 不给主编排**：官方要求主编排「永远不等」。它一挂起，新触发就没人分诊。
 - **`ask_user_question` 全都不给**：问人只走领域工具 `ask`（会写 Inbox 行）。两条路必然打架。
 - **`write` 按目录切不按角色切**：编排层确实需要记草稿，但写不到代码就够了。
+- **渠道读写四个角色都有**：`read_channel` 一套路径、`reply_channel` 一个锚点，
+  不给每个渠道造一对工具。Worker 的 `read_channel` 有范围限制（只能读自己任务的来源）。
+
+**渠道提示词**：
+
+每个渠道的用法说明是 `assets/skills/nexus-channel-<id>/SKILL.md`，
+和官方 `skills/dsh-superagent-github/SKILL.md` 同一套形式。
+
+**所有角色都读得到，不按角色分配。** 这正是 skill 机制的意义：
+模型按当前任务自己决定 load 哪份，而不是我们在代码里替它猜。
+详见 [prisma/README.md 的「渠道提示词」](../../prisma/README.md#渠道提示词不在数据库里)。
 
 **问人 / 问上级只有两个动作**：
 
@@ -53,6 +65,69 @@ escalate(askId)                                这条我答不了，原样上交
 ```
 
 `ask` 是问一件**新事**；`escalate` 是**同一个问题**换个人答。用错会导致重复提问或凭空冒出问题。
+
+## 渠道读写：`read_channel` / `reply_channel`
+
+四个角色**都有**这两个工具，一对读、一对写。渠道的细节怎么用，由
+`assets/skills/nexus-channel-<id>/SKILL.md` 教 —— 工具只说"能读/能写"，skil 说"怎么读/怎么写"。
+
+### `read_channel(resource, offset?, limit?)`
+
+一个通用读取器，靠**路径前缀**分发到不同渠道。不是每加一个渠道就加一个工具。
+
+| 路径 | 读什么 |
+| --- | --- |
+| `github/issues/<n>` | issue 描述 |
+| `github/issues/<n>/comments` | 对话评论 |
+| `github/pulls/<n>` | PR 描述 |
+| `github/pulls/<n>/comments` | review 评论 |
+| `github/pulls/<n>/thread/<comment-id>` | 一条 review 串（含它首条评论为根） |
+| `github/pulls/<n>/reviews` | review 列表 |
+| `github/pulls/<n>/checks` | CI 状态 |
+| `feishu/<trigger-id>/message` | 源消息本身 |
+| `feishu/<trigger-id>/root` | 所在话题串的首条 |
+| `feishu/<trigger-id>/parent` | 它回复的那条（含合并转发） |
+| `feishu/<trigger-id>/thread` | 整个话题串 |
+| `feishu/<trigger-id>/around` | 周边聊天：前 5 条 + 本条 + 后 5 条，可继续往前翻 |
+| `trigger/<id>` | 一条触发 + 它回复的那条 + 同话题上的前后各一条 |
+| `thread/<key>` | 一个话题：标题、链接、关联任务、最新触发 |
+| `ticket/<id>` | 一个任务的卡片、Worker、最近汇报 |
+
+**返回形状统一**：
+
+```
+{ items: [...], next_offset: number | null, next_resource: string | null }
+```
+
+- `next_offset` 本地翻页（同一批数据往后读）
+- `next_resource` 远端游标翻页（渠道侧还有下一页）
+- **offset 0 重新读；之后的 offset 读同一份快照**，不会因为数据变了而错位
+- 一页默认 20 条，上限 50
+
+**两条翻页轴必须都跟完**，否则会误判"读完了"。
+
+**权限**：Worker 只能读自己任务来源的内容（`TicketThread` 关联的话题、派工带来的触发）。
+读别人的触发会被拒。主编排 / 项目编排 / Supervisor 不受此限。
+
+### `reply_channel(triggerId, text)`
+
+按触发找到渠道地址发一条。**锚点是 `triggerId`** —— 一个问题只会锚在一条触发上，
+不用猜发到哪个会话。
+
+规则：
+
+- bot 身份发言，语气像人话，不是报告体
+- 100 词硬上限（飞书按分词算，Markdown 链接标签和地址都算）
+- 不要重复对方已说的话
+- 排队成功 ≠ 送达。投递失败会另行通知
+
+### 为什么不做成每个渠道一对工具
+
+官方是 `orchestrator_read` + `orchestrator_reply` 两个通用工具，配一张
+`RESOURCES` 资源表 + skill 教细节。我们照抄这个形状。
+
+每加一个渠道就加两个工具的话，工具列表会随渠道数线性膨胀，
+而模型选错工具的概率也会随之上升。路径前缀 + skill 的组合没有这个问题。
 
 ## 被否掉的：`wait`（阻塞等待子会话）
 
