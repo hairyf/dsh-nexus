@@ -33,6 +33,15 @@ model Ticket {
   prState PullRequestState?
   ciState CiState?
 
+  /// 暂停这个任务。**在任务详情里按，不是全局开关**。
+  ///
+  /// 暂停时：不派发、不建 Worker、不投递、不出口。源继续记录触发，
+  /// 正在跑的回合不打断（打断会留下半成品）。
+  paused Boolean @default(false)
+
+  /// 建 worktree 失败的原因。非空表示准备阶段挂了，`retry` 或人发消息可以再来一次
+  prepareError String?
+
   project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   channel     Channel            @relation(fields: [channelId], references: [id])
   threads     TicketThread[]

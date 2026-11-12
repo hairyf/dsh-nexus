@@ -120,7 +120,7 @@ Worker：ask「需要同步改 B/x，暂时阻塞」
 
 - **能读代码，不能改。** 要改就 `send` 告诉 Worker。不是权限问题，是责任归属：
   编排层改了代码，「这个改动是谁做的」就没有答案。
-- 并发满了 → 任务留 `queued`，不要硬开。
+- 并发满了（`Setting.maxWorkers`）→ 任务留 `queued`，不要硬开。人的消息有额外 1 个槽位，不会被挤。
 - Worker ask 了但任务已结束 → `update_ticket(status=running)` 复活再回。
 - Worker 死了不报错 → `view` 看最后一步，再决定 `cancel` 还是重开。
 - 派活下来但本项目不该接 → `ask` 说明原因，别硬接。

@@ -10,13 +10,22 @@ SQLite + Prisma。这份映射参考官方的 dsh-superagent（`prisma_ref_to_pr
 | 文件 | 模型 | 说明 |
 | --- | --- | --- |
 | `schema/.conf.prisma` | — | 数据源与生成器（datasource / generator） |
-| `schema/channel.prisma` | `Channel`、`ChannelAccount`、`CiWatch` | 渠道、账号、CI 观察点 |
+| `schema/channel.prisma` | `Channel`、`ChannelAccount`、`CiWatch`、`SourceState` | 渠道、账号、CI 观察点、读取游标 |
 | `schema/project.prisma` | `Project` | 项目（git 仓库 + DSH 工作区） |
 | `schema/thread.prisma` | `Thread`、`Trigger` | 话题与触发 |
 | `schema/ticket.prisma` | `Ticket`、`TicketThread`、`TicketLink` | 任务 |
 | `schema/worker.prisma` | `Worker` | 执行会话 |
 | `schema/inbox.prisma` | `Inbox` | 收件箱 |
 | `schema/supervisor.prisma` | `Supervisor`、`SupervisorTicket` | 临时跨项目协调者 |
+| `schema/setting.prisma` | `Setting` | **全局配置**（单行，`id=global`） |
+
+配置只在 `setting.prisma`，不散到各表。项目是「哪个仓库」，属于业务；
+并发上限、自动合并这些是「这套系统怎么跑」，属于部署。混在一起的结果是
+改一条并发上限要去翻每个项目的记录。
+
+运行状态各自归位：`SourceState`（游标）和 `CiWatch`（CI 指纹）在
+`channel.prisma` 里，因为它们都是「某个渠道读到哪了」；
+`Ticket.paused`、`Worker.backgroundUntil` 跟着各自的行。
 
 拆分只影响阅读顺序，不改变生成的表结构 —— 外键可以跨文件互相引用。
 

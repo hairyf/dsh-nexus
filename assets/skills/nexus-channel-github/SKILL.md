@@ -26,7 +26,7 @@ review 串的答复与解决按团队约定办。解决一个串用 GitHub Graph
 review 评论的 URL 以 `#discussion_r<ID>` 结尾时，读 `github/pulls/<PR>/thread/<ID>`，
 它首条评论的 id 就是根 id。需要回复时，用
 `gh api repos/<OWNER>/<REPO>/pulls/<PR>/comments/<ROOT>/replies --method POST -f body=<文本>`，
-其中 `<OWNER>/<REPO>` 取自执行环境的 `$DSH_NEXUS_GITHUB_REPOSITORY`。
+其中 `<OWNER>/<REPO>` 取自 `read_channel` 返回的 `repository` 字段。
 **不要**用 `gh pr comment` 或 issue 评论端点解释 review 串。
 把 bot 运行标识、review 轮次和处置结果记进 `report`；PR 描述保留最终实现、验证过程和实质限制。
 

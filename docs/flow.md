@@ -20,7 +20,7 @@ Nexus 的完整流转。状态名、字段名取自 `prisma/schema/`。
 
 ```mermaid
 flowchart TB
-    CH["渠道<br/>GitHub / 飞书 / …"]
+    CH["渠道<br/>GitHub / GitLab / 飞书 / …"]
 
     subgraph 编排层
         MAIN["主编排 main<br/>全局唯一"]
@@ -172,11 +172,13 @@ flowchart LR
     P["progress"] --> R{"干完了吗"}
     R -->|是| READY["ready<br/>PR 已开"]
     R -->|失败| F["failed"]
+    R -->|"这事不用做"| D["dropped<br/>直接结束，不发消息"]
     READY --> T1["Ticket → review"]
     F --> T2["Ticket → waiting"]
 ```
 
-只有三种 —— `report` 只讲事实，「我在等答复」归 `ask`，不占状态位。
+「我在等答复」归 `ask`，不占状态位。`dropped` 是「什么都不做」的合法表达 ——
+没有它，Worker 遇到复现不了或已被别人修好的活，只能谎报 `ready` 或白问一次人。
 
 ---
 
@@ -298,6 +300,36 @@ flowchart LR
 - **`type=supervisor` 只有 main 和 project 能写** —— Worker 不知道它存在
 - **Worker 没有收件箱**，上级的话直接 prompt 进会话
 
+### 三个状态
+
+| `status` | 含义 | 进「N 条未处理」吗 |
+| --- | --- | :-: |
+| `pending` | 还没轮到 | ✅ |
+| `done` | 处理完了 | — |
+| `stalled` | **投递卡住**：重试 N 次都失败，要人看 | ❌ 单独显示 |
+
+`stalled` 不是「没轮到」，是「送不到」。混进未读数会让人以为消息还在排队。
+
+投递失败退避 2s → 4s → … → 封顶（默认 60s），连续失败 3 次转 `stalled`。
+
+### 已读
+
+`readAt` 记「会话把它取进上下文的时刻」，和 `status` 分开：
+
+| 组合 | 意思 |
+| --- | --- |
+| `pending` + `readAt` 空 | 还在队列 |
+| `pending` + `readAt` 有值 | 看到了，没处理完 |
+| `done` | 处理完了 |
+
+票结束时，`pending` 且 `readAt` 为空的消息**退回**，重新投给接手的人。
+
+### 顺序
+
+同一票对同一地址按 `seq` 顺序发：前一条没成功，后一条等着。不同票之间不等。
+
+没有它，Worker 先回的「收到，我看看」可能比半小时后的「改好了，PR #88」后到。
+
 ### 消费
 
 ```mermaid
@@ -408,7 +440,7 @@ sequenceDiagram
 **Review 没写正文但点了 Approve 也要发** —— 用户点 Approve 这个动作本身就是答复，
 吞掉它，等审批的 Worker 就永远等不到。
 
-PR 和 issue 共用编号，id 格式一致；但**话题不同**（issue 是 `github:42`，PR 是 `github:88`）。
+PR 和 issue 共用编号，id 格式一致；但**话题不同**（issue 是 `github:42`，PR 是 `github:88`）。GitLab 的编号是**项目内**递增的，所以话题键还要带项目：`gitlab:a/x:!42`。
 
 ### 8.2 PR 归谁处理
 
@@ -431,7 +463,7 @@ PR 合并 / 关闭
   → 引擎直接 end(ticket)                          ← 结单在这里
   → emit('ticket.ended')
       ├─ 主编排收件箱 kind=notice                  ← 只是通知
-      └─ 非 GitHub 渠道补一句                      ← GitHub 时间线已有
+      └─ 代码托管渠道以外补一句                    ← GitHub/GitLab 时间线已有
 ```
 
 三个关键点：
@@ -452,10 +484,10 @@ PR 合并 / 关闭
 3. 没有 → update_ticket(prState, status=done, endedAt)
 4. 有   → 只记 prState，留 review，等 report(ready)
 5. 主编排 + 项目编排各投一条 kind=notice
-6. 非 GitHub 渠道发一句话；GitHub 上不发
+6. 代码托管渠道以外发一句话；GitHub / GitLab 上不发
 ```
 
-**为什么不走触发**：PR 合并时没有要判断的东西 —— 结论已经在 GitHub 上了。
+**为什么不走触发**：PR 合并时没有要判断的东西 —— 结论已经在代码托管平台上了。
 走触发等于让编排重复确认一件已确定的事，还多一个「忘了处理就永远不关」的失败点。
 
 ### 8.4 PR 归哪张工单
@@ -486,12 +518,17 @@ flowchart TD
 
 ### 8.5 两套 CI
 
-| | PR CI | 分支 CI |
+| | 合并请求 CI | 分支 CI |
 | --- | --- | --- |
-| 看谁 | open ticket 的 PR | 默认分支 head |
+| 看谁 | open ticket 的 PR / MR | 默认分支 head |
 | 话题 | 跟 PR 共用 | **独立**（`github:ci:main`） |
 | 能回复 | ✅ | ❌ **没有地址** |
 | 开关 | 无条件 | 渠道开关，默认关 |
+
+**防抖逻辑与渠道无关**，两套 CI 都一样：指纹变了才发。
+各渠道的数据形状不同（GitHub 是 `check-runs`，GitLab 是 `pipeline`），
+但算完都归到同一个 `CiWatch.fingerprint` ——
+**算法归渠道，表不关心它长什么样**。
 
 ### 8.6 为什么必须防抖
 
@@ -630,10 +667,10 @@ sequenceDiagram
 | `TicketLinkKind` | `depends` · `relates` |
 | `WorkerStatus` | `queued` · `running` · `ended` |
 | `WorkerEndReason` | `completed` · `stopped` · `failed` · `restarted` |
-| `ReportState` | `progress` · `ready` · `failed` |
+| `ReportState` | `progress` · `ready` · `failed` · `dropped` |
 | `InboxTarget` | `user` · `main` · `project` · `supervisor` |
 | `InboxOrigin` | `channel` · `main` · `project` · `worker` · `supervisor` · `system` |
-| `InboxStatus` | `pending` · `done` |
+| `InboxStatus` | `pending` · `done` · `stalled` |
 | `InboxKind` | `trigger` · `ticket` · `ask` · `notice` |
 | `InboxAnsweredBy` | `user` · `main` · `project` · `supervisor` · `worker` |
 | `SupervisorStatus` | `active` · `closed` |

@@ -33,6 +33,22 @@ model Worker {
   report      String?
   reportAt    String?
 
+  // ── 槽位与恢复 ──────────────────────────────────────────────────────────
+
+  /// 后台工作还能跑到什么时候。
+  ///
+  /// 回合结束时如果还有 shell job 或 subagent 在跑，**票继续占着槽位、继续算
+  /// working**，不报 waiting —— 否则槽位被别的票占了，任务起了服务器却没人接。
+  /// 上限 30 分钟；到点杀掉后台并把票报成 waiting。
+  /// 为空表示没有后台工作，正常释放槽位。
+  backgroundUntil String?
+
+  /// 被重启打断后重开时写的一句话：
+  /// 「先查目录、git 历史和 GitHub，再决定要不要重做外部动作」。
+  ///
+  /// 没有它，重启后的 Worker 不知道自己在哪，会重复开 PR、重复发评论。
+  recoveryNote String?
+
   ticket Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   /// 这个会话冒出来的消息（开工、汇报、失败）
   inbox  Inbox[]
@@ -66,8 +82,7 @@ enum WorkerEndReason {
 
 /// 一次汇报的状态。
 ///
-/// 只有三种，因为 `report` 和 `ask` 分了工：`report` 只讲事实、不等答复；
-/// 「我在等一个答案」这件事归 `ask`，不占状态位。
+/// `report` 只讲事实、不等答复；「我在等一个答案」归 `ask`，不占状态位。
 enum ReportState {
   /// 还在跑，阶段性推进
   progress
@@ -75,4 +90,8 @@ enum ReportState {
   ready
   /// 失败了，需要重试或人介入
   failed
+  /// 不用做了：复现不了、已被别人修了、需求被取代。
+  /// 票直接结束，默认不对外发消息 —— 这是「什么都不做」的合法表达，
+  /// 没有它，Worker 遇到这种活只能谎报 ready 或者白问一次人
+  dropped
 }

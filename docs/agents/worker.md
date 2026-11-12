@@ -47,7 +47,7 @@ ask 之后这条线停下，等答案被 prompt 回来。不要一边问一边�
 **`ask` 只有一个去处：项目编排。** 它没有 `supervisorId` ——
 Worker 不知道 Supervisor 存不存在，也不该知道。
 
-`state` 三种：`progress`（在跑）/ `ready`（干完了）/ `failed`（失败了）。
+`state` 四种：`progress`（在跑）/ `ready`（干完了）/ `failed`（失败了）/ `dropped`（不用做了）。
 「我在等答复」不占状态位，那是 `ask`。
 
 `read_channel` 派工里带的触发往往是截断的，读 `trigger/<id>` 取全文；

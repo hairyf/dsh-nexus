@@ -4,13 +4,13 @@
 
 /// 话题的形态。
 enum ThreadKind {
-  /// 议题
+  /// 议题（GitHub Issue / GitLab Issue）
   issue
-  /// 合并请求
+  /// 合并请求（GitHub PR / GitLab MR）
   pull
   /// 会话话题（飞书那类话题串）
   chat
-  /// 分支的 CI：没有对应的 issue 或 PR，`refId` 形如 `ci:main`
+  /// 分支的 CI：没有对应的 issue 或合并请求，`refId` 形如 `ci:main`
   ci
 }
 

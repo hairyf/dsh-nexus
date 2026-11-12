@@ -60,7 +60,7 @@ cwd 是**笔记区**，不是仓库。仓库在 `Project.directory`，用绝对�
 | `escalate(askId)` | 上级 | — 转发已有问题 |
 | `ask_user(question, triggerId?)` | 人类（只有 main） | ✅ |
 
-**`report` 说事实，`ask` 要决定。** `state` 只有 `progress` / `ready` / `failed`；
+**`report` 说事实，`ask` 要决定。** `state` 有 `progress` / `ready` / `failed` / `dropped`；
 「我在等答复」不占状态位，那是 `ask` 的事。
 
 默认路由：

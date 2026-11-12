@@ -20,6 +20,10 @@
 model Inbox {
   id String @id
 
+  /// 入队顺序。**同一票对同一地址按它顺序发**：前一条没成功，后一条等着，
+  /// 避免「结果」比「确认」先到。不同票之间不互相等
+  seq BigInt
+
   /// 此刻轮到谁处理。
   /// Worker 没有收件箱：它短命、被动、在等的时候是阻塞的，
   /// 所以上级的话必须直接 prompt 进会话，不能进队列等它来取。
@@ -46,6 +50,23 @@ model Inbox {
 
   /// 被标记为已处理的时间
   doneAt String?
+
+  // ── 投递与已读 ──────────────────────────────────────────────────────────
+
+  /// 投递尝试次数。成功一次就清零
+  deliveryAttempts Int @default(0)
+
+  /// 最近一次投递失败的原因；成功后清空
+  deliveryError String?
+
+  /// 下次重试的时刻。退避 2s → 4s → … → 60s 封顶；
+  /// 连续失败 3 次转 stalled
+  nextRetryAt String?
+
+  /// 会话把它取进上下文的时刻。
+  /// 判定：取进某一步、且之后报了 report 或结束回合，才算数。
+  /// 为空 = 还在队列；有值 = 看到了但没处理完
+  readAt String?
 
   // ── 以下是 kind = ask 专用 ────────────────────────────────────────────
 
@@ -91,6 +112,10 @@ model Inbox {
   @@index([status, createdAt])
   /// 扫超时的 ask：status + deadline
   @@index([kind, status, deadline])
+  /// 按顺序投递：取同一票最早的未完成
+  @@index([ticketId, seq])
+  /// 扫待重试的投递
+  @@index([status, nextRetryAt])
   @@map("inbox")
 }
 
@@ -121,12 +146,15 @@ enum InboxOrigin {
   system
 }
 
-/// 消息是否已被处理。
+/// 消息的状态。
 enum InboxStatus {
-  /// 未读 / 未答
+  /// 未读 / 未答。**只有它进「你有 N 条未处理」那个计数**
   pending
   /// 已处理（被 inbox_kill 掉，或问题已回答）
   done
+  /// 投递卡住：连续重试失败，需要人看。
+  /// 不是「没轮到」，是「送不到」—— 所以不算未读，单独显示
+  stalled
 }
 
 /// 消息的类型，只用来给列表加角标；代理真正读的是 message。

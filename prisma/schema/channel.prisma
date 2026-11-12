@@ -12,12 +12,19 @@
 model Channel {
   /// 'github' | 'gitlab' | 'feishu' | 'qq' | 'wechat'
   /// 故意保持 String：这是身份而非状态，新增渠道只要插一行，不该逼一次迁移。
-  /// 它同时是 skill 文件名的后缀：`github` → `nexus-channel-github`
-  id        String  @id
+  ///
+  /// **它同时决定用哪份 skill**：`nexus-channel-<id>`，
+  /// 例如 `github` → `assets/skills/nexus-channel-github/SKILL.md`。
+  /// 一个渠道一份 skill，不搞别名。
+  id      String  @id
   /// 展示名
-  name      String
+  name    String
   /// 是否开启监听；关掉的渠道不会再产生触发
-  enabled   Boolean @default(false)
+  enabled Boolean @default(false)
+
+  /// 自建 GitLab 的站点地址。仅 gitlab 使用，SaaS 留空即 `gitlab.com`。
+  host String?
+
   createdAt String
 
   accounts ChannelAccount[]
@@ -26,6 +33,7 @@ model Channel {
   triggers Trigger[]
   tickets  Ticket[]
   ciWatch  CiWatch[]
+  states   SourceState[]
 
   @@map("channel")
 }
@@ -105,4 +113,34 @@ enum AccountStatus {
   online
   /// 未登录；这个渠道不会产生触发，也发不出去
   offline
+}
+
+/// 一个渠道读到哪了。**每个需要增量读取的目标一行。**
+///
+/// 为什么入库：进程重启后如果不知道读到哪，只能从头重读整个历史。
+/// 触发 id 由来源事实派生，重复读不会产生重复数据 —— 但会把 API 配额烧光，
+/// 而且首轮会卡很久。
+///
+/// 这是**运行状态**，不是配置，所以不进 `setting.prisma`。
+model SourceState {
+  /// 渠道 id，见 `Channel.id`
+  channelId String
+  /// 游标名。各渠道自己定，例如：
+  ///   `notifications`  通知列表的 since
+  ///   `thread:42`      issue / MR 42 的评论游标
+  ///   `thread:ci:main` 分支 CI 的观察位置
+  ///   `feishu:oc_xxx`  飞书某个会话的读取位置
+  name      String
+
+  /// 游标值。JSON 字符串，形状归各渠道自己解释
+  value String
+
+  /// 最后一次推进的时间，用来发现「这个游标停了多久」
+  updatedAt String
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, name])
+  @@index([updatedAt])
+  @@map("source_state")
 }
