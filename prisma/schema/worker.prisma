@@ -27,7 +27,8 @@ model Worker {
   branch   String?
   worktree String?
 
-  /// 最近一次汇报：状态 + 一句话摘要，详情页直接显示
+  /// 最近一次汇报：状态 + 一句话摘要，详情页直接显示。
+  /// 和会话正文是两条通道 —— 这里只有状态，正文靠 view 读
   reportState ReportState?
   report      String?
   reportAt    String?
@@ -63,17 +64,15 @@ enum WorkerEndReason {
   restarted
 }
 
-/// Worker 最近一次汇报的状态。
-/// 注意它和「会话正文」是两条通道：这里只有状态，正文靠 view 读。
+/// 一次汇报的状态。
+///
+/// 只有三种，因为 `report` 和 `ask` 分了工：`report` 只讲事实、不等答复；
+/// 「我在等一个答案」这件事归 `ask`，不占状态位。
 enum ReportState {
   /// 还在跑，阶段性推进
   progress
-  /// 停在等人（配合 ask）
-  waiting
   /// 干完了，PR 已开，可以审
   ready
-  /// 卡住，自己解不了
-  blocked
   /// 失败了，需要重试或人介入
   failed
 }

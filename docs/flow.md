@@ -8,7 +8,7 @@ Nexus 的完整流转。所有状态名、字段名取自 `prisma/schema/`，可
 2. [触发与分诊](#2-触发与分诊)
 3. [任务生命周期](#3-任务生命周期)
 4. [Worker 生命周期](#4-worker-生命周期)
-5. [ask 与升级](#5-ask-与升级)
+5. [汇报与求助](#5-汇报与求助)
 6. [收件箱投递规则](#6-收件箱投递规则)
 7. [跨项目 Supervisor](#7-跨项目-supervisor)
 8. [端到端时序](#8-端到端时序)
@@ -198,49 +198,69 @@ stateDiagram-v2
 
 `Worker.reportState` 是**结构化通道**，和会话正文（`view` 读的那条）是两回事。
 
+只有三种，因为 `report` 只讲事实、不等答复；「我在等一个答案」归 `ask`，不占状态位。
+
 ```mermaid
 flowchart LR
     P["progress<br/>还在跑"] --> R{"干完了吗"}
     R -->|是| READY["ready<br/>PR 已开，可审"]
-    R -->|卡住| B["blocked<br/>自己解不了"]
-    R -->|等问| W["waiting<br/>配合 ask"]
     R -->|失败| F["failed<br/>需重试或人介入"]
 
     READY --> TICK{"Ticket 转 review"}
-    B --> ASK["ask 出去"]
-    W --> ASK
     F --> TICK2{"Ticket 回 waiting"}
 ```
 
 | `reportState` | 语义 | 编排动作 |
 | --- | --- | --- |
 | `progress` | 还在跑 | 不动，别打扰 |
-| `waiting` | 停在等人（配合 `ask`） | 等答案，或升级 |
 | `ready` | 干完了，PR 已开 | `update_ticket(status=review)` |
-| `blocked` | 卡住，自己解不了 | 答 ask / 干预 / 升级 |
 | `failed` | 失败了 | `update_ticket(status=waiting)` 重开 |
+
+「我卡住了，要你决定」不走 `report`，走 `ask`。
 
 ---
 
-## 5. ask 与升级
+## 5. 汇报与求助
 
-**人类也是一个收件人。** 这是整个设计的关键：把 `type=user` 放进 `InboxTarget` 之后，
+**人类也是一个收件人。** 把 `type=user` 放进 `InboxTarget` 之后，
 「问人类」和「问上级」就变成同一件事的不同取值，而不是两套流程。
 
-### 5.1 提问的两个方向
+### 5.1 四个工具
+
+| 工具 | 谁用 | 发给谁 | 等不等 |
+| --- | --- | --- | --- |
+| `report(state, summary, supervisorId?)` | project / worker / supervisor | 上级 | ❌ 发完继续 |
+| `ask(question, supervisorId?)` | project / worker / supervisor | 上级 | ✅ 这条线停下 |
+| `escalate(askId)` | project | 上级 | — 转发已有问题 |
+| `ask_user(question, triggerId?)` | **只有 main** | 人类 | ✅ |
+
+### 5.2 谁问到谁
 
 ```mermaid
-flowchart TD
-    W["Worker 卡住"] --> WH{"问谁"}
+flowchart BT
+    U["人类 user"]
+    M["主编排 main"]
+    P["项目编排 project"]
+    W["Worker"]
+    S["Supervisor"]
 
-    WH -->|"我们想要什么"| U["ask(askTo=user)<br/>Inbox type=user<br/>origin=worker kind=ask<br/>带 deadline"]
-    WH -->|"技术上怎么配合"| P["ask(askTo=project)<br/>Inbox type=project<br/>origin=worker kind=ask"]
+    W -->|"ask"| P
+    P -->|"ask"| M
+    S -->|"ask"| M
+    M -->|"ask_user"| U
 
-    U --> CHOUT["锚定一条 Trigger<br/>往那个渠道发问题"]
-    P --> NONECH["不碰渠道<br/>只在代理间流转"]
+    P -.->|"ask(supervisorId)"| S
+    S -.->|"answer"| P
+    M -.->|"answer"| P
+    P -.->|"answer"| W
 ```
 
-`ask` 的定位靠 `Inbox.triggerId`：一条任务可以有好几个消息源，
+实线是默认路径，虚线是 Supervisor 在场时的旁路。
+
+**`supervisorId` 只有 project 能用。** Worker 不知道 Supervisor 存不存在，也不该知道 ——
+它只管干活，跨项目的事由项目编排往上转。
+
+提问的定位靠 `Inbox.triggerId`：一条任务可以有好几个消息源，
 但一个问题只会锚在一条触发上 —— 这是多消息源下唯一不歧义的答案。
 
 ### 5.2 升级链
@@ -275,7 +295,7 @@ stateDiagram-v2
 | `deadline` | 重置（已升到 main 则置空） |
 | `status` | 保持 `pending` |
 
-### 5.3 回答与回送
+### 5.4 回答与回送
 
 ```mermaid
 sequenceDiagram
@@ -285,7 +305,7 @@ sequenceDiagram
     participant M as 主编排
     participant U as 人类/渠道
 
-    W->>DB: ask(askTo=project)
+    W->>DB: ask
     DB-->>P: type=project 投递
     P->>P: 看任务上下文
     alt 答得了
@@ -294,28 +314,32 @@ sequenceDiagram
         P->>DB: escalate<br/>type→main escalations+1
         DB-->>M: 转投主编排
         M->>DB: answer + answeredBy=main
+    else 得问人
+        M->>DB: ask_user（新的一条）
+        DB-->>U: 渠道里出现一个问题
+        U->>DB: 回答
     end
     DB->>DB: status=done
     DB-->>W: 答案顺着 workerId prompt 回会话
     W->>W: 继续干活
 ```
 
-### 5.4 `escalate` 和 `ask(to='main')` 的区别
+### 5.5 `escalate` 和 `ask` 的区别
 
 最容易用错的一对。
 
-| | `escalate(askId)` | `ask(to='main')` |
+| | `escalate(askId)` | `ask(question, ...)` |
 | --- | --- | --- |
 | 问题 | **同一个问题**，原样往上递 | **另一个新问题** |
 | 记录 | 就地改现有那条的 `type` | 新建一条 Inbox |
 | 原 ask | 已转走 | 还挂着，等我拿到答复再回去答 |
-| 什么时候用 | 我不懂、上级懂 | 我看出这事得跨项目协同 |
+| 什么时候用 | 我不懂、上级懂 | 我看出这事得由上级决策 |
 
 ```mermaid
 flowchart TD
     A["Worker: 需要同步改 B/x，阻塞"] --> B{"项目编排"}
     B -->|"我不懂这个技术点"| C["escalate<br/>同一条记录改投 main"]
-    B -->|"这得跨项目协调"| D["ask(to=main)<br/>新建一条<br/>「请考虑创建 Supervisor」"]
+    B -->|"这得跨项目协调"| D["ask<br/>新建一条<br/>「请考虑创建 Supervisor」"]
     C --> E["主编排答"]
     D --> E2["主编排建 Supervisor 并回答"]
     E --> F["答案回 Worker"]
@@ -354,23 +378,26 @@ flowchart LR
     SY --> TMA
     SY --> TPR
 
-    MA -->|ticket 派工| TPR
-    MA -->|ask| TU
+    MA -->|"ticket 派工"| TPR
+    MA -->|"ask_user"| TU
+    MA -->|"attach / detach"| TSU
 
-    PR -->|ask 答不了| TMA
-    PR -->|ask| TU
+    PR -->|"report / ask"| TMA
+    PR -->|"report / ask<br/>带 supervisorId"| TSU
 
-    SU -->|ticket 派工| TPR
-    SU -->|ask| TMA
-    SU -->|ask| TU
+    SU -->|"ticket 派工"| TPR
+    SU -->|"report / ask"| TMA
 
-    WK -->|ask 技术| TPR
-    WK -->|ask 决策| TU
-    WK -->|report| TPR
+    WK -->|"report / ask"| TPR
 ```
 
-**Worker 没有收件箱。** 它短命、被动、在等的时候是阻塞的，
-所以上级的话必须直接 prompt 进会话，不能进队列等它来取。
+几条边界：
+
+- **`type=user` 只有主编排能写**（`ask_user`）。其余角色没有这条路。
+- **`type=supervisor` 只有主编排和项目编排能写**。Worker 不知道它存在。
+- **Worker 没有收件箱**。它短命、被动、在等的时候是阻塞的，
+  所以上级的话必须直接 prompt 进会话，不能进队列等它来取。
+- **Supervisor 不写 `type=user`**。要对外说话，`ask` 主编排。
 
 ### 6.2 消费与提示
 
@@ -405,6 +432,7 @@ flowchart TD
 stateDiagram-v2
     direction LR
     [*] --> active : create_supervisor
+    active --> active : attach / detach 工单
     active --> closed : 工单全部落地
     active --> closed : 主编排强关
     closed --> [*] : 从界面消失，行保留
@@ -417,20 +445,64 @@ stateDiagram-v2
 | `dispatch_to_project` | 某项目还没派活，或有新步骤要推进 |
 | `link_dependency` | 发现「谁等谁」，写进 `TicketLink(kind=depends)` |
 | `answer` | 项目编排把下级 ask 递上来了 |
-| `ask(to='main')` | 自己推不动，往主编排上报 |
+| `report` | 工单状态变了，让主编排知道 |
+| `ask` | 自己推不动，往主编排上报 |
 
-### 收工条件
+### 7.1 它被谁叫醒
+
+没有后台定时器，也没有程序推送。只有三个唤醒源：
+
+```mermaid
+flowchart LR
+    M["主编排"] -->|"create_supervisor"| S["Supervisor"]
+    M -->|"attach / detach / close"| S
+    P["项目编排"] -->|"report(..., supervisorId)"| S
+    P -->|"ask(..., supervisorId)"| S
+```
+
+**代价：没人上报就等于永远不知道。** 所以每次醒来第一件事是 `list_tickets`
+自己看一遍，不能只信收件箱里那一条。
+
+项目编排侧的纪律：工单进入终态（`done` / `cancelled`）且在某 Supervisor 下时，
+**必须** `report` 一次并带 `supervisorId`。
+
+同项目内 A 依赖 B 不需要 Supervisor —— 项目编排自己 `list_tasks` 就够。
+
+### 7.2 范围调整
+
+Supervisor 不自己改范围，它 `ask` 主编排：
+
+```mermaid
+sequenceDiagram
+    participant S as Supervisor
+    participant M as 主编排
+    participant P as 项目编排
+
+    S->>M: ask「需要 B 项目加入才能推进」
+    M->>M: 确认 B 有工作区
+    alt 有工作区
+        M->>M: attach_ticket_to_supervisor
+        M->>P: Inbox type=project kind=notice
+    else 没有工作区
+        M->>M: ask_user 让人先建
+    end
+    M-->>S: answer
+```
+
+`detach` 时工单退回原项目编排，**不取消** —— 取消是人的决定。
+
+### 7.3 收工条件
 
 ```mermaid
 flowchart TD
     A["list_tickets"] --> B{"全部 ∈ done / cancelled ?"}
     B -->|是| C["close_self<br/>status=closed + closedAt"]
-    B -->|否| D{"有工单卡在<br/>waiting / blocked ?"}
+    B -->|否| D{"还有工单没到终态 ?"}
     D -->|是| E["继续协调<br/>不许收工"]
-    D -->|"且推不动"| F["ask(to=main)<br/>说明卡点"]
+    D -->|"且推不动"| F["ask<br/>说明卡点"]
 ```
 
-**有工单停在 `waiting` / `blocked` 时不许收工**，那是还没做完。
+**有工单还没走到终态时不许收工**，那是还没做完。
 `close_self` 之后行不删 —— 那几张工单还指着它说明自己当初为什么存在。
 
 ---
@@ -463,18 +535,21 @@ sequenceDiagram
 
     W->>P: report(progress)
     W->>W: 发现要改 B/x
-    W->>P: ask(askTo=project)
+    W->>P: ask
 
     alt 项目编排能协调
-        P->>P: ask(to=main) 请考虑 Supervisor
-        P->>M: Inbox type=main kind=ask
+        P->>P: 查 supervisor_list
+        P->>M: ask「请考虑 Supervisor」
         M->>M: create_supervisor（关联 T-105 + T-200）
         M->>P: answer
         P->>W: send(mode=reply)
     else 需要人拍板
-        P->>W: ask(to=user) 走渠道
-        W->>U: 渠道里出现一个问题
-        U->>W: 回答（或超时升级到 main）
+        P->>M: ask（项目编排没有直接问人的路）
+        M->>M: ask_user
+        M->>U: 渠道里出现一个问题
+        U->>M: 回答
+        M->>P: answer
+        P->>W: send(mode=reply)
     end
 
     W->>W: 继续干活
@@ -484,6 +559,7 @@ sequenceDiagram
 
     U->>P: 审完合并 PR
     P->>P: update_ticket(prState=merged, status=done)
+    P->>M: report(ready, supervisorId)（在 Supervisor 下才发）
 ```
 
 ### 另一条常见路径：同话题追加消息
@@ -529,13 +605,28 @@ sequenceDiagram
 | `TicketLinkKind` | `depends` · `relates` |
 | `WorkerStatus` | `queued` · `running` · `ended` |
 | `WorkerEndReason` | `completed` · `stopped` · `failed` · `restarted` |
-| `ReportState` | `progress` · `waiting` · `ready` · `blocked` · `failed` |
+| `ReportState` | `progress` · `ready` · `failed` |
 | `InboxTarget` | `user` · `main` · `project` · `supervisor` |
 | `InboxOrigin` | `channel` · `main` · `project` · `worker` · `supervisor` · `system` |
 | `InboxStatus` | `pending` · `done` |
 | `InboxKind` | `trigger` · `ticket` · `ask` · `notice` |
 | `InboxAnsweredBy` | `user` · `main` · `project` · `supervisor` · `worker` |
 | `SupervisorStatus` | `active` · `closed` |
+
+### 工具矩阵
+
+| 工具 | main | project | worker | supervisor |
+| --- | :-: | :-: | :-: | :-: |
+| `report` | ❌ | ✅ | ✅ | ✅ |
+| `ask` | ❌ | ✅ | ✅ | ✅ |
+| `ask_user` | ✅ | ❌ | ❌ | ❌ |
+| `escalate` | ❌ | ✅ | ❌ | ❌ |
+| `answer` | ✅ | ❌ | ❌ | ✅ |
+| `read_channel` | ✅ | ✅ | ✅ 限本任务 | ✅ |
+| `reply_channel` | ✅ | ✅ | ✅ | ❌ |
+
+`report` 说事实，`ask` 要决定。主编排没有 `report`（它是终点），也没有 `ask`（它没有上级）。
+
 
 ### 派生状态
 

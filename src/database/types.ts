@@ -118,9 +118,7 @@ export const WorkerEndReason = {
 export type WorkerEndReason = (typeof WorkerEndReason)[keyof typeof WorkerEndReason];
 export const ReportState = {
     progress: "progress",
-    waiting: "waiting",
     ready: "ready",
-    blocked: "blocked",
     failed: "failed"
 } as const;
 export type ReportState = (typeof ReportState)[keyof typeof ReportState];
@@ -395,7 +393,8 @@ export type Worker = {
     branch: string | null;
     worktree: string | null;
     /**
-     * 最近一次汇报：状态 + 一句话摘要，详情页直接显示
+     * 最近一次汇报：状态 + 一句话摘要，详情页直接显示。
+     * 和会话正文是两条通道 —— 这里只有状态，正文靠 view 读
      */
     reportState: ReportState | null;
     report: string | null;
