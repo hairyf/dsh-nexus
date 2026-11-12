@@ -8,5 +8,8 @@ export default antfu(
     rules: {
       'pnpm/yaml-enforce-settings': 'off',
     },
+    ignores: [
+      'src/database/types.ts',
+    ],
   },
 )

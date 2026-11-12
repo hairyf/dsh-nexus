@@ -18,6 +18,7 @@ allowBuilds:
   esbuild: true
   pkg-placeholder: true
   playwright: true
+  prisma: true
   simple-git-hooks: true
 catalog:
   '@fileshed/kysely-node-sqlite': ^0.1.0

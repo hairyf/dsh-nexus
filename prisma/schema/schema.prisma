@@ -1,19 +1,19 @@
-model Thread {
+// model Thread {
   
-}
+// }
 
-model ThreadRef {
+// model ThreadRef {
 
-}
+// }
 
-model Project {
+// model Project {
 
-}
+// }
 
-model Trigger {
+// model Trigger {
 
-}
+// }
 
-model Inbox {
+// model Inbox {
 
-}
+// }
