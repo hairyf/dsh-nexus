@@ -50,8 +50,10 @@
     "start": "tsx src/index.ts",
     "test": "pnpm run build && vitest",
     "typecheck": "tsc",
-    "postinstall": "skills-npm && pnpx skills experimental_install",
-    "prepare": "git config core.hooksPath .githooks && simple-git-hooks"
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prepare:skills": "skills-npm && pnpx skills experimental_install",
+    "prepare": "git config core.hooksPath .githooks && simple-git-hooks && pnpm run prepare:skills"
   },
   "scripts-info": {
     "build": "Build the library for publishing",
@@ -65,9 +67,13 @@
     "prepare": "Set up git hooks and skills"
   },
   "dependencies": {
+    "@fileshed/kysely-node-sqlite": "catalog:",
     "dsh-h3": "catalog:utils",
     "dsh-taiwind": "catalog:utils",
-    "h3": "catalog:utils"
+    "h3": "catalog:utils",
+    "kysely": "catalog:",
+    "kysely-migrate-sql": "catalog:",
+    "kysely-model": "catalog:"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:cli",
@@ -118,6 +124,8 @@
     "eslint": "catalog:cli",
     "nano-staged": "catalog:cli",
     "playwright": "catalog:testing",
+    "prisma": "catalog:",
+    "prisma-kysely": "catalog:",
     "publint": "catalog:cli",
     "simple-git-hooks": "catalog:cli",
     "skills-npm": "catalog:cli",

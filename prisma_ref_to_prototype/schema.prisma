@@ -1,0 +1,717 @@
+// dsh-superagent —— 完整关系模型（SQLite）
+//
+// 不再把整条聚合塞进一个 JSON 列：每个领域结构的每个字段都是真实列，每个跨结构引用都是
+// 真实外键 + 具名 `@relation`，所以 `prisma migrate` 会生成 FK 约束，`include` 可以直接用。
+//
+// 只有三类保持 JSON `String`，都是设计上就该不透明的：
+//   Trigger.meta、Thread.meta      —— Source 私有，核心从不解释
+//   *.address                       —— ChannelRef.address，寻址格式归 Source
+//   basis.scope、audit、reason.values —— 自由形态的审计负载
+//
+// SQLite 的限制照样存在，这里是绕过而不是掩盖：
+//   没有 enum   -> 枚举字段用 String，允许值写在注释里
+//   没有数组     -> 每个列表都是子表，带显式 `ordinal` 保序
+//   没有 Json   -> 仅上面三类
+//
+// 时间戳统一用 ISO 8601 String，以便按字典序比较——领域层依赖这一点。
+// `Effect.seq` / `due` 用 BigInt，因为它们是毫秒时间戳，32 位 Int 会溢出。
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL") // file:<stateDir>/orchestrator.sqlite
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ===========================================================================
+// 话题（Thread）及其附属
+// ===========================================================================
+
+/// 一个话题：一个 Issue、一个 PR、或飞书的一个话题串。它是评估（Eval）的聚合根。
+/// 同一话题同时只允许一个评估在跑，靠 `evaluatingId` 唯一来强制。
+model Thread {
+  key       String  @id // `${source}:${refId}`
+  source    String
+  refId     String
+  createdAt String
+  lastAt    String? // 本话题最新一条 Trigger 的时间
+  expired   Int? // 连续超时次数；第三次记 unavailable
+  meta      String  @default("{}") // JSON：label、url、facts，以及 Source 私有键
+
+  /// 当前正在本话题上跑的评估。
+  ///
+  /// 与 `Evaluation.threadKey` 构成一个外键循环：话题要指向它的评估，评估又要指向它的话题。
+  /// 因为 `evaluatingId` 可空，建行顺序可以是「先建话题（该列为空）→ 建评估 → 回填该列」，
+  /// 但 Prisma 要求循环里有一侧显式写 `onUpdate: NoAction`，否则 schema 校验不通过。
+  evaluatingId String?     @unique
+  evaluating   Evaluation? @relation("ActiveEvaluation", fields: [evaluatingId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  /// 本话题跑过的全部评估。
+  evaluations Evaluation[] @relation("ThreadEvaluations")
+
+  /// 订阅本话题的工单，会收到它的每条 Trigger。
+  subscriptions Subscription[]
+  /// 攒着等下一次评估的 Trigger（防抖缓冲）。
+  pending ThreadPending[]
+  /// 与它共享过 Trigger 的其它话题；只加语境，绝不路由。
+  correlated   ThreadCorrelation[] @relation("CorrelationOwner")
+  correlatedBy ThreadCorrelation[] @relation("CorrelationTarget")
+  /// 本话题上的 Trigger 存在 `trigger_thread` 表里，其 `threadKey` 故意不做外键
+  /// （Trigger 先于 Thread 行写入），按 `threadKey` 查即可。
+  /// 以下两项是 Source 让工单关注本话题（如它自己的 PR），以及本话题上的决定。
+  follows   Follow[]
+  decisions Decision[]
+
+  @@unique([source, refId])
+  @@index([lastAt])
+  @@map("thread")
+}
+
+/// 一条 Trigger 同时属于两个话题。关联只加语境，从不路由。
+model ThreadCorrelation {
+  threadKey  String
+  relatedKey String
+  thread     Thread @relation("CorrelationOwner", fields: [threadKey], references: [key], onDelete: Cascade)
+  related    Thread @relation("CorrelationTarget", fields: [relatedKey], references: [key], onDelete: Cascade)
+
+  @@id([threadKey, relatedKey])
+  @@map("thread_correlation")
+}
+
+/// 一个话题上排队的一条 Trigger，按到达顺序。`ordinal` 保住防抖缓冲的顺序。
+model ThreadPending {
+  threadKey String
+  triggerId String
+  ordinal   Int
+  thread    Thread  @relation(fields: [threadKey], references: [key], onDelete: Cascade)
+  trigger   Trigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([threadKey, triggerId])
+  @@index([threadKey, ordinal])
+  @@map("thread_pending")
+}
+
+// ===========================================================================
+// 触发（Trigger）
+// ===========================================================================
+
+/// Source 产生的一条不可变事件。`text` 和 `meta` 是不可信的外部数据。
+/// `actor` 和 `channel` 是地址而非实体，所以展平成列。
+model Trigger {
+  id          String @id
+  source      String
+  /// ActorRef：谁写的，用 Source 自己的身份空间。跨 Source 从不映射。
+  actorSource String
+  actorId     String
+  human       Boolean // 是人写的，不是 bot、CI 或本 agent
+  addressed   String? // 'mention' | 'direct'
+  at          String
+  text        String
+  url         String?
+  meta        String @default("{}") // JSON，Source 私有
+
+  /// ChannelRef：回复发到哪里。默认分支的 CI 三项全空，因为它没有可回复的会话。
+  channelSource  String?
+  channelThread  String? // 已拼好的话题键；用来给回复分组保序
+  channelAddress String? // JSON，形状归 Source
+
+  /// 它所属的全部话题；`ordinal` 0 是承载评估的主话题。
+  threads TriggerThread[]
+  /// 它进系统后的去向，一行。工单侧的扇出、退回、确认都挂在那行上
+  /// （`DispositionFanout`、`TriggerHandback`、`TriggerAck` 三表的外键指向 `TriggerDisposition`）。
+  disposition TriggerDisposition?
+
+  pendings    ThreadPending[]
+  evalBatches EvaluationTrigger[]
+  /// 由它提供了强度的那些评估。
+  primaryOf Evaluation[] @relation("EvaluationPrimary")
+
+  /// 由它开启的工单（`Ticket.originTriggerId`），以及它在批次里的位置（`originBatch`）。
+  originOf    Ticket[]              @relation("TicketOrigin")
+  originBatch TicketOriginTrigger[]
+  /// 把它作为提问对象提出来的工单。
+  attentionOf Ticket[]              @relation("TicketAttention")
+  /// 承载它的 Input。
+  inputs      TicketInput[]
+  /// 以它为「已回答问题」的工单。
+  answers     TicketAnswer[]
+
+  @@index([at])
+  @@index([source, at])
+  @@map("trigger")
+}
+
+/// 一条 Trigger 属于哪些话题。`at` 和 `human` 做了反规范化，好让话题时间线分页不必 join `trigger`。
+///
+/// `threadKey` 故意不对 `Thread` 做外键：`Intake.receive` 先存 Trigger 再写 Thread 行，
+/// 否则每个话题的第一条消息都会违反约束。`(threadKey, at, triggerId)` 索引照样服务时间线。
+model TriggerThread {
+  triggerId String
+  threadKey String
+  ordinal   Int // 0 是主话题
+  at        String
+  human     Boolean
+  trigger   Trigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([triggerId, threadKey])
+  @@unique([triggerId, ordinal])
+  @@index([threadKey, at])
+  @@map("trigger_thread")
+}
+
+/// 一条 Trigger 进系统后的去向。它不授予任何权限；它决定一条人的 follow-up 归谁判。
+model TriggerDisposition {
+  triggerId String @id
+  at        String
+
+  /// 进入领域之前就被 Source 的范围过滤拒掉时写入。
+  filteredCode      String?
+  filteredValues    String? // JSON，模板占位符
+  filteredTriggerId String?
+
+  /// 接手它的评估，以及了结它的决定。
+  evalId     String?
+  decisionId String?
+
+  /// 人，或主 Session 对无人认领的消息，把它重新排进评估。
+  requeued Boolean @default(false)
+
+  trigger  Trigger    @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  eval     Evaluation? @relation(fields: [evalId], references: [id], onDelete: SetNull)
+  decision Decision?   @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+
+  fanout   DispositionFanout[]
+  handbacks TriggerHandback[]
+  acked    TriggerAck[]
+
+  @@map("disposition")
+}
+
+/// 一条 Trigger 送达过的一张工单，来自订阅扇出或主 Session 的 attach。
+/// `context` 标记只落在工单「仅供参考」关注的话题上的那种送达。
+model DispositionFanout {
+  triggerId String
+  ticketId  String
+  context   Boolean @default(false)
+  at        String
+  trigger   TriggerDisposition @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  ticket    Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([triggerId, ticketId])
+  @@index([ticketId])
+  @@map("disposition_fanout")
+}
+
+/// 某工单的执行器把一条 Trigger 退回，理由是超出该工单；每个工单只退一次。
+model TriggerHandback {
+  triggerId String
+  ticketId  String
+  reason    String
+  at        String
+  trigger   TriggerDisposition @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  ticket    Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([triggerId, ticketId])
+  @@index([ticketId])
+  @@map("trigger_handback")
+}
+
+/// 某工单的执行器确认或回答过一条 Trigger，即已把它当作自己范围内的活接下。
+model TriggerAck {
+  triggerId String
+  ticketId  String
+  trigger   TriggerDisposition @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  ticket    Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([triggerId, ticketId])
+  @@index([ticketId])
+  @@map("trigger_ack")
+}
+
+// ===========================================================================
+// 评估（Evaluation）与决定（Decision）
+// ===========================================================================
+
+/// 一个话题上正在进行的评估。`MandateBasis` 展开成列：`basisVia` 取
+/// 'addressed' | 'followup' | 'admission' | 'listed' | 'bot'，各变体的字段不用时为空。
+model Evaluation {
+  id               String  @id
+  threadKey        String
+  strength         String // 'explicit' | 'inferred'
+  actorSource      String
+  actorId          String
+  policyVersion    String
+  startedAt        String
+  delivered        String? // 候选卡片送进主 Session 的时刻；超时从这一刻起算
+  deadline         String
+  pausedAt         String? // 暂停开始时刻；恢复时把 `deadline` 顺延同样时长，然后清空
+  primaryTriggerId String? // 给这一批定强度的那条 Trigger
+
+  basisVia             String
+  basisSource          String?
+  basisScope           String? // JSON：Source 记下的接收范围
+  basisRow             String? // 准入表的行，例如某个群 id
+  basisSender          String? // 准入时那位名单内的发送者
+  basisRules           String? // JSON 数组，命中的规则 id
+  basisAddressed       String? // 'mention' | 'direct'
+  basisCell            String? // 'listedUnaddressed' | 'unlistedAddressed' | 'unlistedUnaddressed'
+  basisObservationMode String? // 'off' | 'observe' | 'auto'
+  basisAuthority       String? // 早期版本用来代替 `via` 的字段
+
+  thread         Thread     @relation("ThreadEvaluations", fields: [threadKey], references: [key], onDelete: Cascade, onUpdate: NoAction)
+  /// 当它是本话题正在跑的那个评估时，反向指向 `Thread.evaluatingId`。
+  activeOf       Thread?    @relation("ActiveEvaluation")
+  primaryTrigger Trigger?   @relation("EvaluationPrimary", fields: [primaryTriggerId], references: [id], onDelete: SetNull)
+
+  /// 这一批 Trigger，按到达顺序。
+  triggers     EvaluationTrigger[]
+  decisions    Decision[]
+  dispositions TriggerDisposition[]
+
+  @@index([threadKey])
+  @@map("evaluation")
+}
+
+/// 一次评估批次里的一条 Trigger，按到达顺序。
+model EvaluationTrigger {
+  evalId    String
+  triggerId String
+  ordinal   Int
+  eval      Evaluation @relation(fields: [evalId], references: [id], onDelete: Cascade)
+  trigger   Trigger    @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([evalId, triggerId])
+  @@index([evalId, ordinal])
+  @@map("evaluation_trigger")
+}
+
+/// 一次评估的结论，记在它的话题上。
+model Decision {
+  id            String @id
+  threadKey     String
+  evalId        String?
+  policyVersion String
+  at            String
+  kind          String // 'ignore' | 'accept' | 'stop' | 'unavailable'；'reopen' 仅见于历史行
+  strength      String // 'explicit' | 'inferred'
+  audit         String? // JSON：规则逐条判定、direction、证据
+  dismissed     Boolean @default(false) // 人已忽略某个 unavailable 决定所呈现的问题
+
+  /// 这个决定接受或停止的工单。多次 stop 决定可以指向同一张工单，所以这里不唯一；
+  /// 唯一的是工单自己的 `decisionId`，指向创建它的那个决定。
+  ///
+  /// **这一列故意不做外键。** `Ticket.decisionId` 是指向本表的必填外键，若本列也回指 `Ticket`，
+  /// 两张表就互相要求对方先存在，建单时必然违反约束之一。方向只保留 `Ticket.decisionId` 一侧，
+  /// 本列仍可按 `where: { ticketId }` 查，只是没有 `include` 和引用完整性。
+  ticketId String?
+  /// 一个 accept 授予的授权（Mandate）。
+  mandateId String? @unique
+
+  thread  Thread      @relation(fields: [threadKey], references: [key], onDelete: Cascade)
+  eval    Evaluation? @relation(fields: [evalId], references: [id], onDelete: SetNull)
+  mandate Mandate?    @relation(fields: [mandateId], references: [id], onDelete: SetNull)
+
+  /// 理由，按顺序；同一批次里各自不同时，每条带 `triggerId`。
+  reasons DecisionReason[]
+  /// 这个决定创建的那张工单。`Ticket.decisionId` 唯一，所以是 1:1。
+  createdTicket Ticket? @relation("TicketDecision")
+  dispositions   TriggerDisposition[]
+  inputs         TicketInput[]
+
+  @@index([threadKey])
+  @@index([kind, at])
+  @@map("decision")
+}
+
+/// 一个决定记录的一条理由。
+model DecisionReason {
+  decisionId String
+  ordinal    Int
+  code       String // REASONS 里的键（'timeout' …），或 Source/Policy 的码（'not_a_member' …）
+  values     String? // JSON，模板占位符
+  triggerId  String? // 这条理由针对批次里的哪一条
+  decision   Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@id([decisionId, ordinal])
+  @@map("decision_reason")
+}
+
+/// 一个 accept 授予的东西。不可变：只有 accept 创建它，人的 stop 撤回它，
+/// Policy 不再支持它时撤销它。
+model Mandate {
+  id            String @id
+  strength      String // 'explicit' | 'inferred'
+  policyVersion String
+  scope         String
+  actorSource   String
+  actorId       String
+
+  basisVia             String
+  basisSource          String?
+  basisScope           String?
+  basisRow             String?
+  basisSender          String?
+  basisRules           String?
+  basisAddressed       String?
+  basisCell            String?
+  basisObservationMode String?
+  basisAuthority       String?
+
+  ticket   Ticket?
+  decision Decision?
+
+  @@map("mandate")
+}
+
+// ===========================================================================
+// 工单（Ticket）
+// ===========================================================================
+
+/// 一件被授权的工作。`endedAt` 为空即开着；人的 stop 会撤回它的授权。
+model Ticket {
+  id        String @id // 同时是执行器会话名：`worker-<id>`
+  title     String
+  createdAt String
+  updatedAt String
+
+  /// 创建它的决定，以及它持有的授权。
+  decisionId String @unique
+  mandateId  String @unique
+
+  /// 怎么结束的、为什么；开着时这四项全空。
+  endedAt      String?
+  endedBy      String? // 'executor' | 'human'
+  endedOutcome String? // 'completed' | 'merged' | 'closed' | 'dropped' | 'stopped'
+  endedReason  String?
+
+  /// 待人工回答的问题，没有则为空。
+  attentionId        String?
+  attentionQuestion  String?
+  attentionTriggerId String?
+
+  /// 执行器的选择：短名、目录、派工文本。
+  executionName       String?
+  executionDirectory  String?
+  executionAssignment String?
+
+  /// 最近一次 Input 投递失败，直到有一次投递成功、开新派工或工单结束。
+  deliveryError String?
+  deliveryAt    String?
+
+  /// 它起始于这条 Trigger；整批见 `originBatch`。
+  originTriggerId String
+
+  /// 创建它的那个 accept 决定（1:1，本侧持外键）。
+  decision  Decision @relation("TicketDecision", fields: [decisionId], references: [id])
+  mandate   Mandate  @relation(fields: [mandateId], references: [id])
+  /// 注意：不设 `Decision.ticketId` 的反向列表。那一列故意没有外键，避免两张表互相要求先存在。
+  originTrigger    Trigger  @relation("TicketOrigin", fields: [originTriggerId], references: [id])
+  attentionTrigger Trigger? @relation("TicketAttention", fields: [attentionTriggerId], references: [id], onDelete: SetNull)
+
+  originBatch   TicketOriginTrigger[]
+  assignments   Assignment[]
+  inputs        TicketInput[]
+  undelivered   UndeliveredInput[]
+  follows       Follow[]
+  subscriptions Subscription[]
+  channels      TicketChannel[]
+  answers       TicketAnswer[]
+  fanouts       DispositionFanout[]
+  handbacks     TriggerHandback[]
+  acks          TriggerAck[]
+  outbox        Outbox[]
+
+  @@index([updatedAt])
+  @@index([endedAt])
+  @@index([endedBy])
+  @@map("ticket")
+}
+
+/// 接单时那一批 Trigger 里的一条，按到达顺序。
+model TicketOriginTrigger {
+  ticketId  String
+  triggerId String
+  ordinal   Int
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  trigger   Trigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, triggerId])
+  @@index([ticketId, ordinal])
+  @@map("ticket_origin_trigger")
+}
+
+/// 一条订阅：这张工单接收该话题上的每条 Trigger 作为上下文。
+/// `context` 标记只读关注，它的消息不授予任何权限，也不唤醒已结束的工单。
+model Subscription {
+  threadKey String
+  ticketId  String
+  context   Boolean @default(false)
+  thread    Thread  @relation(fields: [threadKey], references: [key], onDelete: Cascade)
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([threadKey, ticketId])
+  @@index([ticketId])
+  @@map("subscription")
+}
+
+/// Source 让工单关注的一个话题，例如它自己的 PR；`own` 表示这个工单开的。
+/// `ready` 报告要等到「没有自己开的话题还开着，或者（没自己开时）所有关注话题都已关闭」才收单。
+model Follow {
+  ticketId      String
+  threadKey     String
+  own           Boolean @default(false)
+  closedAt      String?
+  closedOutcome String? // 'merged' | 'closed'
+  ticket        Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  thread        Thread  @relation(fields: [threadKey], references: [key], onDelete: Cascade)
+
+  @@id([ticketId, threadKey])
+  @@index([threadKey])
+  @@map("follow")
+}
+
+/// 工单可以回复的一个 Channel，取自它接单时那些消息。
+model TicketChannel {
+  ticketId String
+  source   String
+  thread   String // 已拼好的话题键
+  address  String // JSON，形状归 Source
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, source, thread])
+  @@map("ticket_channel")
+}
+
+/// 执行器已回答过、主 Session 还可能发出去的一条人工提问。
+model TicketAnswer {
+  ticketId  String
+  triggerId String
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  trigger   Trigger @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, triggerId])
+  @@map("ticket_answer")
+}
+
+/// 工单与一个执行器实例的绑定。一张工单先后有多次，只有最新那次可能是 pending 或 running。
+model Assignment {
+  id          String  @id // 同时是 `launch` effect 的 key
+  ticketId    String
+  state       String // 'pending' | 'running' | 'ended'
+  createdAt   String
+  startedAt   String?
+  endedAt     String?
+  endedReason String? // 'retried' | 'hostRestarted' | 'stopped' | …
+
+  /// 报告，也就是这张工单最后说的话。
+  reportState   String? // 'progress' | 'waiting' | 'ready' | 'blocked' | 'failed' | 'dropped'
+  reportSummary String?
+  reportAt      String?
+
+  deliveredAt String? // Input 最近一次送达执行器的时刻
+  idleAt      String? // 最近一次回合并真正空闲的时刻
+
+  ticket          Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  deliveredInputs TicketInput[]
+
+  @@index([ticketId, createdAt])
+  @@index([state])
+  @@map("assignment")
+}
+
+/// 投给工单的上下文，按 `kind` 区分：
+/// 'trigger' | 'policy-changed' | 'reopen' | 'resumed' | 'text' | 'note'。
+/// Input 不授予任何权限，只给上下文。与它 `kind` 无关的字段为空。
+model TicketInput {
+  id       String  @id
+  ticketId String
+  kind     String
+  at       String
+
+  /// kind = 'trigger' | 'resumed'
+  triggerId String?
+  human     Boolean? // kind = 'trigger'：这条 Trigger 是人写的
+  context   Boolean? // kind = 'trigger'：只落在仅参考的话题上
+  note      String?  // kind = 'trigger'：主 Session 的路由备注
+  /// `readAt` 在领域里是三态：不存在（未记录）、null（还在会话里等着）、一个时间。
+  readAt         String?
+  readAtRecorded Boolean @default(false)
+  deliveredTo    String? // 最后一次投给哪个派工
+  deliveredAt    String?
+
+  /// kind = 'policy-changed'
+  policyFrom   String?
+  policyTo     String?
+  policyEffect String? // JSON：PolicyEffect
+
+  /// kind = 'reopen'，仅历史行
+  decisionId String?
+
+  /// kind = 'text' | 'note'
+  text String?
+
+  ticket              Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  trigger             Trigger?    @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  deliveredAssignment Assignment? @relation(fields: [deliveredTo], references: [id], onDelete: SetNull)
+  decision            Decision?   @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  /// 它还在工单未投递队列里时的位置。
+  queued              UndeliveredInput?
+
+  @@index([ticketId, at])
+  @@index([triggerId])
+  @@index([deliveredTo])
+  @@map("ticket_input")
+}
+
+/// 还没交给运行中派工的一条 Input，按投递顺序。
+model UndeliveredInput {
+  ticketId String
+  inputId  String @unique
+  ordinal  Int
+  ticket   Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  input    TicketInput @relation(fields: [inputId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, inputId])
+  @@index([ticketId, ordinal])
+  @@map("undelivered_input")
+}
+
+// ===========================================================================
+// 消息发送与持久化工作
+// ===========================================================================
+
+/// 一条对外消息的收据。只有 Outbox 写这张表，同一个 id 永不会被排两次。
+/// 同一工单发往同一话题的消息按入队顺序发出，`(ticketId, thread, status)` 为此建索引。
+model Outbox {
+  id      String @id
+  status  String // 'pending' | 'sent' | 'dropped'
+  source  String
+  thread  String // 已拼好的话题键
+  address String // JSON，形状归 Source
+  text    String
+  kind    String // 'acknowledgement' | 'reply' | 'notice'
+
+  /// 不属于任何工单的消息为空，例如工单之外的 PR 关闭通知。
+  ticketId      String?
+  droppedAt     String?
+  droppedReason String? // 'channelGone' | 'channelIgnored'
+
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([ticketId, thread, status])
+  @@index([droppedAt])
+  @@map("outbox")
+}
+
+/// 持久化副作用队列，六种 kind：'assessment' | 'launch' | 'delivery' | 'relay' | 'notice' | 'reply'。
+/// 同一 (kind, key) 重复入队会替换负载、保留 `seq`（队列顺序不变），并立刻到期。
+/// `generation` 防止一次运行覆盖掉它在运行期间被替换掉的行。
+model Effect {
+  kind       String
+  key        String // 评估 id、派工 id、工单 id、请求 id 或消息 id
+  value      String // JSON 负载
+  seq        BigInt // 同类内的队列顺序
+  generation Int    @default(0)
+  attempts   Int    @default(0)
+  error      String @default("")
+  due        BigInt // 毫秒时间戳
+  since      String
+
+  @@id([kind, key])
+  @@index([kind, due, seq])
+  @@map("effect")
+}
+
+// ===========================================================================
+// 带版本的配置与外围记录
+// ===========================================================================
+
+/// 其余全部有类型的键值记录，按 `src/kv.ts` 的键族：版本指针、会话提示词指针，
+/// 以及 Source 自己保存但没独立表的记录。
+/// 模型名叫 `KeyValue` 而不是 `KV`，因为 Prisma 的客户端属性是模型名首字母小写，
+/// `KV` 会得到 `kV`，而 `KeyValue` 得到 `keyValue`。
+model KeyValue {
+  key   String @id
+  value String // JSON
+
+  @@map("kv")
+}
+
+/// 一份保存下来的设置快照。当前版本由 `CurrentRevision[name = 'settings']` 指向。
+model SettingsVersionRow {
+  revision      Int     @id
+  savedAt       String
+  source        String // 'panel' | 'tool' | 'sync' | 'internal'
+  block         String? // 'policy' | 'eval' | 'executor' | 'pause' | 'source:<id>'，或空
+  policyVersion String
+  policyChanged Boolean
+  notified      String  @default("[]") // JSON 数组，被通知的工单 id
+  settings      String // JSON，写入前经 SettingsSchema 校验
+
+  @@index([savedAt])
+  @@map("settings_version")
+}
+
+/// 一份保存下来的提示词配置快照。当前版本由 `CurrentRevision[name = 'prompts']` 指向。
+model PromptVersionRow {
+  revision         Int     @id
+  previousRevision Int?
+  savedAt          String
+  source           String
+  config           String // JSON：PromptConfig
+  legacy           String? // JSON：原地读取的迁移前配置
+
+  @@map("prompt_version")
+}
+
+/// 某个 override 所依据的内置原文，按它的 `base` 索引；用来展示升级改了什么。
+model PromptBuiltIn {
+  base String @id
+  text String
+
+  @@map("prompt_built_in")
+}
+
+/// 设置和提示词当前各是哪个版本。
+model CurrentRevision {
+  name     String @id // 'settings' | 'prompts'
+  revision Int
+
+  @@map("current_revision")
+}
+
+/// 某个受管会话用过的提示词版本，按它见到的顺序。`ordinal` 最大的那条是它当前的版本，
+/// 它见过的每一条都保持可读。
+model SessionPrompt {
+  session  String
+  revision Int
+  ordinal  Int
+  @@id([session, revision])
+
+  @@index([session, ordinal])
+  @@map("session_prompt")
+}
+
+/// Source 为它某个 id 解析出的显示名，例如某个飞书群 id。
+model SourceLabel {
+  source String
+  id     String
+  label  String
+
+  @@id([source, id])
+  @@map("source_label")
+}
+
+/// Source 的轮询位置和按对象记的账，键是 `KV` 键族去掉前缀后的部分
+/// （例如 `cursor:42` 或 `thread-seen:github:7`）。JSON 形状归该 Source kind 自己。
+model SourceState {
+  source String
+  name   String
+  value  String
+
+  @@id([source, name])
+  @@map("source_state")
+}

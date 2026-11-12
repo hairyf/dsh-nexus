@@ -6,7 +6,6 @@ minimumReleaseAgeExclude:
   - dsh-h3@0.2.2
   - bumpp@12.0.0
 shellEmulator: true
-trustPolicy: no-downgrade
 
 packages:
   - playground
@@ -15,11 +14,18 @@ packages:
   - examples/*
 
 allowBuilds:
+  '@prisma/engines': true
   esbuild: true
   pkg-placeholder: true
   playwright: true
   simple-git-hooks: true
 catalog:
+  '@fileshed/kysely-node-sqlite': ^0.1.0
+  kysely: ^0.29.8
+  kysely-migrate-sql: ^0.2.0
+  kysely-model: ^0.1.0
+  prisma: 8.0.0-rc.33
+  prisma-kysely: ^3.2.1
   tinyexec: ^1.3.1
 catalogs:
   cli:
