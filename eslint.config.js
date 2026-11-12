@@ -10,6 +10,7 @@ export default antfu(
     },
     ignores: [
       'src/database/types.ts',
+      'soruce/*',
     ],
   },
 )

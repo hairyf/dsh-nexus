@@ -11,8 +11,9 @@ Nexus 的完整流转。所有状态名、字段名取自 `prisma/schema/`，可
 5. [汇报与求助](#5-汇报与求助)
 6. [收件箱投递规则](#6-收件箱投递规则)
 7. [跨项目 Supervisor](#7-跨项目-supervisor)
-8. [端到端时序](#8-端到端时序)
-9. [状态速查表](#9-状态速查表)
+8. [CI 触发链](#8-ci-触发链)
+9. [端到端时序](#9-端到端时序)
+10. [状态速查表](#10-状态速查表)
 
 ---
 
@@ -180,7 +181,7 @@ stateDiagram-v2
 
 `branch` / `worktree` 在 `queued` 时为空，`running` 起填上，`ended` 后保留不删 ——
 那一行是「这个任务曾经在哪个分支上干过」的唯一记录。完整字段变化见
-[一个 Worker 的完整字段生命周期](#9-状态速查表)。
+[一个 Worker 的完整字段生命周期](#10-状态速查表)。
 
 **一个 Worker 只对应一个 worktree。** 它没有「挂了几个仓库」的概念 ——
 跨项目协作靠 Supervisor，不靠一个会话改多个仓库。
@@ -506,8 +507,126 @@ flowchart TD
 `close_self` 之后行不删 —— 那几张工单还指着它说明自己当初为什么存在。
 
 ---
+---
 
-## 8. 端到端时序
+## 8. CI 触发链
+
+两套独立的 CI，语义完全不同，**不要合并**。
+
+| | PR CI | 分支 CI |
+| --- | --- | --- |
+| 看谁 | open ticket 的 PR | 默认分支的 head |
+| 话题 | 跟 PR 共用（`github:88`） | **独立**（`github:ci:main`） |
+| 能回复 | ✅ 有渠道地址 | ❌ **没有**，`reply_channel` 会报错 |
+| 开关 | 无条件 | `Channel` 的 CI 观察开关，默认关 |
+| 触发 id | `github-ci:88:<rev>` | `github-ci:branch:main:<rev>` |
+
+### 8.1 为什么必须防抖
+
+一次 CI 运行会产生几十次状态变化。每次都发触发，收件箱会被刷满，
+而且第一次看到的根本不是「变化」，只是「现状」。
+
+两套 CI 都用 `CiWatch` 表记住上次的指纹，**只有变了才发**。
+
+### 8.2 PR CI
+
+```mermaid
+flowchart TD
+    A["轮询：open ticket 的 PR"] --> B{"PR 已 closed / merged ?"}
+    B -->|是| SKIP["跳过，不读 CI"]
+    B -->|否| C["读 head.sha 的 check-runs + statuses"]
+    C --> D["算指纹 fingerprint"]
+    D --> E{"和 CiWatch 里的一致?"}
+    E -->|"一致（没变）"| DONE["什么都不做"]
+    E -->|"不一致"| F{"之前观察过吗?"}
+    F -->|"没有（首次）"| BASE["只存基线<br/>revision=0<br/>❌ 不发触发"]
+    F -->|"观察过"| G["revision += 1<br/>发 Trigger<br/>kind=ci"]
+    G --> H["写 Thread.facts 的 CI 计数"]
+```
+
+**首次只建基线**是最容易漏的一行。没有它，每接一张新任务，
+第一次轮询就会因为「和空值不同」而误报一次。
+
+### 8.3 分支 CI
+
+```mermaid
+flowchart TD
+    A["轮询：默认分支"] --> B{"CI 观察开关开着?"}
+    B -->|否| DROP["清掉失败基线<br/>保留 revision<br/>跳过这一轮"]
+    B -->|是| C["读 default_branch 的 head.sha<br/>读它的 check-runs + statuses"]
+    C --> D["算 failures（失败 check 名的排序数组）"]
+    D --> E{"还有 check 在 running ?"}
+    E -->|"有"| F["沿用上次的 failures<br/>⏸ 不动"]
+    E -->|"没有"| G["用这次的 failures"]
+    F --> H{"和上次的 failures 一致?"}
+    G --> H
+    H -->|"一致"| DONE["不发"]
+    H -->|"不一致"| I["revision += 1<br/>发 Trigger<br/>kind=ci"]
+```
+
+第 E 步是整个分支 CI 的核心：
+
+> **还有 check 在跑，就假装失败集合没变。**
+
+没有这一步，CI 跑到一半时「3 个失败」会变成「2 个失败」→ 触发一次 →
+「1 个失败」→ 又触发一次。中间那些触发全是噪音。
+有了它，**恢复只在全部通过之后报一次**。
+
+### 8.4 首次基线
+
+```mermaid
+flowchart LR
+    A["刚打开观察开关<br/>或默认分支改名"] --> B["known = 空"]
+    B --> C["只存 failures + revision<br/>❌ 不发触发"]
+    C --> D["下一轮开始才是「变化」"]
+```
+
+`known` 为空时不发触发。官方注释写得很明确：
+"emits a trigger only when the set of failing checks changes **after the initial baseline**"。
+
+### 8.5 投给谁
+
+```mermaid
+flowchart TD
+    A["CI Trigger"] --> B{"thread 的 triage"}
+
+    B -->|"PR：pending"| C["主编排（因为 PR 首次出现时分诊过）"]
+    B -->|"PR：claimed"| D["该项目编排"]
+    B -->|"PR：ignored"| E["不投递"]
+
+    F["分支 CI Trigger"] --> G["直接投项目编排<br/>不走分诊"]
+
+    G --> H["理由：分支属于仓库<br/>仓库已注册为项目<br/>归属确定，没有歧义"]
+```
+
+**分支 CI 不走分诊**，因为它的归属由「仓库 → 项目」的注册关系唯一确定。
+让它过主编排等于每天几百条「主干的 CI 挂了」涌进来，而答案永远是同一个。
+
+PR CI 跟着 PR 的分诊结果走 —— 主编排在 PR 首次出现时判过了，CI 不再重复问。
+
+### 8.6 失败的判定
+
+哪些结论算失败（其余 `success` / `neutral` / `skipped` / `stale` 都不算）：
+
+```
+failure · timed_out · cancelled · action_required · startup_failure · error
+```
+
+check-runs 看 `conclusion`，旧式 status 看 `state`，两套都算。
+
+### 8.7 对一个 CI 触发能做什么
+
+| 想做的事 | 怎么做 |
+| --- | --- |
+| 看具体哪几个 check 挂了 | 触发正文里就有，前 5 个列名，多了写「还有 N 个」 |
+| 看完整的 check 列表 | `read_channel('github/pulls/<n>/checks')` |
+| 回复 | PR CI 可以（`reply_channel`）；**分支 CI 不行，它没有地址** |
+| 重跑 | 那是 Worker 的事，编排不碰 CI |
+
+分支 CI 没有渠道地址这件事要写进工具行为：`reply_channel` 拿到一条
+`ThreadKind = ci` 的触发，必须**明确报错**，不能猜一个地方发。
+
+## 9. 端到端时序
 
 一个完整例子：GitHub 上一个 issue @ 了我们，最终合出 PR。
 
@@ -588,7 +707,7 @@ sequenceDiagram
 
 ---
 
-## 9. 状态速查表
+## 10. 状态速查表
 
 ### 枚举取值总表
 
@@ -596,7 +715,7 @@ sequenceDiagram
 | --- | --- |
 | `AccountRole` | `bot` · `admin` |
 | `AccountStatus` | `online` · `offline` |
-| `ThreadKind` | `issue` · `pull` · `chat` |
+| `ThreadKind` | `issue` · `pull` · `chat` · `ci` |
 | `ThreadTriage` | `pending` · `claimed` · `ignored` |
 | `TriggerKind` | `comment` · `open` · `close` · `merge` · `ci` · `push` |
 | `TicketStatus` | `waiting` · `queued` · `running` · `review` · `done` · `cancelled` |

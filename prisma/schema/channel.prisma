@@ -25,6 +25,7 @@ model Channel {
   threads  Thread[]
   triggers Trigger[]
   tickets  Ticket[]
+  ciWatch  CiWatch[]
 
   @@map("channel")
 }
@@ -46,6 +47,48 @@ model ChannelAccount {
   @@unique([channelId, role, name])
   @@index([channelId, role])
   @@map("channel_account")
+}
+
+/// 一个 CI 观察点。**每个被观察的目标一行**，用来算「这次和上次比变了吗」。
+///
+/// 官方把这份状态存在 KV 里，键是 `github.branchCi` 和 `github.ci(<PR 号>)`。
+/// 我们建表，因为它是真正的业务状态：判断要不要产生触发全靠它。
+///
+/// 为什么必须有这张表：CI 一次运行会产生几十次状态变化，每次都发触发会把收件箱刷满。
+/// 所以只有「和上一次比变不同了」才发。没有这份记忆，就没法比。
+model CiWatch {
+  id String @id
+
+  /// 观察点在哪条渠道
+  channelId String
+
+  /// 观察目标：
+  ///   'branch' 默认分支。ref 是分支名，例如 `main`
+  ///   'pull'   某张 PR 的 head。ref 是 PR 号
+  kind String
+
+  /// 'branch' 时是分支名，'pull' 时是 PR 号
+  ref String
+
+  /// 观察目标的当前指纹。
+  ///   'branch'：失败 check 名的排序 JSON，例如 `["lint","test"]`
+  ///   'pull'  ：整份快照的哈希
+  /// 和它相等就说明没变，不发触发
+  fingerprint String
+
+  /// 发过几次触发。每次变化 +1，进触发 id 保证重复轮询得到同一个 id
+  revision Int @default(0)
+
+  /// 'branch' 专用：上一次看到的 head sha。
+  /// 分支换了提交但 CI 结果恰好一样时，靠它区分「仍是旧结论」还是「新一轮」
+  head String?
+
+  updatedAt String
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, kind, ref])
+  @@map("ci_watch")
 }
 
 /// 账号在渠道里扮演的角色。

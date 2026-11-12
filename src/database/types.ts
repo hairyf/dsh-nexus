@@ -58,7 +58,8 @@ export type SupervisorStatus = (typeof SupervisorStatus)[keyof typeof Supervisor
 export const ThreadKind = {
     issue: "issue",
     pull: "pull",
-    chat: "chat"
+    chat: "chat",
+    ci: "ci"
 } as const;
 export type ThreadKind = (typeof ThreadKind)[keyof typeof ThreadKind];
 export const ThreadTriage = {
@@ -150,6 +151,40 @@ export type ChannelAccount = {
     avatar: string | null;
     status: Generated<AccountStatus>;
     createdAt: string;
+};
+export type CiWatch = {
+    id: string;
+    /**
+     * 观察点在哪条渠道
+     */
+    channelId: string;
+    /**
+     * 观察目标：
+     * 'branch' 默认分支。ref 是分支名，例如 `main`
+     * 'pull'   某张 PR 的 head。ref 是 PR 号
+     */
+    kind: string;
+    /**
+     * 'branch' 时是分支名，'pull' 时是 PR 号
+     */
+    ref: string;
+    /**
+     * 观察目标的当前指纹。
+     * 'branch'：失败 check 名的排序 JSON，例如 `["lint","test"]`
+     * 'pull'  ：整份快照的哈希
+     * 和它相等就说明没变，不发触发
+     */
+    fingerprint: string;
+    /**
+     * 发过几次触发。每次变化 +1，进触发 id 保证重复轮询得到同一个 id
+     */
+    revision: Generated<number>;
+    /**
+     * 'branch' 专用：上一次看到的 head sha。
+     * 分支换了提交但 CI 结果恰好一样时，靠它区分「仍是旧结论」还是「新一轮」
+     */
+    head: string | null;
+    updatedAt: string;
 };
 export type Inbox = {
     id: string;
@@ -264,7 +299,8 @@ export type SupervisorTicket = {
 };
 export type Thread = {
     /**
-     * `${channelId}:${refId}`，由来源事实派生，重复事件得到同一个 key
+     * `${channelId}:${refId}`，由来源事实派生，重复事件得到同一个 key。
+     * PR 的 CI 和 PR 本身共用一条话题；分支 CI 是独立话题（`github:ci:main`）
      */
     id: string;
     channelId: string;
@@ -273,7 +309,7 @@ export type Thread = {
      */
     projectId: string | null;
     /**
-     * 渠道里的原始标识，例如 GitHub 的 issue 号、飞书的话题 id
+     * 渠道里的原始标识：issue 号、PR 号、飞书话题 id、或 `ci:<分支>`
      */
     refId: string;
     kind: ThreadKind;
@@ -403,6 +439,7 @@ export type Worker = {
 export type DB = {
     channel: Channel;
     channel_account: ChannelAccount;
+    ci_watch: CiWatch;
     inbox: Inbox;
     project: Project;
     supervisor: Supervisor;

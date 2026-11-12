@@ -2,18 +2,57 @@
 // 话题与触发
 // ===========================================================================
 
-/// 一个话题：一个 Issue、一个 PR、或飞书里的一个话题串。
+/// 话题的形态。
+enum ThreadKind {
+  /// 议题
+  issue
+  /// 合并请求
+  pull
+  /// 会话话题（飞书那类话题串）
+  chat
+  /// 分支的 CI：没有对应的 issue 或 PR，`refId` 形如 `ci:main`
+  ci
+}
+
+/// 主编排对一条话题的分诊结论。只写一次，之后一直有效。
+enum ThreadTriage {
+  /// 还没分诊，新触发投给主编排
+  pending
+  /// 已归项目（看 projectId），新触发直接投给该项目编排
+  claimed
+  /// 判定无需处理，新触发不投递；除非有人又 @ 了我们
+  ignored
+}
+
+/// 触发的形态。
+enum TriggerKind {
+  /// 评论
+  comment
+  /// 新开
+  open
+  /// 关闭
+  close
+  /// 合并
+  merge
+  /// CI 结果变化
+  ci
+  /// 推送
+  push
+}
+
+/// 一个话题：一个 Issue、一个 PR、一个分支的 CI、或飞书里的一个话题串。
 /// 它是触发的容器，也是「这件事谈过什么」的最小单位。
 ///
 /// 草稿里的 ThreadRef 已经合并进来了：`key` 就是 `${channelId}:${refId}`，
 /// 所以不需要再多一张表来记「原始引用」。
 model Thread {
-  /// `${channelId}:${refId}`，由来源事实派生，重复事件得到同一个 key
+  /// `${channelId}:${refId}`，由来源事实派生，重复事件得到同一个 key。
+  /// PR 的 CI 和 PR 本身共用一条话题；分支 CI 是独立话题（`github:ci:main`）
   id        String     @id
   channelId String
   /// 归哪个项目；triage = claimed 时必填
   projectId String?
-  /// 渠道里的原始标识，例如 GitHub 的 issue 号、飞书的话题 id
+  /// 渠道里的原始标识：issue 号、PR 号、飞书话题 id、或 `ci:<分支>`
   refId     String
   kind      ThreadKind
   title     String
@@ -71,40 +110,4 @@ model Trigger {
   @@index([channelId, at])
   @@index([at])
   @@map("trigger")
-}
-
-/// 话题的形态。
-enum ThreadKind {
-  /// 议题
-  issue
-  /// 合并请求
-  pull
-  /// 会话话题（飞书那类话题串）
-  chat
-}
-
-/// 主编排对一条话题的分诊结论。只写一次，之后一直有效。
-enum ThreadTriage {
-  /// 还没分诊，新触发投给主编排
-  pending
-  /// 已归项目（看 projectId），新触发直接投给该项目编排
-  claimed
-  /// 判定无需处理，新触发不投递；除非有人又 @ 了我们
-  ignored
-}
-
-/// 触发的形态。
-enum TriggerKind {
-  /// 评论
-  comment
-  /// 新开
-  open
-  /// 关闭
-  close
-  /// 合并
-  merge
-  /// CI 结果变化
-  ci
-  /// 推送
-  push
 }

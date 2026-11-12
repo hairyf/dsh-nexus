@@ -10,7 +10,7 @@ SQLite + Prisma。这份映射参考官方的 dsh-superagent（`prisma_ref_to_pr
 | 文件 | 模型 | 说明 |
 | --- | --- | --- |
 | `schema/.conf.prisma` | — | 数据源与生成器（datasource / generator） |
-| `schema/channel.prisma` | `Channel`、`ChannelAccount` | 渠道与账号（含渠道提示词） |
+| `schema/channel.prisma` | `Channel`、`ChannelAccount`、`CiWatch` | 渠道、账号、CI 观察点 |
 | `schema/project.prisma` | `Project` | 项目（git 仓库 + DSH 工作区） |
 | `schema/thread.prisma` | `Thread`、`Trigger` | 话题与触发 |
 | `schema/ticket.prisma` | `Ticket`、`TicketThread`、`TicketLink` | 任务 |
@@ -64,6 +64,24 @@ Worker ask(askTo='project')   ─▶ Inbox(type=project)    只在代理之间�
 因为只有 `type = user` 意味着问题已经问出口了；没问出口的直接在代理间流转，不必打扰人。
 
 超时检查不靠后台定时器，和「你有 N 条未处理」共用同一次会话钩子。
+
+## CI 观察点
+
+`CiWatch` 一行 = 一个被观察的 CI 目标，记录「上次看到的是什么」。
+
+**为什么必须有这张表**：CI 一次运行会产生几十次状态变化，每次都发触发会把收件箱刷满。
+所以只有「和上一次比变不同了」才发。没有这份记忆就没法比。
+
+| `kind` | `ref` | 观察谁 |
+| --- | --- | --- |
+| `branch` | 分支名 | 默认分支的 head |
+| `pull` | PR 号 | 某张 PR 的 head |
+
+`fingerprint` 是上次的快照指纹，`revision` 进触发 id 保证重复轮询得到同一个 id。
+`head` 只对 `branch` 有意义 —— 分支换了提交但 CI 结果恰好一样时，靠它区分
+「仍是旧结论」还是「新一轮」。
+
+完整触发链见 [docs/flow.md 的「CI 触发链」](../docs/flow.md#8-ci-触发链)。
 
 ## 相对官方删掉的概念
 
