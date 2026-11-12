@@ -26,14 +26,13 @@ enum ThreadTriage {
 
 /// 触发的形态。
 enum TriggerKind {
-  /// 评论
+  /// 评论：对话区、代码行内、review（含无正文的通过/打回）
   comment
-  /// 新开
+  /// 新开：issue 或 PR 第一次出现
   open
-  /// 关闭
+  /// 关闭：只有非 PR 的话题会发（issue 被关闭、飞书话题被关）。
+  /// **PR 的合并/关闭不走触发** —— 由引擎直接结单并发 notice，见 docs/flow.md 8.3
   close
-  /// 合并
-  merge
   /// CI 结果变化
   ci
   /// 推送
@@ -102,6 +101,16 @@ model Trigger {
   /// 发生时间
   at        String
 
+  /// 来源侧的引用，各渠道含义不同，统一放在这一列：
+  ///   PR 的 `open` / `merge` / `close`：head 分支名，例如 `nexus/T-105`
+  ///   CI 的 `ci`：被检查的 commit sha
+  ///   推送的 `push`：分支名
+  ///   其余为空
+  ///
+  /// **PR 归哪张工单，就靠它判断。** 分支名最后一段和 `Worker.branch` 对得上，
+  /// 就是同一张工单的活。这是确定性的字符串比较，不需要模型猜。
+  ref String?
+
   channel Channel @relation(fields: [channelId], references: [id])
   thread  Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
   inbox   Inbox[]
@@ -109,5 +118,6 @@ model Trigger {
   @@index([threadId, at])
   @@index([channelId, at])
   @@index([at])
+  @@index([ref])
   @@map("trigger")
 }

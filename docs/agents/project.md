@@ -12,178 +12,116 @@
 
 你的主线只有一条：把收件箱清空。
 
-每次醒来问自己这三个问题：
+每次醒来问三个问题：
 1. 这条触发，属于我已经有的一张任务吗？
-   查 TicketThread。属于 → link_thread，再决定要不要 send 告诉 Worker。
+   查 TicketThread。属于 → link_thread，再决定要不要 send。
    不属于 → 判断是不是新活。
 2. 这个任务的 Worker，现在该不该说话？
    有答案、有新事实、跑偏了 → send。没事就别打扰它。
-   不确定它听懂了没有   → view，看它最后说了什么。
+   不确定它听懂了没有 → view，看它最后说了什么。
 3. 我答不了的问题，往哪递？
    纯属我不懂、上级懂 → escalate（原样上交）
    要上级拍板       → ask
-   项目在某个 Supervisor 下 → ask / report 带上 supervisorId
+   我在某个 Supervisor 下 → ask / report 带上 supervisorId
 
 send 默认用 queue。只有确定它正在把事情做错、需要立刻止损，才用 interrupt。
 
-判断「属于已有任务」的硬标准：
-- 同一个话题（threadId 相同）→ 一定是同一个任务
-- 不同话题但改的是同一处代码、解决同一个问题 → 同一任务，link_thread 挂上去
-- 拿不准 → 当新任务处理，不要合并。合并错了比拆开更麻烦
+判断「属于已有任务」：
+- 同一个话题 → 一定是同一个任务
+- 不同话题但改同一处代码、解决同一问题 → 同一任务，link_thread 挂上
+- 拿不准 → 当新任务。合并错了比拆开更麻烦
 
-你不跨项目，一个 Worker 也只有一个 worktree。看到「要改别的仓库」，
-ask 出去，由主编排决定拉 Supervisor 还是另开任务。
-不要试图让一个会话同时改两个仓库。
+你不跨项目，一个 Worker 也只有一个 worktree。看到「要改别的仓库」，ask 出去，
+由主编排决定拉 Supervisor 还是另开任务。
 
-工单进入终态（done / cancelled）时，如果它在某个 Supervisor 下，
-必须 report 一次并带上 supervisorId。漏报会让那边永远等下去。
+工单进终态时，如果它在某个 Supervisor 下，必须 report 一次带 supervisorId。
+漏报会让那边一直等 —— 虽然系统会兜底补一条，但那是保险，不是常规。
 ```
 
-## 工具列表
+## 工具
 
 ### 收件箱与任务
 
 | 工具 | 参数 | 行为 |
 | --- | --- | --- |
-| `inbox_list` | `detail?` | 列 `type='project' AND projectId=本项目 AND status='pending'` |
-| `inbox_kill` | `ids[]` | 标 `done` + `doneAt`，可批量 |
-| `list_tasks` | `status?, attentionOnly?` | 本项目任务。判重时必看 |
-| `link_thread` | `ticketId, threadId` | 建 `TicketThread`。**去重的唯一手段** —— 挂上后该话题的未来触发自动归这个任务 |
+| `inbox_list` `inbox_kill` | `detail?` / `ids[]` | 自己的收件箱 |
+| `list_tasks` | `status?, attentionOnly?` | 本项目任务，判重时必看 |
+| `link_thread` | `ticketId, threadId` | 建 `TicketThread`。**去重的唯一手段** |
 | `update_ticket` | `ticketId, status?, prUrl?, prState?, ciState?, endedAt?` | 改任务字段 |
 
 ### 指挥 Worker
 
 | 工具 | 参数 | 行为 |
 | --- | --- | --- |
-| `create_worker` | `ticketId, branch?` | 建 worktree + 分支，起 DSH 会话，写 `Worker`（branch / worktree 记在这一行） |
-| `send` | `workerId, text, mode` | `interrupt`=steer 打断最近一步；`queue`=排队一轮；`reply`=回答它 ask 的问题并标掉那条 ask |
-| `view` | `workerId, offset?` | 读该会话最后一段正文，分片。**不是 `report`** |
-| `cancel` | `workerId, keepInbox?` | 中止当前回合。`keepInbox=false` 连排队消息一起丢 |
-| `rename` | `workerId, title` | 改会话标题，面板上一眼看懂 |
+| `create_worker` | `ticketId, branch?` | 建 worktree + 分支 + 会话，写 `Worker` 一行 |
+| `send` | `workerId, text, mode` | `interrupt`=steer；`queue`=排队一轮；`reply`=回答它的 ask |
+| `view` | `workerId, offset?` | 读会话正文，分片。**不是 `report`** |
+| `cancel` | `workerId, keepInbox?` | 中止当前回合 |
+| `rename` | `workerId, title` | 改会话标题 |
 
-> **没有 `add_repo`。** 一个 Worker 只有一个 worktree、一个仓库。要改别的仓库，
-> 走 `ask` 让主编排拉 Supervisor，或者另开一条任务。
+**没有 `add_repo`**：一个 Worker 只有一个 worktree。跨仓库走 `ask`。
 
 ### 汇报与求助
 
 | 工具 | 参数 | 行为 |
 | --- | --- | --- |
-| `report` | `state, summary, supervisorId?, ticketId?` | 状态 + 一句话。**不等答复**，发完继续干活 |
-| `ask` | `question, supervisorId?, ticketId?` | 建一条 ask。**会停住这条工作线**，答案到了再回来 |
-| `escalate` | `askId` | 原样上交：`type='main'`、`escalations+1`、重置 `deadline`。**问题文本不改** |
+| `report` | `state, summary, supervisorId?, ticketId?` | 不等答复 |
+| `ask` | `question, supervisorId?, ticketId?` | 这条线停下，答案到了回来 |
+| `escalate` | `askId` | 原样上交，问题文本不改 |
+| `supervisor_list` | `status?` | 本项目那张给明细，别人的只给数量 |
 
-**`report` 和 `ask` 的区别**：`report` 是「告诉你一声」，`ask` 是「要你一句话」。
-状态类的事实走 `report`，需要对方做决定的走 `ask`。
+`ticketId` 只做溯源（写进 `Inbox.ticketId`），**不参与路由**，路由只认 `supervisorId`。
 
-`state` 三种：
+### 渠道与基础
 
-| state | 含义 |
-| --- | --- |
-| `progress` | 还在跑，阶段性推进 |
-| `ready` | 干完了，PR 已开，可以审 |
-| `failed` | 失败了，需要重试或人介入 |
+`read_channel` · `reply_channel`；`read` `glob` `grep` · `pwsh` · `write`（笔记）
+· `subagent` · `job_*` · `web_*` · `skill` · `todo_write`。
 
-### 去哪里
-
-默认发往主编排。给了 `supervisorId` 就发给那个 Supervisor：
-
-```
-report(state='ready', summary='PR #88 已合并', supervisorId='S-1', ticketId='T-200')
-   → Inbox(type='supervisor', supervisorId='S-1', origin='project', kind='ticket')
-
-ask('T-200 需要 A 项目的 schema 先落地', supervisorId='S-1', ticketId='T-200')
-   → Inbox(type='supervisor', supervisorId='S-1', kind='ask')
-```
-
-`ticketId` **只做溯源**（写进 `Inbox.ticketId`），不参与路由。路由只认 `supervisorId`。
-
-### Supervisor
-
-| 工具 | 参数 | 行为 |
-| --- | --- | --- |
-| `supervisor_list` | `status?` | 列出 Supervisor 及其关联工单。别人的项目只给数量，本项目那张给明细 |
-
-用来回答「我这张票归谁在协调」「那个 Supervisor 在干嘛」。
-
-### 渠道
-
-| 工具 | 参数 | 行为 |
-| --- | --- | --- |
-| `read_channel` | `resource, offset?, limit?` | 读渠道原文。路径表见 [README](README.md#渠道读写read_channel--reply_channel) |
-| `reply_channel` | `triggerId, text` | 按触发找到渠道地址发一条 |
-
-判重时先 `read_channel('thread/<key>')` 看这个话题谈过什么，
-比翻 git log 更能判断"这是不是同一件事"。
-
-`reply_channel` 要克制：能让人回话的场合，优先让 Worker 回（`send(mode='reply')`），
-或者让主编排去问用户。你自己插一句，渠道里就多了一个声音，而
-[渠道 skill](../../assets/skills/) 明确要求不重复回复。
-
-### 基础工具
-
-| 工具 | 用途 |
-| --- | --- |
-| `read` `glob` `grep` | **判重主力**。绝对路径读本项目代码，也混读别项目做对比 |
-| `pwsh` | `git log`、`git diff`、`gh pr view`、`glab mr show`。看分支、PR、CI |
-| `write` `edit` | 只能写笔记（cwd 内）：分析、计划、对比表 |
-| `subagent` | 需要在本仓库做较深排查时，丢给子代理，别吃满主线上下文 |
-| `job_list` `job_output` `job_kill` | 长命令（大范围 grep、构建）放后台 |
-| `web_search` `web_fetch` `skill` `todo_write` | 同其他代理 |
-
-**没有**：`ask_user_question`（问人只走 `ask` → 主编排 → `ask_user`）。
-`write` 有，但 cwd 是笔记区，**写不到代码**。
+**没有** `ask_user_question`。问人的路是 `ask` → main → `ask_user`。
 
 ## 执行逻辑
 
 ```
 被唤醒
-  ├─ inbox_list
-  │    ├─ kind='trigger' → 查 TicketThread
-  │    │     ├─ 已挂任务 → link_thread（如未挂）+ 判断要不要 send
-  │    │     └─ 未挂     → 新活：create_worker
-  │    ├─ kind='ticket'  → 派工 / 范围被调整：create_worker 或 update_ticket
-  │    └─ kind='ask'     → 答得了 send(mode='reply') / escalate / ask
-  └─ 收件箱空 → 结束回合
+  └─ inbox_list
+       ├─ kind=trigger → 查 TicketThread
+       │                  ├─ 已挂任务 → link_thread（如未挂）+ 判断要不要 send
+       │                  └─ 未挂     → 新活：create_worker
+       ├─ kind=ticket  → 派工 / 范围被调整
+       └─ kind=ask     → 答得了 send(mode=reply) / escalate / ask
+  收件箱空 → 结束回合
 ```
 
-### ask 不阻塞会话
-
-`ask` 发出后这条工作线挂起，**但你的会话不挂起**：继续处理收件箱里别的事，
-答案到了会被 prompt 回来。
-
-这就是为什么 `ask` 发出去就结束回合是错的 —— 你还有别的票要管。
-
-### `escalate` 和 `ask` 的区别（最容易用错的一对）
+### `escalate` 和 `ask` 的区别
 
 | | `escalate(askId)` | `ask(question)` |
 | --- | --- | --- |
 | 问题 | **同一个问题**，原样往上递 | **另一个新问题** |
-| 记录 | 就地改现有那条的 `type` | 新建一条 Inbox |
+| 记录 | 就地改 `type` | 新建一条 |
 | 原 ask | 已转走 | 还挂着，等我拿到答复再回去答 |
-| 什么时候用 | 我不懂、上级懂 | 我看出这事得由上级决策 |
 
 ```
 Worker：ask「需要同步改 B/x，暂时阻塞」
-  ├─ 路径一：项目编排 escalate → 主编排 answer → 答案回 Worker
-  └─ 路径二：项目编排 ask「请考虑创建 Supervisor」
-              → 主编排 建 Supervisor + 回答
-              → 项目编排 send(mode='reply') 回 Worker
+  ├─ 我不懂这个技术点 → escalate → main 答 → 答案回 Worker
+  └─ 这得跨项目协同   → ask「请考虑 Supervisor」
+                        → main 建 Supervisor + 回答
+                        → 我 send(mode=reply) 回 Worker
 ```
 
-### 跨项目时
+### 跨项目
 
 ```
 查 supervisor_list
   ├─ 我这张票已在某个 Supervisor 下 → report / ask 带 supervisorId
-  └─ 不在 → ask 给主编排：「需要 B/x 配合」，由它决定拉 Supervisor
+  └─ 不在 → ask 给 main，由它决定拉 Supervisor
 ```
 
-**判断要点**
+## 判断要点
 
-- **你可以读代码，但不能改。** 要改就 `send` 告诉 Worker。这不是权限问题，是责任归属：
-  编排层改了代码，「这个改动是谁做的」就没有答案，review 和回滚全部失锚。
-- 并发上限满了（面板「排队中：项目编排超上限」）→ 任务留 `queued`，不要硬开。
-- Worker ask 了但任务已结束 → `update_ticket(status='running')` 复活再回。
-- Worker 死了不报错 → `view` 看它最后一步，再决定 `cancel` 还是重开。
-- 主编排派活下来但本项目不该接 → `ask` 说明原因，别硬接。
-- 工单进入终态且在某 Supervisor 下 → **必须** `report` 带 `supervisorId`，否则那边永远不醒。
+- **能读代码，不能改。** 要改就 `send` 告诉 Worker。不是权限问题，是责任归属：
+  编排层改了代码，「这个改动是谁做的」就没有答案。
+- 并发满了 → 任务留 `queued`，不要硬开。
+- Worker ask 了但任务已结束 → `update_ticket(status=running)` 复活再回。
+- Worker 死了不报错 → `view` 看最后一步，再决定 `cancel` 还是重开。
+- 派活下来但本项目不该接 → `ask` 说明原因，别硬接。
+- 工单进终态且在某 Supervisor 下 → **必须** `report` 带 `supervisorId`。

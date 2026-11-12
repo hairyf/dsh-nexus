@@ -66,6 +66,13 @@ model TicketThread {
 
 /// 任务 ↔ 任务。一个表两种用法，靠 kind 区分，省掉两张几乎一样的表。
 /// 方向永远是 `ticketId` 指向 `relatedId`。
+///
+/// **`depends` 会触发一条自动通知**：当 `relatedId` 走到终态（done / cancelled）时，
+/// 插件自动给「拥有 `ticketId` 的那个 Supervisor」投一条 notice。
+/// 这是保险手段 —— 项目编排本来就该上报，但漏报会让整条跨项目链路停摆，
+/// 而依赖关系已经在这个表里了，没理由不顺手兜一下。
+///
+/// 没有 Supervisor 时静默：同项目内的依赖由项目编排自己看 `list_tasks`。
 model TicketLink {
   ticketId  String
   relatedId String

@@ -72,7 +72,6 @@ export const TriggerKind = {
     comment: "comment",
     open: "open",
     close: "close",
-    merge: "merge",
     ci: "ci",
     push: "push"
 } as const;
@@ -403,6 +402,17 @@ export type Trigger = {
      * 发生时间
      */
     at: string;
+    /**
+     * 来源侧的引用，各渠道含义不同，统一放在这一列：
+     * PR 的 `open` / `merge` / `close`：head 分支名，例如 `nexus/T-105`
+     * CI 的 `ci`：被检查的 commit sha
+     * 推送的 `push`：分支名
+     * 其余为空
+     *
+     * **PR 归哪张工单，就靠它判断。** 分支名最后一段和 `Worker.branch` 对得上，
+     * 就是同一张工单的活。这是确定性的字符串比较，不需要模型猜。
+     */
+    ref: string | null;
 };
 export type Worker = {
     /**

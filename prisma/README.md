@@ -97,6 +97,16 @@ Worker ask(askTo='project')   ─▶ Inbox(type=project)    只在代理之间�
 | `Attention`（待人工决定） | 就是一条 `kind = ask` 的 `Inbox`，带截止时间 |
 | `Effect` / `KeyValue` / `*Version*` / `SourceState` | 运行时队列与配置版本，暂时不进库 |
 
+### 依赖完成会自动通知 Supervisor
+
+`TicketLink(kind=depends)` 的 `relatedId` 走到终态时，插件自动给
+「拥有 `ticketId` 的那个 Supervisor」投一条 notice。
+
+这是**保险**，不是常规路径 —— 项目编排本来就该在工单进终态时 `report`，
+但漏报会让整条跨项目链路停摆。依赖关系已经在表里了，顺手兜一下。
+
+只兜一层：没有 Supervisor 的依赖静默，由项目编排自己看 `list_tasks`。
+
 ### 没有「需介入（attention）」状态
 
 一张工单可以一边 `running` 一边等人 —— 把 `status` 覆盖掉会丢掉它本来跑到哪一步。
