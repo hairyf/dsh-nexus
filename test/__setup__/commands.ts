@@ -93,9 +93,15 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
     }
   }
 
-  // 进面板
-  await page.getByRole('button', { name: 'Nexus', exact: true }).click()
-  await page.getByRole('tab').first().waitFor({ timeout: 30_000 })
+  // 进面板。
+  //
+  // **只在还没进去时点。** 多个 probe 会各自调用一次，第二次点击时面板已经
+  // 铺开、把侧边栏那条遮住了 —— Playwright 的 click 会一直等「可点击」，
+  // 直到 30s 超时。已经进来就直接用现有的 Tab。
+  if (await page.getByRole('tab').count() === 0) {
+    await page.getByRole('button', { name: 'Nexus', exact: true }).click()
+    await page.getByRole('tab').first().waitFor({ timeout: 30_000 })
+  }
   const tabs = await page.getByRole('tab').evaluateAll(items => items.map(item => item.textContent?.trim() ?? ''))
 
   if (probe === 'tabs') {
