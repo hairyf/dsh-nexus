@@ -1,1 +1,368 @@
 @import "tailwindcss";
+
+/*
+ * 语义色。组件里只写语义类名（`bg-nx-layer-1`、`text-nx-caption`），
+ * 不写 `bg-[var(--dsw-...)]` 这种跳过主题层的任意值 —— 否则换主题、加暗色、
+ * 统一调色都要改组件。
+ *
+ * **必须是 `@theme inline`。** 非 inline 时 Tailwind 把 utility 编译成
+ * `var(--color-nx-x)`，变量定义落在 `:root`；而 dsh-taiwind 合并多插件样式时
+ * 会 tree-shake 掉「看起来没被用到」的变量，`var()` 落空使整条声明失效 ——
+ * 边框变 0px、背景变透明，排查时完全不像变量问题。
+ *
+ * inline 让 utility 直接编译成 `var(--dsw-*)`，不经过中间变量，也就不依赖
+ * tree-shake 的判断。编译产物形如：
+ *   .text-nx-caption { color: var(--dsw-alias-label-caption) }
+ */
+@theme inline {
+  --color-nx-bg: var(--dsw-alias-bg-base);
+  --color-nx-layer-1: var(--dsw-alias-bg-layer-1);
+  --color-nx-layer-2: var(--dsw-alias-bg-layer-2);
+  --color-nx-layer-3: var(--dsw-alias-bg-layer-3);
+
+  --color-nx-text: var(--dsw-alias-label-primary);
+  --color-nx-text-2: var(--dsw-alias-label-secondary);
+  --color-nx-text-3: var(--dsw-alias-label-tertiary);
+  --color-nx-caption: var(--dsw-alias-label-caption);
+
+  --color-nx-border-1: var(--dsw-alias-border-l1);
+  --color-nx-border-2: var(--dsw-alias-border-l2);
+  --color-nx-border-3: var(--dsw-alias-border-l3);
+
+  --color-nx-brand: var(--dsw-alias-brand-primary);
+  --color-nx-link: var(--dsw-alias-link);
+
+  --color-nx-success: var(--dsw-alias-state-success-primary);
+  --color-nx-warn: var(--dsw-alias-state-warn-primary);
+  --color-nx-danger: var(--dsw-alias-state-error-primary);
+  --color-nx-info: var(--dsw-alias-state-business-primary);
+  --color-nx-idle: var(--dsw-alias-state-idle-primary);
+
+  --color-nx-hover: var(--dsw-alias-interactive-bg-hover);
+  --color-nx-active: var(--dsw-alias-interactive-bg-active);
+
+  --radius-nx: 12px;
+  --radius-nx-sm: 8px;
+}
+
+/* 面板内的滚动条沿用官方观感，不引入浏览器默认样式。 */
+@utility nx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-scrollbar-bg-l2) transparent;
+}
+
+/* 卡片：面板里所有分区共用这一种外观。 */
+@utility nx-card {
+  border-radius: var(--dsw-radius-lg);
+  border: 0.5px solid var(--dsw-alias-border-l1);
+  background-color: var(--dsw-alias-bg-layer-1);
+  /* 圆角要能裁掉子元素的直角边，否则首尾两行的分隔线会戳出来 */
+  overflow: hidden;
+}
+
+/* 层级图里的节点底色比卡片再深一档，避免和容器糊在一起。 */
+@utility nx-node {
+  border-radius: var(--dsw-radius-sm);
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  background-color: var(--dsw-alias-bg-layer-2);
+}
+
+/*
+ * 面板根节点：把列表符号和默认缩进收掉。
+ *
+ * 宿主没有加载 Preflight（它不重置宿主界面），所以 `ul` 会带上浏览器默认的
+ * 圆点和 padding-left —— 在卡片里就是一排诡异的小点。这一条只在面板自己的
+ * 根节点下生效，不外溢到宿主。
+ */
+.nx-root ul,
+.nx-root ol {
+  list-style: none;
+  padding-left: 0;
+}
+
+.nx-root p,
+.nx-root dl,
+.nx-root dd {
+  margin: 0;
+}
+
+/*
+ * 只给「我们自己写的裸按钮」清外观，**不要写成 `.nx-root button`**。
+ *
+ * 官方 `Button` / `Pill` / `Switch` 内部都是 `button` 元素，一条后代选择器
+ * 会把它们的边框、背景、内边距全部清掉 —— 表现为 Pill 变纯文字、Switch 直接
+ * 看不见。这类按钮是「一行文字可点」，用这个类标出来，官方组件不受影响。
+ */
+.nx-plain {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+/* ===========================================================================
+ * 复刻的官方组件样式
+ *
+ * 下面几段按 class 名对照官方 CSS Modules 的原始声明写，只把选择器换成
+ * `nx-` 前缀（官方靠 CSS Modules 做作用域，我们靠前缀）。
+ *
+ * 数值不要凭手感调 —— 字号、行高、0.5px 分隔线、16px 行内边距都是官方值，
+ * 差一点整块就不像了。来源见每段顶部注释。
+ * =========================================================================== */
+
+/*
+ * 面板容器。来源：
+ *   conversation/TodoPanel.module.css  .root / .body / .item
+ *   conversation/ContextMeter.module.css  更强的 .panel 阴影
+ */
+.nx-surface {
+  box-sizing: border-box;
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  box-shadow: var(--dsw-elevation-panel);
+  overflow: hidden;
+}
+
+.nx-surface-sm {
+  padding: 6px 12px;
+}
+
+.nx-surface-md {
+  padding: 10px 14px;
+}
+
+.nx-surface-elevated {
+  box-shadow: var(--dsw-elevation-prominent);
+}
+
+/*
+ * 设置行 / 设置组。来源：
+ *   theme/FontSizeRow.module.css       .row / .rowText / .title / .desc / .control
+ *   theme/FontSettingsGroup.module.css 组末尾去掉最后一条分隔线
+ */
+.nx-set-row {
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  display: flex;
+}
+
+.nx-set-row-text {
+  flex-direction: column;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 48px;
+  display: flex;
+}
+
+.nx-set-title {
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.nx-set-desc {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.nx-set-control {
+  align-items: center;
+  gap: 8px;
+  display: inline-flex;
+}
+
+/* 组里最后一行的分隔线不要，否则会和卡片下边距叠成两道 */
+.nx-set-group:last-child > :last-child,
+.nx-set-group:last-child > :last-child > :last-child {
+  border-bottom: 0;
+}
+
+@media (width <= 767px) {
+  .nx-set-row-stacked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nx-set-row-stacked .nx-set-row-text {
+    flex: none;
+    padding-right: 0;
+  }
+}
+
+/*
+ * 列表行。来源：
+ *   tool/ToolRow.module.css              .root / .summary / .bodyWrap
+ *   primitives/DisclosureRow.module.css  .row / .leading / .title
+ *   tool/ToolDetails.module.css          .badge / .previous
+ */
+.nx-row {
+  flex-direction: column;
+  display: flex;
+}
+
+.nx-row-header {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.nx-row-line {
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 0;
+  gap: 6px;
+  color: var(--dsw-alias-label-tertiary);
+  transition: color 100ms ease;
+}
+
+.nx-row-line[data-clickable] {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .nx-row-line[data-clickable]:hover {
+    color: var(--dsw-alias-label-secondary);
+  }
+}
+
+.nx-row-title {
+  flex: none;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.nx-row-summary {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 24px;
+  flex: auto;
+  overflow: hidden;
+}
+
+.nx-row-suffix {
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 24px;
+  flex: none;
+  margin-left: 4px;
+}
+
+.nx-row-error {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.nx-row-badge {
+  color: var(--dsw-alias-label-caption);
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  display: inline-flex;
+}
+
+/* 小圆点前缀，和官方列表行一致 */
+.nx-row-badge::before {
+  content: '';
+  background: currentColor;
+  border-radius: 50%;
+  width: 5px;
+  height: 5px;
+}
+
+/*
+ * 内容宽度上限。
+ *
+ * 官方所有设置/详情页都把内容收在一个约 720px 的列里，而不是铺满窗口 ——
+ * 铺满时一行文字横跨 1600px，眼睛要来回扫。
+ */
+
+/*
+ * 弹窗里的单排 chip 与多行输入。来源：
+ *   message-feedback/FeedbackDialog.module.css  .categories / .chip / .detail
+ */
+.nx-chips {
+  flex-wrap: wrap;
+  gap: 8px;
+  display: flex;
+}
+
+.nx-chip {
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-sm);
+  height: 28px;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  cursor: pointer;
+  background: 0 0;
+  padding: 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+@media (hover: hover) {
+  .nx-chip:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.nx-chip:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.nx-chip-active {
+  border-color: var(--dsw-alias-button-primary-fill);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+.nx-textarea {
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l4);
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-layer-1);
+  width: 100%;
+  min-height: 96px;
+  max-height: 280px;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  field-sizing: content;
+  resize: none;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 22px;
+  display: block;
+}
+
+.nx-textarea::placeholder {
+  color: var(--dsw-alias-label-caption);
+}
+
+.nx-textarea:focus {
+  border-color: var(--dsw-alias-border-l3);
+  box-shadow: 0 0 0 1px var(--dsw-alias-state-business-primary);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-chip {
+    transition: none;
+  }
+}

@@ -252,13 +252,11 @@ export type Inbox = {
      */
     readAt: string | null;
     /**
-     * 到这个时刻还没人回答，就看「代理选择」开关要不要升级给上一级。
-     * 人在 UI / 渠道里随时可以抢答，所以它是「升级时间」而不是「失效时间」。
-     * 已升到主编排的 ask 不再需要它，置空即可
-     */
-    deadline: string | null;
-    /**
      * 升过几次级；0 表示一次没升过。面板可以显示「已升级 2 次」
+     *
+     * **ask 没有超时。** 它只往上问，问到谁谁就得答 —— 提问方那条工作线停着，
+     * 这是设计要的阻塞，不是待修复的等待。往上递只有人做得决定：
+     * `escalate` 明确调用一次，`escalations` 就加一。
      */
     escalations: Generated<number>;
     lastEscalatedAt: string | null;
@@ -336,17 +334,6 @@ export type Setting = {
      * 自动合并的行数上限（增 + 删）。
      */
     autoMergeMaxLines: Generated<number>;
-    /**
-     * 「代理选择」。**默认关**。
-     *
-     * 开：ask 超时后交给上一级编排判断要不要自己答、还是继续往上问。
-     * 关：ask 停在原地，只有人能答。
-     */
-    proxyDecide: Generated<number>;
-    /**
-     * ask 的默认等待时长（分钟）。到点看 `proxyDecide` 决定升不升级
-     */
-    askDeadlineMinutes: Generated<number>;
     /**
      * 投递连续失败几次转 `stalled`
      */

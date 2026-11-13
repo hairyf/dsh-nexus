@@ -17,3 +17,14 @@ temp
 !**/skills/*/**
 **/skills/npm-*
 prisma/database
+
+# 本地数据库：面板首次启动时自建，不进仓库
+*.db
+*.db-journal
+*.db-wal
+
+# Playwright 失败截图属于本地产物
+test/e2e/__screenshots__
+
+# Vitest 浏览器测试的附件产物
+.vitest-attachments
