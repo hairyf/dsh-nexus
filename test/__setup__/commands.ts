@@ -99,8 +99,11 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
   // 铺开、把侧边栏那条遮住了 —— Playwright 的 click 会一直等「可点击」，
   // 直到 30s 超时。已经进来就直接用现有的 Tab。
   if (await page.getByRole('tab').count() === 0) {
-    await page.getByRole('button', { name: 'Nexus', exact: true }).click()
-    await page.getByRole('tab').first().waitFor({ timeout: 30_000 })
+    // force 是必要的：CI 上侧边栏那条会被同层的浮层挡一瞬，普通 click 会
+    // 卡在「waiting for element to be visible, enabled and stable」直到超时。
+    // 我们要的是「点到了就算」，不是「动画稳定」。
+    await page.getByRole('button', { name: 'Nexus', exact: true }).click({ force: true })
+    await page.getByRole('tab').first().waitFor({ timeout: 60_000 })
   }
   const tabs = await page.getByRole('tab').evaluateAll(items => items.map(item => item.textContent?.trim() ?? ''))
 

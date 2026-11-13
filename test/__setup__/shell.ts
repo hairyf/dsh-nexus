@@ -206,22 +206,28 @@ export async function launchShell(): Promise<ShellScaffold> {
 
   const deadline = Date.now() + 120_000
   let statusReady = false
+  let readyAt = 0
   for (; ;) {
     /**
-     * **必须等到带 token 的启动 URL，不能只看端口通了。**
+     * 端口通了就算就绪，但**再给启动 URL 一点时间**。
      *
-     * dsh 先监听、再打印启动 URL；`/` 在拿到 cookie 之前就会返回 401，
-     * 所以「端口通了」不等于「可以用了」。在这里提前 break 会退回到只有
-     * baseUrl 的兜底路径，于是 `exchangeProcessLaunchToken` 拿不到 token、
-     * 设不上 Cookie，浏览器只能停在鉴权页 —— 而鉴权页零 console 错误，
-     * 表现为「页面空白但测试没报错」，极难定位。
+     * 这台机器上的 dsh 会打印 `dsh web: http://.../?token=...`；CI 上的版本
+     * 不打印（走的是不需要 token 的旧路径，`exchangeProcessLaunchToken` 里
+     * 有对应分支）。所以不能死等 —— 等不到就按无 token 处理，本地仍是
+     * 「等到 URL 才走」，避免上一版那个「拿到 baseUrl 却没 token」的静默失败。
      */
-    if (statusReady && processLaunchUrl)
-      break
+    if (statusReady) {
+      if (processLaunchUrl)
+        break
+      if (Date.now() - readyAt > 15_000)
+        break
+    }
     if (child.exitCode !== null)
       throw new Error(`dsh exited ${child.exitCode}:\n${startupOutput.slice(-2000)}`)
     try {
       const response = await fetch(baseUrl, { signal: AbortSignal.timeout(2000) })
+      if (!statusReady && (response.ok || response.status === 401))
+        readyAt = Date.now()
       statusReady = response.ok || response.status === 401
     }
     catch {
