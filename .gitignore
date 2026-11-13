@@ -25,3 +25,6 @@ prisma/database
 
 # Playwright 失败截图属于本地产物
 test/e2e/__screenshots__
+
+# Vitest 浏览器测试的附件产物
+.vitest-attachments

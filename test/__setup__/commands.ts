@@ -12,26 +12,6 @@ interface BrowserDshSession {
 
 const sessions = new Map<string, BrowserDshSession>()
 
-/**
- * 整个测试进程只启动一次外壳。
- *
- * 每个 spec 文件都会调 `launchDsh`，而 `launchShell` 里有 `pnpm build` +
- * `pnpm pack` + 装插件。跑第二遍会重新打包、重新写同一个 profile ——
- * 既慢，也会和第一个文件留下的进程争用端口。
- *
- * 用模块级的 Promise 记住首次结果：第二个文件直接复用同一个 baseUrl。
- * 失败不缓存，下一次调用会重新尝试。
- */
-let booting: Promise<ShellScaffold> | undefined
-
-function launchShellOnce(): Promise<ShellScaffold> {
-  booting ??= launchShell().catch((failure: unknown) => {
-    booting = undefined
-    throw failure
-  })
-  return booting
-}
-
 /** 断言步骤。spec 只传名字，真正的 DOM 操作在宿主侧做完。 */
 export type DshProbe = 'sidebar' | 'tabs' | 'switch'
 
@@ -43,7 +23,7 @@ export const launchDsh: BrowserCommand<[], { baseUrl: string }> = async (context
   if (existing)
     return { baseUrl: existing.scaffold.baseUrl }
 
-  const scaffold = await launchShellOnce()
+  const scaffold = await launchShell()
   sessions.set(context.sessionId, { scaffold, errors: () => [] })
 
   const exchange = await exchangeProcessLaunchToken(scaffold.baseUrl, scaffold.processLaunchUrl)
@@ -73,7 +53,16 @@ export const openDshPage: BrowserCommand<[], { url: string }> = async (context) 
 
   await page.goto(session.scaffold.baseUrl, { waitUntil: 'load' })
   // 等首屏挂完；等到有 button 说明外壳真的渲染了，而不是停在鉴权页
-  await page.locator('button').first().waitFor({ timeout: 90_000 })
+  await page.locator('button').first().waitFor({ timeout: 90_000 }).catch(async (failure) => {
+    const seen = await page.evaluate(() => ({
+      size: document.body.innerHTML.length,
+      text: document.body.textContent?.slice(0, 300) ?? '',
+    }))
+    throw new Error(
+      `${String(failure)}\n页面 ${seen.size}B，正文：${JSON.stringify(seen.text)}\n`
+      + `启动 URL：${session.scaffold.processLaunchUrl || '(空)'}`,
+    )
+  })
   // 「预览版说明」只在首次启动出现，没有就跳过
   await page.getByRole('button', { name: '继续' }).click({ timeout: 5000 }).catch(() => {})
 

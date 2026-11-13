@@ -207,11 +207,17 @@ export async function launchShell(): Promise<ShellScaffold> {
   const deadline = Date.now() + 120_000
   let statusReady = false
   for (; ;) {
-    if (statusReady) {
-      if (!processLaunchUrl)
-        processLaunchUrl = baseUrl
+    /**
+     * **必须等到带 token 的启动 URL，不能只看端口通了。**
+     *
+     * dsh 先监听、再打印启动 URL；`/` 在拿到 cookie 之前就会返回 401，
+     * 所以「端口通了」不等于「可以用了」。在这里提前 break 会退回到只有
+     * baseUrl 的兜底路径，于是 `exchangeProcessLaunchToken` 拿不到 token、
+     * 设不上 Cookie，浏览器只能停在鉴权页 —— 而鉴权页零 console 错误，
+     * 表现为「页面空白但测试没报错」，极难定位。
+     */
+    if (statusReady && processLaunchUrl)
       break
-    }
     if (child.exitCode !== null)
       throw new Error(`dsh exited ${child.exitCode}:\n${startupOutput.slice(-2000)}`)
     try {
