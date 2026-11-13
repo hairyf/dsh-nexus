@@ -49,7 +49,6 @@ export const INBOX_GROUP_LABELS = {
 export const SETTING_GROUPS = [
   { key: 'concurrency', label: '并发', fields: ['maxWorkers', 'backgroundLimitMinutes'] },
   { key: 'merge', label: '合并', fields: ['autoMerge', 'autoMergeMaxLines'] },
-  { key: 'ask', label: '求助', fields: ['proxyDecide', 'askDeadlineMinutes'] },
   { key: 'delivery', label: '投递', fields: ['deliveryMaxAttempts', 'deliveryRetryCeilingSeconds'] },
 ] as const
 
@@ -59,8 +58,6 @@ export const SETTING_META = {
   backgroundLimitMinutes: { label: '后台任务上限（分钟）', hint: '到点杀掉后台并把票报成 waiting', min: 1, max: 240 },
   autoMerge: { label: '自动合并', hint: '默认关；开着也只对本票的 PR 生效', min: 0, max: 0 },
   autoMergeMaxLines: { label: '自动合并行数上限', hint: '增 + 删合计超过它就不自动合', min: 0, max: 5000 },
-  proxyDecide: { label: '代理选择', hint: '开着时 ask 超时后交给上一级判断要不要自己答', min: 0, max: 0 },
-  askDeadlineMinutes: { label: 'ask 等待（分钟）', hint: '到点看「代理选择」决定升不升级', min: 1, max: 1440 },
   deliveryMaxAttempts: { label: '投递重试次数', hint: '连续失败这么多次后转 stalled', min: 1, max: 10 },
   deliveryRetryCeilingSeconds: { label: '重试封顶（秒）', hint: '退避 2s → 4s → … → 这个值', min: 5, max: 600 },
 } as const

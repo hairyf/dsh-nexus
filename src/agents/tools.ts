@@ -39,7 +39,6 @@ const inboxList: NexusTool = {
         title: item.title,
         message: full ? item.message : item.message.slice(0, 300),
         createdAt: item.createdAt,
-        deadline: item.deadline,
         escalations: item.escalations,
         ticketId: item.ticketId,
       })),
@@ -144,21 +143,18 @@ const ask: NexusTool = {
   roles: ['project', 'worker', 'supervisor'],
   async run(input, ctx) {
     const target = await resolveTarget(ctx, arg.str(input, 'supervisorId'))
-    const settings = await ctx.db.setting.read()
-    const deadline = new Date(Date.now() + Number(settings.values.askDeadlineMinutes) * 60_000).toISOString()
     const askId = await ctx.db.inbox.push({
       type: target.type,
       origin: ctx.role,
       kind: 'ask',
       message: arg.req(input, 'question'),
       title: `${ctx.role} 提问`,
-      deadline,
       supervisorId: target.supervisorId,
       projectId: target.projectId,
       ticketId: arg.str(input, 'ticketId') ?? ctx.ticketId,
       workerId: ctx.workerId,
     })
-    return { ok: true, askId, to: target.type, deadline }
+    return { ok: true, askId, to: target.type }
   },
 }
 
@@ -214,18 +210,15 @@ const askUser: NexusTool = {
   },
   roles: ['main'],
   async run(input, ctx) {
-    const settings = await ctx.db.setting.read()
-    const deadline = new Date(Date.now() + Number(settings.values.askDeadlineMinutes) * 60_000).toISOString()
     const askId = await ctx.db.inbox.push({
       type: 'user',
       origin: 'main',
       kind: 'ask',
       message: arg.req(input, 'question'),
       title: '主编排提问',
-      deadline,
       triggerId: arg.str(input, 'triggerId'),
     })
-    return { ok: true, askId, deadline }
+    return { ok: true, askId }
   },
 }
 

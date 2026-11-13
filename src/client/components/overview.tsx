@@ -34,10 +34,12 @@ export function OverviewPage({ data }: { data: Overview | undefined }): ReactNod
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-4 nx-scroll">
-      <StatsRow data={data} />
-      <SegmentedTabs items={VIEW_ITEMS} value={view} onChange={setView} label="概览视图" className="shrink-0 self-start" />
-      <div className="min-h-0 flex-1">
-        {view === 'summary' ? <RecentTickets data={data} /> : <Hierarchy data={data} />}
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
+        <StatsRow data={data} />
+        <SegmentedTabs items={VIEW_ITEMS} value={view} onChange={setView} label="概览视图" className="shrink-0 self-start" />
+        <div className="min-h-0 flex-1">
+          {view === 'summary' ? <RecentTickets data={data} /> : <Hierarchy data={data} />}
+        </div>
       </div>
     </div>
   )

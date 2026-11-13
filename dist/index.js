@@ -119,8 +119,6 @@ const SETTING_KEYS = [
 	"backgroundLimitMinutes",
 	"autoMerge",
 	"autoMergeMaxLines",
-	"proxyDecide",
-	"askDeadlineMinutes",
 	"deliveryMaxAttempts",
 	"deliveryRetryCeilingSeconds"
 ];
@@ -152,7 +150,6 @@ var Inbox = class extends Model {
 			...row.deliveryError ? { deliveryError: row.deliveryError } : {},
 			...row.nextRetryAt ? { nextRetryAt: row.nextRetryAt } : {},
 			...row.readAt ? { readAt: row.readAt } : {},
-			...row.deadline ? { deadline: row.deadline } : {},
 			escalations: row.escalations,
 			...row.answer ? { answer: row.answer } : {},
 			...row.answeredBy ? { answeredBy: row.answeredBy } : {}
@@ -195,7 +192,6 @@ var Inbox = class extends Model {
 				...row.deliveryError ? { deliveryError: row.deliveryError } : {},
 				...row.nextRetryAt ? { nextRetryAt: row.nextRetryAt } : {},
 				...row.readAt ? { readAt: row.readAt } : {},
-				...row.deadline ? { deadline: row.deadline } : {},
 				escalations: row.escalations,
 				...row.answer ? { answer: row.answer } : {},
 				...row.answeredBy ? { answeredBy: row.answeredBy } : {},
@@ -264,8 +260,7 @@ var Inbox = class extends Model {
 		await this.db.updateTable("inbox").set({
 			type: to,
 			escalations: (row?.escalations ?? 0) + 1,
-			lastEscalatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-			deadline: null
+			lastEscalatedAt: (/* @__PURE__ */ new Date()).toISOString()
 		}).where("id", "=", id).execute();
 	}
 	/** 投一条新消息。`seq` 自增，同票同地址靠它保序。 */
@@ -288,14 +283,9 @@ var Inbox = class extends Model {
 			...input.ticketId ? { ticketId: input.ticketId } : {},
 			...input.threadId ? { threadId: input.threadId } : {},
 			...input.triggerId ? { triggerId: input.triggerId } : {},
-			...input.workerId ? { workerId: input.workerId } : {},
-			...input.deadline ? { deadline: input.deadline } : {}
+			...input.workerId ? { workerId: input.workerId } : {}
 		}).execute();
 		return id;
-	}
-	/** 扫超时的 ask。不靠后台定时器，和「你有 N 条未处理」共用同一次会话钩子。 */
-	async overdue(now = (/* @__PURE__ */ new Date()).toISOString()) {
-		return this.db.selectFrom("inbox").selectAll().where("kind", "=", "ask").where("status", "=", "pending").where("deadline", "is not", null).where("deadline", "<", now).execute();
 	}
 	/** 各 type 未读数，供面板侧边栏与总览用。 */
 	async counts() {
@@ -368,13 +358,11 @@ const FALLBACK = {
 	backgroundLimitMinutes: 30,
 	autoMerge: false,
 	autoMergeMaxLines: 200,
-	proxyDecide: false,
-	askDeadlineMinutes: 30,
 	deliveryMaxAttempts: 3,
 	deliveryRetryCeilingSeconds: 60
 };
 /** 哪个键是布尔，写库时靠它决定怎么转。 */
-const BOOLEAN_KEYS = /* @__PURE__ */ new Set(["autoMerge", "proxyDecide"]);
+const BOOLEAN_KEYS = /* @__PURE__ */ new Set(["autoMerge"]);
 /**
 * 全局配置。**只有一行**，`id = 'global'`。
 *
@@ -430,7 +418,6 @@ function clamp(key, value) {
 		case "maxWorkers": return Math.min(16, Math.max(1, Math.round(value)));
 		case "backgroundLimitMinutes": return Math.min(240, Math.max(1, Math.round(value)));
 		case "autoMergeMaxLines": return Math.max(0, Math.round(value));
-		case "askDeadlineMinutes": return Math.min(1440, Math.max(1, Math.round(value)));
 		case "deliveryMaxAttempts": return Math.min(10, Math.max(1, Math.round(value)));
 		case "deliveryRetryCeilingSeconds": return Math.min(600, Math.max(5, Math.round(value)));
 		default: return Math.round(value);
@@ -900,7 +887,6 @@ CREATE TABLE IF NOT EXISTS "inbox" (
     "deliveryError" TEXT,
     "nextRetryAt" TEXT,
     "readAt" TEXT,
-    "deadline" TEXT,
     "escalations" INTEGER NOT NULL DEFAULT 0,
     "lastEscalatedAt" TEXT,
     "answer" TEXT,
@@ -938,8 +924,6 @@ CREATE TABLE IF NOT EXISTS "setting" (
     "backgroundLimitMinutes" INTEGER NOT NULL DEFAULT 30,
     "autoMerge" BOOLEAN NOT NULL DEFAULT false,
     "autoMergeMaxLines" INTEGER NOT NULL DEFAULT 200,
-    "proxyDecide" BOOLEAN NOT NULL DEFAULT false,
-    "askDeadlineMinutes" INTEGER NOT NULL DEFAULT 30,
     "deliveryMaxAttempts" INTEGER NOT NULL DEFAULT 3,
     "deliveryRetryCeilingSeconds" INTEGER NOT NULL DEFAULT 60,
     "updatedAt" TEXT NOT NULL
@@ -1087,9 +1071,6 @@ CREATE INDEX IF NOT EXISTS "inbox_type_status_createdAt_idx" ON "inbox"("type", 
 CREATE INDEX IF NOT EXISTS "inbox_status_createdAt_idx" ON "inbox"("status", "createdAt");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "inbox_kind_status_deadline_idx" ON "inbox"("kind", "status", "deadline");
-
--- CreateIndex
 CREATE INDEX IF NOT EXISTS "inbox_ticketId_seq_idx" ON "inbox"("ticketId", "seq");
 
 -- CreateIndex
@@ -1189,6 +1170,32 @@ const db = Object.assign(connection, {
 	supervisor: new Supervisor(connection),
 	supervisorTicket: new SupervisorTicket(connection),
 	setting: new Setting(connection)
+});
+//#endregion
+//#region src/server/routes/channel-create.post.ts
+const channelCreateHandler = defineEventHandler(async (event) => {
+	const body = await readBody(event) ?? {};
+	const id = body.id?.trim();
+	if (!id) throw createError({
+		statusCode: 400,
+		statusMessage: "缺少渠道 id"
+	});
+	if (await db.channel.findUnique(id).catch(() => void 0)) throw createError({
+		statusCode: 409,
+		statusMessage: `渠道 ${id} 已经存在`
+	});
+	const host = body.host?.trim() || null;
+	await db.channel.create({
+		id,
+		name: body.name?.trim() || id,
+		enabled: 0,
+		host: id === "gitlab" ? host : null,
+		createdAt: (/* @__PURE__ */ new Date()).toISOString()
+	});
+	return {
+		ok: true,
+		message: `已添加 ${id}，接下来要登录账号`
+	};
 });
 //#endregion
 //#region src/server/routes/channel-enabled.post.ts
@@ -1384,6 +1391,7 @@ const server = defineWebServer((app) => {
 	app.post("/api/nexus/tickets/:id/pause", ticketPauseHandler);
 	app.get("/api/nexus/triggers", triggersHandler);
 	app.get("/api/nexus/channels", channelsHandler);
+	app.post("/api/nexus/channels/create", channelCreateHandler);
 	app.post("/api/nexus/channels/:id/enabled", channelEnabledHandler);
 	app.get("/api/nexus/inbox", inboxHandler);
 	app.post("/api/nexus/inbox/kill", inboxKillHandler);

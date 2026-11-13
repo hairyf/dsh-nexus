@@ -40,8 +40,6 @@ export const SETTING_KEYS = [
   'backgroundLimitMinutes',
   'autoMerge',
   'autoMergeMaxLines',
-  'proxyDecide',
-  'askDeadlineMinutes',
   'deliveryMaxAttempts',
   'deliveryRetryCeilingSeconds',
 ] as const

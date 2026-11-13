@@ -10,14 +10,12 @@ const FALLBACK = {
   backgroundLimitMinutes: 30,
   autoMerge: false,
   autoMergeMaxLines: 200,
-  proxyDecide: false,
-  askDeadlineMinutes: 30,
   deliveryMaxAttempts: 3,
   deliveryRetryCeilingSeconds: 60,
 } satisfies Record<SettingKey, number | boolean>
 
 /** 哪个键是布尔，写库时靠它决定怎么转。 */
-const BOOLEAN_KEYS = new Set<SettingKey>(['autoMerge', 'proxyDecide'])
+const BOOLEAN_KEYS = new Set<SettingKey>(['autoMerge'])
 
 /**
  * 全局配置。**只有一行**，`id = 'global'`。
@@ -83,7 +81,6 @@ function clamp(key: SettingKey, value: number): number {
     case 'maxWorkers': return Math.min(16, Math.max(1, Math.round(value)))
     case 'backgroundLimitMinutes': return Math.min(240, Math.max(1, Math.round(value)))
     case 'autoMergeMaxLines': return Math.max(0, Math.round(value))
-    case 'askDeadlineMinutes': return Math.min(1440, Math.max(1, Math.round(value)))
     case 'deliveryMaxAttempts': return Math.min(10, Math.max(1, Math.round(value)))
     case 'deliveryRetryCeilingSeconds': return Math.min(600, Math.max(5, Math.round(value)))
     default: return Math.round(value)

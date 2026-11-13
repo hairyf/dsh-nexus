@@ -17,6 +17,7 @@ import {
   getApiNexusSettings,
   getApiNexusTasks,
   getApiNexusTriggers,
+  postApiNexusChannelsCreate,
   postApiNexusChannelsIdEnabled,
   postApiNexusInboxKill,
   postApiNexusSettings,
@@ -113,6 +114,10 @@ export function NexusApp(): ReactNode {
             data={channels.data}
             onToggle={async (id, enabled) => {
               await postApiNexusChannelsIdEnabled({ id }, { enabled })
+              await channels.reload()
+            }}
+            onCreate={async (input) => {
+              await postApiNexusChannelsCreate(input)
               await channels.reload()
             }}
           />

@@ -4,6 +4,7 @@ export {
   Button,
   DisclosureRow,
   Input,
+  Modal,
   Pill,
   SegmentedTabs,
   StateDot,

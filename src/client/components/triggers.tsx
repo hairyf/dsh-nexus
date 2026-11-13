@@ -49,7 +49,7 @@ export function TriggersPage({ data, threadKey, onSelect }: {
                         <button
                           type="button"
                           onClick={() => onSelect(active ? undefined : thread.key)}
-                          className={`w-full px-4 py-2.5 text-left ${active ? 'bg-nx-active' : 'hover:bg-nx-hover'}`}
+                          className={`nx-plain w-full px-4 py-2.5 text-left ${active ? 'bg-nx-active' : 'hover:bg-nx-hover'}`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <OneLine text={thread.title} className="text-[12px] text-nx-text" />

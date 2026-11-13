@@ -11,6 +11,7 @@
  */
 
 import { defineWebServer } from 'dsh-h3'
+import { channelCreateHandler } from './routes/channel-create.post'
 import { channelEnabledHandler } from './routes/channel-enabled.post'
 import { channelsHandler } from './routes/channels.get'
 import { inboxKillHandler } from './routes/inbox-kill.post'
@@ -37,6 +38,7 @@ export const server = defineWebServer<NexusOptions>((app) => {
   app.post('/api/nexus/tickets/:id/pause', ticketPauseHandler)
   app.get('/api/nexus/triggers', triggersHandler)
   app.get('/api/nexus/channels', channelsHandler)
+  app.post('/api/nexus/channels/create', channelCreateHandler)
   app.post('/api/nexus/channels/:id/enabled', channelEnabledHandler)
   app.get('/api/nexus/inbox', inboxHandler)
   app.post('/api/nexus/inbox/kill', inboxKillHandler)

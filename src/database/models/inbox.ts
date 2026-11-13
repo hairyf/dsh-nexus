@@ -33,7 +33,6 @@ export class Inbox extends Model<DB, 'inbox'> {
       ...row.deliveryError ? { deliveryError: row.deliveryError } : {},
       ...row.nextRetryAt ? { nextRetryAt: row.nextRetryAt } : {},
       ...row.readAt ? { readAt: row.readAt } : {},
-      ...row.deadline ? { deadline: row.deadline } : {},
       escalations: row.escalations,
       ...row.answer ? { answer: row.answer } : {},
       ...row.answeredBy ? { answeredBy: row.answeredBy } : {},
@@ -76,7 +75,6 @@ export class Inbox extends Model<DB, 'inbox'> {
       ...row.deliveryError ? { deliveryError: row.deliveryError } : {},
       ...row.nextRetryAt ? { nextRetryAt: row.nextRetryAt } : {},
       ...row.readAt ? { readAt: row.readAt } : {},
-      ...row.deadline ? { deadline: row.deadline } : {},
       escalations: row.escalations,
       ...row.answer ? { answer: row.answer } : {},
       ...row.answeredBy ? { answeredBy: row.answeredBy } : {},
@@ -150,7 +148,6 @@ export class Inbox extends Model<DB, 'inbox'> {
       escalations: (row?.escalations ?? 0) + 1,
       lastEscalatedAt: new Date().toISOString(),
       // 升到主编排之后不再需要截止时间
-      deadline: null,
     }).where('id', '=', id).execute()
   }
 
@@ -167,7 +164,6 @@ export class Inbox extends Model<DB, 'inbox'> {
     threadId?: string
     triggerId?: string
     workerId?: string
-    deadline?: string
   }): Promise<string> {
     const last = await this.db.selectFrom('inbox').select('seq').orderBy('seq', 'desc').limit(1).executeTakeFirst()
     const seq = BigInt(last?.seq ?? 0) + 1n
@@ -188,14 +184,8 @@ export class Inbox extends Model<DB, 'inbox'> {
       ...input.threadId ? { threadId: input.threadId } : {},
       ...input.triggerId ? { triggerId: input.triggerId } : {},
       ...input.workerId ? { workerId: input.workerId } : {},
-      ...input.deadline ? { deadline: input.deadline } : {},
     } as never).execute()
     return id
-  }
-
-  /** 扫超时的 ask。不靠后台定时器，和「你有 N 条未处理」共用同一次会话钩子。 */
-  async overdue(now = new Date().toISOString()): Promise<Array<{ id: string }>> {
-    return this.db.selectFrom('inbox').selectAll().where('kind', '=', 'ask').where('status', '=', 'pending').where('deadline', 'is not', null).where('deadline', '<', now).execute()
   }
 
   /** 各 type 未读数，供面板侧边栏与总览用。 */

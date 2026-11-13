@@ -69,7 +69,6 @@ CREATE TABLE IF NOT EXISTS "inbox" (
     "deliveryError" TEXT,
     "nextRetryAt" TEXT,
     "readAt" TEXT,
-    "deadline" TEXT,
     "escalations" INTEGER NOT NULL DEFAULT 0,
     "lastEscalatedAt" TEXT,
     "answer" TEXT,
@@ -107,8 +106,6 @@ CREATE TABLE IF NOT EXISTS "setting" (
     "backgroundLimitMinutes" INTEGER NOT NULL DEFAULT 30,
     "autoMerge" BOOLEAN NOT NULL DEFAULT false,
     "autoMergeMaxLines" INTEGER NOT NULL DEFAULT 200,
-    "proxyDecide" BOOLEAN NOT NULL DEFAULT false,
-    "askDeadlineMinutes" INTEGER NOT NULL DEFAULT 30,
     "deliveryMaxAttempts" INTEGER NOT NULL DEFAULT 3,
     "deliveryRetryCeilingSeconds" INTEGER NOT NULL DEFAULT 60,
     "updatedAt" TEXT NOT NULL
@@ -254,9 +251,6 @@ CREATE INDEX IF NOT EXISTS "inbox_type_status_createdAt_idx" ON "inbox"("type", 
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "inbox_status_createdAt_idx" ON "inbox"("status", "createdAt");
-
--- CreateIndex
-CREATE INDEX IF NOT EXISTS "inbox_kind_status_deadline_idx" ON "inbox"("kind", "status", "deadline");
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "inbox_ticketId_seq_idx" ON "inbox"("ticketId", "seq");

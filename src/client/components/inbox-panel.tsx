@@ -13,7 +13,7 @@ import type { InboxTarget } from '../../types'
 import type { GetApiNexusInboxResponse } from '../apis/index.type'
 import { EMPTY, INBOX_GROUP_LABELS } from '../constants'
 import { InboxIcon } from './icons'
-import { Button, Empty, relative, remaining, Tag } from './widgets'
+import { Button, Empty, relative, Tag } from './widgets'
 
 type InboxView = GetApiNexusInboxResponse
 type InboxItem = InboxView['items'][number]
@@ -149,9 +149,6 @@ function InboxRow({ item, onKill }: { item: InboxItem, onKill: (ids: string[]) =
               <span aria-hidden>·</span>
               <span>{item.project}</span>
             </>
-          )}
-          {item.deadline && item.status === 'pending' && (
-            <span className="text-nx-warn">{remaining(item.deadline)}</span>
           )}
           {item.escalations > 0 && (
             <span>

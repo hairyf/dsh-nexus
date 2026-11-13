@@ -147,8 +147,6 @@ export interface InboxBrief {
   nextRetryAt?: string
   /** 会话取进上下文的时刻；为空表示还在队列 */
   readAt?: string
-  /** ask 专用 */
-  deadline?: string
   escalations: number
   answer?: string
   answeredBy?: string
