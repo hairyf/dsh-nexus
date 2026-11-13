@@ -28,14 +28,14 @@ function NodeBox({ node }: { node: GraphNode }): ReactNode {
   const attention = node.attention === true
   return (
     <div
-      className={`nx-node flex w-full flex-col gap-0.5 px-2.5 py-1.5 ${attention ? 'border-[var(--dsw-alias-state-warn-primary)]' : ''}`}
+      className={`nx-node flex w-full flex-col gap-0.5 px-2.5 py-1.5 ${attention ? 'border-nx-warn' : ''}`}
       title={node.detail ?? node.label}
     >
       <div className="flex items-center gap-1.5">
-        <span className="shrink-0 rounded bg-[var(--dsw-alias-bg-layer-3)] px-1 text-[10px] text-[var(--dsw-alias-label-primary)]-3">{KIND_LABELS[node.kind]}</span>
-        <span className="truncate text-[12px] text-[var(--dsw-alias-label-primary)]">{node.label}</span>
+        <span className="shrink-0 rounded bg-nx-layer-3 px-1 text-[10px] text-nx-text-3">{KIND_LABELS[node.kind]}</span>
+        <span className="truncate text-[12px] text-nx-text">{node.label}</span>
       </div>
-      {node.detail && <span className="truncate text-[11px] text-[var(--dsw-alias-label-caption)]">{node.detail}</span>}
+      {node.detail && <span className="truncate text-[11px] text-nx-caption">{node.detail}</span>}
     </div>
   )
 }
@@ -82,8 +82,8 @@ function Column({ title, count, children }: { title: string, count: number, chil
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
       <div className="flex items-center justify-between px-0.5">
-        <span className="text-[11px] font-medium text-[var(--dsw-alias-label-primary)]-2">{title}</span>
-        <span className="text-[10px] text-[var(--dsw-alias-label-caption)]">{count}</span>
+        <span className="text-[11px] font-medium text-nx-text-2">{title}</span>
+        <span className="text-[10px] text-nx-caption">{count}</span>
       </div>
       <div className="flex flex-col gap-1.5">{children}</div>
     </div>
@@ -93,13 +93,13 @@ function Column({ title, count, children }: { title: string, count: number, chil
 function Arrow({ count, label }: { count: number, label: string }): ReactNode {
   return (
     <div className="flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 self-center">
-      <span className="text-[10px] text-[var(--dsw-alias-label-caption)]">{label}</span>
-      <div className="flex items-center gap-0.5 text-[var(--dsw-alias-border-l3)]">
-        <span className="h-px w-6 bg-[var(--dsw-alias-border-l3)]" />
+      <span className="text-[10px] text-nx-caption">{label}</span>
+      <div className="flex items-center gap-0.5 text-nx-border-3">
+        <span className="h-px w-6 bg-nx-border-3" />
         <span className="text-[12px] leading-none">›</span>
       </div>
       {count > 1 && (
-        <span className="text-[10px] text-[var(--dsw-alias-label-caption)]">
+        <span className="text-[10px] text-nx-caption">
           ×
           {count}
         </span>

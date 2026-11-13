@@ -32,7 +32,49 @@ function snapshotProfile(): ProfileSnapshot {
   return { dir: PROFILE_DIR, files }
 }
 
-/** 还原 profile；原来不存在的文件直接删掉。返回是否需要收尾安装。 */
+/**
+ * 清掉 profile 里指向上一次 E2E 的悬空依赖。
+ *
+ * 只在 `close()` 里还原不够：测试被中断（Ctrl-C、超时、崩溃）时 close 不执行，
+ * 下次 `pnpm add` 会去装一个已经被删掉的临时 tarball，直接失败 —— 而且报的是
+ * 找不到文件，很容易误判成插件本身的问题。所以启动时先自愈一次。
+ *
+ * 幂等：没有这类残留就什么都不做。
+ */
+async function dropStaleE2EDependency(): Promise<void> {
+  const path = join(PROFILE_DIR, 'package.json')
+  if (!existsSync(path))
+    return
+
+  const raw = readFileSync(path, 'utf8')
+  let parsed: { dependencies?: Record<string, string>, dsh?: { profile?: { bundles?: string[] } } }
+  try {
+    parsed = JSON.parse(raw) as typeof parsed
+  }
+  catch {
+    return
+  }
+
+  const stale = Object.entries(parsed.dependencies ?? {})
+    .filter(([name, spec]) => name === 'pkg-placeholder' || /dsh-e2e-home-/.test(spec))
+    .map(([name, spec]) => ({ name, spec, missing: !existsSync(spec.replace(/^file:/, '')) }))
+
+  if (!stale.length)
+    return
+
+  for (const entry of stale) delete parsed.dependencies?.[entry.name]
+  const bundles = parsed.dsh?.profile?.bundles
+  if (bundles)
+    parsed.dsh!.profile!.bundles = bundles.filter(name => !stale.some(entry => entry.name === name))
+
+  writeFileSync(path, `${JSON.stringify(parsed, null, 2)}\n`)
+  await x('pnpm', ['install', '--ignore-scripts'], {
+    timeout: 300_000,
+    throwOnError: false,
+    nodeOptions: { cwd: PROFILE_DIR, stdio: 'ignore' },
+  })
+}
+
 async function restoreProfile(snapshot: ProfileSnapshot): Promise<void> {
   let touched = false
   for (const [name, content] of snapshot.files) {
@@ -100,7 +142,19 @@ export async function launchShell(): Promise<ShellScaffold> {
     throw new Error('no dsh available — set DSH_E2E_DSH or put dsh on PATH')
 
   const home = mkdtempSync(join(tmpdir(), 'dsh-e2e-home-'))
-  const env = { ...process.env, DSH_HOME: home, CI: 'true' }
+  /**
+   * **不要设 `DSH_HOME`。**
+   *
+   * 它对这个版本的 dsh 不生效（`plugin` 与启动都固定走 `~/.dsh`），
+   * 副作用却是致命的：设了之后 dsh 不再往 stdout 打印
+   * `dsh web: http://127.0.0.1:<port>/?token=...`，于是拿不到启动 token，
+   * 换不到 `SameSite=Strict` 的 Cookie，浏览器只能停在鉴权页
+   * （"dsh web authentication required"）。
+   *
+   * 表现为「页面空白、零 console 错误」—— 因为鉴权页本身是正常渲染的。
+   * 隔离靠下面的 profile 快照+还原，不靠这个环境变量。
+   */
+  const env = { ...process.env, CI: 'true' }
   await x('pnpm', ['run', 'build'], {
     timeout: 300_000,
     throwOnError: true,
@@ -112,6 +166,7 @@ export async function launchShell(): Promise<ShellScaffold> {
     nodeOptions: { cwd: REPO_ROOT, env, stdio: 'inherit' },
   })
   const tarball = join(home, readdirSync(home).find(name => name.endsWith('.tgz'))!)
+  await dropStaleE2EDependency()
   const profile = snapshotProfile()
   await x(command, ['plugin', '--profile', 'web', 'add', '--ignore-scripts', tarball], {
     timeout: 300_000,

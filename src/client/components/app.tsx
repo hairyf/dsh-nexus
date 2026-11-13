@@ -136,11 +136,11 @@ export function NexusApp(): ReactNode {
   }, [location, overview.data, tasks.data, filter, triggers.data, channels.data, settings.data, draft, saveSettings, togglePause])
 
   return (
-    <div className="nx-root relative flex h-full min-h-0 flex-col bg-[var(--dsw-alias-bg-base)]">
+    <div className="nx-root relative flex h-full min-h-0 flex-col bg-nx-bg">
       <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-4">
         <div className="min-w-0">
-          <h1 className="text-[20px] font-semibold leading-tight text-[var(--dsw-alias-label-primary)]">Nexus</h1>
-          <p className="mt-0.5 max-w-[42rem] text-[11px] leading-relaxed text-[var(--dsw-alias-label-caption)]">
+          <h1 className="text-[20px] font-semibold leading-tight text-nx-text">Nexus</h1>
+          <p className="mt-0.5 max-w-[42rem] text-[11px] leading-relaxed text-nx-caption">
             三层编排：主编排判方向，项目编排管任务，Worker 动手。人不在一层里，人就是收件人之一。
           </p>
         </div>
@@ -149,14 +149,14 @@ export function NexusApp(): ReactNode {
           onClick={() => setInboxOpen(open => !open)}
           className={`flex items-center gap-1.5 rounded-nx-sm border px-2.5 py-1.5 text-[12px] transition-colors ${
             unread > 0
-              ? 'border-[var(--dsw-alias-state-warn-primary)] text-[var(--dsw-alias-state-warn-primary)] hover:bg-[var(--dsw-alias-interactive-bg-hover)]'
-              : 'border-[var(--dsw-alias-border-l2)] text-[var(--dsw-alias-label-primary)]-2 hover:bg-[var(--dsw-alias-interactive-bg-hover)]'
+              ? 'border-nx-warn text-nx-warn hover:bg-nx-hover'
+              : 'border-nx-border-2 text-nx-text-2 hover:bg-nx-hover'
           }`}
         >
           <InboxIcon size={14} />
           收件箱
           {unread > 0 && (
-            <span className="rounded-full bg-[var(--dsw-alias-state-warn-primary)] px-1.5 text-[10px] font-medium text-white">{unread}</span>
+            <span className="rounded-full bg-nx-warn px-1.5 text-[10px] font-medium text-white">{unread}</span>
           )}
         </button>
       </header>

@@ -12,7 +12,7 @@ import { NexusIcon } from './components/icons'
 
 /** 侧边栏图标。`size` 与 `active` 由槽位给，不是自己定的。 */
 function NexusSidebarIcon({ size, active }: SidebarPanelIconOwnerProps): ReturnType<typeof createElement> {
-  return createElement(NexusIcon, { size, className: active ? 'text-[var(--dsw-alias-brand-primary)]' : undefined })
+  return createElement(NexusIcon, { size, className: active ? 'text-nx-brand' : undefined })
 }
 
 export const inject = ['slots']

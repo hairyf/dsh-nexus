@@ -42,12 +42,12 @@ export function InboxPanel({ data, open, onClose, onKill }: {
   const total = (data?.counts.user ?? 0) + (data?.counts.main ?? 0) + (data?.counts.project ?? 0) + (data?.counts.supervisor ?? 0)
 
   return (
-    <aside className="absolute inset-y-0 right-0 z-20 flex w-[22rem] max-w-[86%] flex-col border-l border-[var(--dsw-alias-border-l2)] bg-[var(--dsw-alias-bg-layer-1)] shadow-xl">
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--dsw-alias-border-l1)] px-4 py-2.5">
+    <aside className="absolute inset-y-0 right-0 z-20 flex w-[22rem] max-w-[86%] flex-col border-l border-nx-border-2 bg-nx-layer-1 shadow-xl">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-nx-border-1 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <InboxIcon size={15} className="text-[var(--dsw-alias-label-primary)]-2" />
-          <h3 className="text-[13px] font-medium text-[var(--dsw-alias-label-primary)]">收件箱</h3>
-          <span className="text-[11px] text-[var(--dsw-alias-label-caption)]">
+          <InboxIcon size={15} className="text-nx-text-2" />
+          <h3 className="text-[13px] font-medium text-nx-text">收件箱</h3>
+          <span className="text-[11px] text-nx-caption">
             {total}
             {' '}
             条未处理
@@ -65,15 +65,15 @@ export function InboxPanel({ data, open, onClose, onKill }: {
             return null
           return (
             <section key={target}>
-              <header className="sticky top-0 z-10 flex items-center justify-between bg-[var(--dsw-alias-bg-layer-2)] px-4 py-1.5">
-                <span className="text-[11px] font-medium text-[var(--dsw-alias-label-primary)]-2">{INBOX_GROUP_LABELS[target]}</span>
-                <span className="text-[10px] text-[var(--dsw-alias-label-caption)]">
+              <header className="sticky top-0 z-10 flex items-center justify-between bg-nx-layer-2 px-4 py-1.5">
+                <span className="text-[11px] font-medium text-nx-text-2">{INBOX_GROUP_LABELS[target]}</span>
+                <span className="text-[10px] text-nx-caption">
                   {data?.counts[target] ?? 0}
                   {' '}
                   未处理
                 </span>
               </header>
-              <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+              <ul className="divide-y divide-nx-border-1">
                 {group.map(item => (
                   <InboxRow key={item.id} item={item} onKill={onKill} />
                 ))}
@@ -84,15 +84,15 @@ export function InboxPanel({ data, open, onClose, onKill }: {
 
         {stalled.length > 0 && (
           <section>
-            <header className="sticky top-0 z-10 flex items-center justify-between bg-[var(--dsw-alias-bg-layer-2)] px-4 py-1.5">
-              <span className="text-[11px] font-medium text-[var(--dsw-alias-state-error-primary)]">投递卡住</span>
-              <span className="text-[10px] text-[var(--dsw-alias-label-caption)]">
+            <header className="sticky top-0 z-10 flex items-center justify-between bg-nx-layer-2 px-4 py-1.5">
+              <span className="text-[11px] font-medium text-nx-danger">投递卡住</span>
+              <span className="text-[10px] text-nx-caption">
                 {stalled.length}
                 {' '}
                 条
               </span>
             </header>
-            <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+            <ul className="divide-y divide-nx-border-1">
               {stalled.map(item => (
                 <InboxRow key={item.id} item={item} onKill={onKill} />
               ))}
@@ -118,8 +118,8 @@ function InboxRow({ item, onKill }: { item: InboxItem, onKill: (ids: string[]) =
         onClick={() => onKill([item.id])}
         className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
           done
-            ? 'border-[var(--dsw-alias-state-success-primary)] bg-[var(--dsw-alias-state-success-primary)] text-white'
-            : 'border-[var(--dsw-alias-border-l3)] text-transparent hover:border-[var(--dsw-alias-label-primary)]-2 hover:text-[var(--dsw-alias-label-primary)]-3'
+            ? 'border-nx-success bg-nx-success text-white'
+            : 'border-nx-border-3 text-transparent hover:border-nx-text-2 hover:text-nx-text-3'
         }`}
       >
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden>
@@ -130,19 +130,19 @@ function InboxRow({ item, onKill }: { item: InboxItem, onKill: (ids: string[]) =
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <Tag tone={stalled ? 'danger' : meta.tone}>{stalled ? '送不到' : meta.label}</Tag>
-          {item.ticketId && <span className="font-mono text-[10px] text-[var(--dsw-alias-label-caption)]">{item.ticketId}</span>}
-          <span className="ml-auto shrink-0 text-[10px] text-[var(--dsw-alias-label-caption)]">{relative(item.createdAt)}</span>
+          {item.ticketId && <span className="font-mono text-[10px] text-nx-caption">{item.ticketId}</span>}
+          <span className="ml-auto shrink-0 text-[10px] text-nx-caption">{relative(item.createdAt)}</span>
         </div>
 
-        <p className={`mt-1 whitespace-pre-wrap text-[12px] leading-snug ${done ? 'text-[var(--dsw-alias-label-primary)]-3 line-through' : 'text-[var(--dsw-alias-label-primary)]'}`}>
+        <p className={`mt-1 whitespace-pre-wrap text-[12px] leading-snug ${done ? 'text-nx-text-3 line-through' : 'text-nx-text'}`}>
           {item.title ?? item.message}
         </p>
 
         {item.title && item.message !== item.title && (
-          <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--dsw-alias-label-primary)]-2">{item.message}</p>
+          <p className="mt-0.5 line-clamp-2 text-[11px] text-nx-text-2">{item.message}</p>
         )}
 
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[var(--dsw-alias-label-caption)]">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-nx-caption">
           <span>{item.origin}</span>
           {item.project && (
             <>
@@ -151,7 +151,7 @@ function InboxRow({ item, onKill }: { item: InboxItem, onKill: (ids: string[]) =
             </>
           )}
           {item.deadline && item.status === 'pending' && (
-            <span className="text-[var(--dsw-alias-state-warn-primary)]">{remaining(item.deadline)}</span>
+            <span className="text-nx-warn">{remaining(item.deadline)}</span>
           )}
           {item.escalations > 0 && (
             <span>
@@ -161,9 +161,9 @@ function InboxRow({ item, onKill }: { item: InboxItem, onKill: (ids: string[]) =
               次
             </span>
           )}
-          {stalled && item.deliveryError && <span className="text-[var(--dsw-alias-state-error-primary)]">{item.deliveryError}</span>}
+          {stalled && item.deliveryError && <span className="text-nx-danger">{item.deliveryError}</span>}
           {item.answer && (
-            <span className="text-[var(--dsw-alias-state-success-primary)]">
+            <span className="text-nx-success">
               已答：
               {item.answer}
             </span>

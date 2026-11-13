@@ -1,15 +1,49 @@
 @import "tailwindcss";
 
 /*
- * 面板样式。
+ * 语义色。组件里只写语义类名（`bg-nx-layer-1`、`text-nx-caption`），
+ * 不写 `bg-[var(--dsw-...)]` 这种跳过主题层的任意值 —— 否则换主题、加暗色、
+ * 统一调色都要改组件。
  *
- * **不定义 `@theme` 变量。** dsh-taiwind 合并多插件样式时不带 `@theme` 里的
- * 变量定义，`var(--color-nx-*)` 在运行时是空值 —— 表现为边框宽度 0、背景透明。
- * 所以组件里的语义色一律写成 `bg-[var(--dsw-alias-*)]` 这种任意值形式，
- * 这里的 utility 也直接引 `--dsw-*`。
+ * **必须是 `@theme inline`。** 非 inline 时 Tailwind 把 utility 编译成
+ * `var(--color-nx-x)`，变量定义落在 `:root`；而 dsh-taiwind 合并多插件样式时
+ * 会 tree-shake 掉「看起来没被用到」的变量，`var()` 落空使整条声明失效 ——
+ * 边框变 0px、背景变透明，排查时完全不像变量问题。
  *
- * 好处是只有一个间接层：宿主换主题时颜色跟着变，中间没有我们能弄丢的环节。
+ * inline 让 utility 直接编译成 `var(--dsw-*)`，不经过中间变量，也就不依赖
+ * tree-shake 的判断。编译产物形如：
+ *   .text-nx-caption { color: var(--dsw-alias-label-caption) }
  */
+@theme inline {
+  --color-nx-bg: var(--dsw-alias-bg-base);
+  --color-nx-layer-1: var(--dsw-alias-bg-layer-1);
+  --color-nx-layer-2: var(--dsw-alias-bg-layer-2);
+  --color-nx-layer-3: var(--dsw-alias-bg-layer-3);
+
+  --color-nx-text: var(--dsw-alias-label-primary);
+  --color-nx-text-2: var(--dsw-alias-label-secondary);
+  --color-nx-text-3: var(--dsw-alias-label-tertiary);
+  --color-nx-caption: var(--dsw-alias-label-caption);
+
+  --color-nx-border-1: var(--dsw-alias-border-l1);
+  --color-nx-border-2: var(--dsw-alias-border-l2);
+  --color-nx-border-3: var(--dsw-alias-border-l3);
+
+  --color-nx-brand: var(--dsw-alias-brand-primary);
+  --color-nx-link: var(--dsw-alias-link);
+
+  --color-nx-success: var(--dsw-alias-state-success-primary);
+  --color-nx-warn: var(--dsw-alias-state-warn-primary);
+  --color-nx-danger: var(--dsw-alias-state-error-primary);
+  --color-nx-info: var(--dsw-alias-state-business-primary);
+  --color-nx-idle: var(--dsw-alias-state-idle-primary);
+
+  --color-nx-hover: var(--dsw-alias-interactive-bg-hover);
+  --color-nx-active: var(--dsw-alias-interactive-bg-active);
+
+  --radius-nx: 12px;
+  --radius-nx-sm: 8px;
+}
 
 /* 面板内的滚动条沿用官方观感，不引入浏览器默认样式。 */
 @utility nx-scroll {
@@ -19,18 +53,18 @@
 
 /* 卡片：面板里所有分区共用这一种外观。 */
 @utility nx-card {
-  border-radius: 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  background-color: var(--dsw-alias-bg-layer-1);
+  border-radius: var(--radius-nx);
+  border: 1px solid var(--color-nx-border-1);
+  background-color: var(--color-nx-layer-1);
   /* 圆角要能裁掉子元素的直角边，否则首尾两行的分隔线会戳出来 */
   overflow: hidden;
 }
 
 /* 层级图里的节点底色比卡片再深一档，避免和容器糊在一起。 */
 @utility nx-node {
-  border-radius: 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background-color: var(--dsw-alias-bg-layer-2);
+  border-radius: var(--radius-nx-sm);
+  border: 1px solid var(--color-nx-border-2);
+  background-color: var(--color-nx-layer-2);
 }
 
 /*
@@ -39,8 +73,6 @@
  * 宿主没有加载 Preflight（它不重置宿主界面），所以 `ul` 会带上浏览器默认的
  * 圆点和 padding-left —— 在卡片里就是一排诡异的小点。这一条只在面板自己的
  * 根节点下生效，不外溢到宿主。
- *
- * `p` 也要收：浏览器默认 1em 上下的段距会把每一行说明文字撑成两倍高。
  */
 .nx-root ul,
 .nx-root ol {
@@ -58,8 +90,7 @@
  * 面板里的按钮只承载排版，不承载外观。
  *
  * 宿主没加载 Preflight，`button` 会带浏览器默认的边框、背景和内边距 ——
- * 一个本该是纯文本的行标题会画成一个输入框。这里统一归零，
- * 需要按钮外观的地方用官方的 `Button`。
+ * 一个本该是纯文本的行标题会画成一个输入框。需要按钮外观的地方用官方的 `Button`。
  */
 .nx-root button {
   border: 0;

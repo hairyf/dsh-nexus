@@ -16,8 +16,8 @@ export function Card({ title, extra, children, className = '' }: {
   return (
     <section className={`nx-card flex min-h-0 flex-col ${className}`}>
       {(title || extra) && (
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--dsw-alias-border-l1)] px-4 py-2.5">
-          <h3 className="text-[13px] font-medium text-[var(--dsw-alias-label-primary)]">{title}</h3>
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-nx-border-1 px-4 py-2.5">
+          <h3 className="text-[13px] font-medium text-nx-text">{title}</h3>
           {extra}
         </header>
       )}
@@ -30,9 +30,9 @@ export function Card({ title, extra, children, className = '' }: {
 export function Metric({ value, unit, hint }: { value: ReactNode, unit?: string, hint?: string }): ReactNode {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className="text-[26px] font-semibold leading-none text-[var(--dsw-alias-label-primary)] tabular-nums">{value}</span>
-      {unit && <span className="text-[12px] text-[var(--dsw-alias-label-primary)]-3">{unit}</span>}
-      {hint && <span className="ml-1 text-[11px] text-[var(--dsw-alias-label-caption)]">{hint}</span>}
+      <span className="text-[26px] font-semibold leading-none text-nx-text tabular-nums">{value}</span>
+      {unit && <span className="text-[12px] text-nx-text-3">{unit}</span>}
+      {hint && <span className="ml-1 text-[11px] text-nx-caption">{hint}</span>}
     </div>
   )
 }
@@ -54,7 +54,7 @@ export function StatusTag({ status }: { status: keyof typeof STATUS_TONE }): Rea
 
 export function StatusLine({ state, text }: { state: StateDotState, text: string }): ReactNode {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--dsw-alias-label-primary)]-2">
+    <span className="inline-flex items-center gap-1.5 text-[12px] text-nx-text-2">
       <StateDot state={state} />
       {text}
     </span>
@@ -64,7 +64,7 @@ export function StatusLine({ state, text }: { state: StateDotState, text: string
 /** 需介入标记。由 pending ask 派生，不是独立状态。 */
 export function AttentionMark({ text = '需介入' }: { text?: string }): ReactNode {
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--dsw-alias-state-warn-primary)]">
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-nx-warn">
       <AlertIcon size={12} />
       {text}
     </span>
@@ -75,7 +75,7 @@ export { Button, Input, Switch, Tag }
 
 /** 空状态。列表为空时统一用它，不留空白区域。 */
 export function Empty({ text }: { text: string }): ReactNode {
-  return <p className="px-4 py-8 text-center text-[12px] text-[var(--dsw-alias-label-primary)]-3">{text}</p>
+  return <p className="px-4 py-8 text-center text-[12px] text-nx-text-3">{text}</p>
 }
 
 /** 相对时间。超过一天就给日期，不再算「几小时前」。 */
@@ -114,8 +114,8 @@ export function remaining(iso: string | undefined): string | undefined {
 export function Field({ label, children }: { label: string, children: ReactNode }): ReactNode {
   return (
     <div className="flex items-start gap-3">
-      <dt className="w-20 shrink-0 text-[12px] text-[var(--dsw-alias-label-primary)]-3">{label}</dt>
-      <dd className="min-w-0 flex-1 text-[12px] text-[var(--dsw-alias-label-primary)]">{children}</dd>
+      <dt className="w-20 shrink-0 text-[12px] text-nx-text-3">{label}</dt>
+      <dd className="min-w-0 flex-1 text-[12px] text-nx-text">{children}</dd>
     </div>
   )
 }

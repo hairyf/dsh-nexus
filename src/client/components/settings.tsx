@@ -52,7 +52,7 @@ export function SettingsPage({ data, draft, onDraft, onReset, onSave, busy, erro
   error: string | undefined
 }): ReactNode {
   if (!data)
-    return <p className="px-4 py-8 text-center text-[12px] text-[var(--dsw-alias-label-primary)]-3">正在读取…</p>
+    return <p className="px-4 py-8 text-center text-[12px] text-nx-text-3">正在读取…</p>
 
   const value = (key: SettingKey): number | boolean => draft[key] ?? data.values[key]
   const dirty = Object.keys(draft).length > 0
@@ -60,9 +60,9 @@ export function SettingsPage({ data, draft, onDraft, onReset, onSave, busy, erro
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 p-4">
       <div className="flex shrink-0 items-center justify-between gap-3">
-        <span className="text-[11px] text-[var(--dsw-alias-label-caption)]">
+        <span className="text-[11px] text-nx-caption">
           {error
-            ? <span className="text-[var(--dsw-alias-state-error-primary)]">{error}</span>
+            ? <span className="text-nx-danger">{error}</span>
             : data.updatedAt
               ? `上次保存 ${new Date(data.updatedAt).toLocaleString('zh-CN')}`
               : '还未保存过'}
@@ -79,10 +79,10 @@ export function SettingsPage({ data, draft, onDraft, onReset, onSave, busy, erro
         <div className="flex min-w-0 flex-col gap-3">
           {SETTING_GROUPS.map(group => (
             <section key={group.key} className="nx-card">
-              <header className="border-b border-[var(--dsw-alias-border-l1)] px-4 py-2">
-                <h3 className="text-[12px] font-medium text-[var(--dsw-alias-label-primary)]-2">{group.label}</h3>
+              <header className="border-b border-nx-border-1 px-4 py-2">
+                <h3 className="text-[12px] font-medium text-nx-text-2">{group.label}</h3>
               </header>
-              <div className="divide-y divide-[var(--dsw-alias-border-l1)]">
+              <div className="divide-y divide-nx-border-1">
                 {group.fields.map(key => (
                   <Row
                     key={key}
@@ -116,14 +116,14 @@ export function SettingsPage({ data, draft, onDraft, onReset, onSave, busy, erro
         </div>
 
         <section className="nx-card h-fit shrink-0">
-          <header className="border-b border-[var(--dsw-alias-border-l1)] px-4 py-2">
-            <h3 className="text-[12px] font-medium text-[var(--dsw-alias-label-primary)]-2">这些参数管什么</h3>
+          <header className="border-b border-nx-border-1 px-4 py-2">
+            <h3 className="text-[12px] font-medium text-nx-text-2">这些参数管什么</h3>
           </header>
           <dl className="flex flex-col gap-2.5 px-4 py-3">
             {NOTES.map(note => (
               <div key={note.label}>
-                <dt className="text-[11px] font-medium text-[var(--dsw-alias-label-primary)]">{note.label}</dt>
-                <dd className="mt-0.5 text-[11px] leading-relaxed text-[var(--dsw-alias-label-caption)]">{note.text}</dd>
+                <dt className="text-[11px] font-medium text-nx-text">{note.label}</dt>
+                <dd className="mt-0.5 text-[11px] leading-relaxed text-nx-caption">{note.text}</dd>
               </div>
             ))}
           </dl>
@@ -138,8 +138,8 @@ function Row({ label, hint, control }: { label: string, hint: string, control: R
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-2.5">
       <div className="min-w-0">
-        <div className="text-[12px] text-[var(--dsw-alias-label-primary)]">{label}</div>
-        <p className="mt-0.5 text-[11px] text-[var(--dsw-alias-label-caption)]">{hint}</p>
+        <div className="text-[12px] text-nx-text">{label}</div>
+        <p className="mt-0.5 text-[11px] text-nx-caption">{hint}</p>
       </div>
       <div className="shrink-0">{control}</div>
     </div>

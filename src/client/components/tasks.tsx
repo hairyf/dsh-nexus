@@ -50,7 +50,7 @@ export function TasksPage({ data, filter, onFilter, onOpen }: {
           : data.tickets.length === 0
             ? <Empty text={EMPTY.tickets} />
             : (
-                <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+                <ul className="divide-y divide-nx-border-1">
                   {data.tickets.map(ticket => (
                     <li key={ticket.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                       <button
@@ -59,11 +59,11 @@ export function TasksPage({ data, filter, onFilter, onOpen }: {
                         className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="shrink-0 font-mono text-[11px] text-[var(--dsw-alias-label-primary)]-3">{ticket.id}</span>
-                          <span className="truncate text-[13px] text-[var(--dsw-alias-label-primary)]">{ticket.title}</span>
+                          <span className="shrink-0 font-mono text-[11px] text-nx-text-3">{ticket.id}</span>
+                          <span className="truncate text-[13px] text-nx-text">{ticket.title}</span>
                           {ticket.attention && <AttentionMark />}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[var(--dsw-alias-label-caption)]">
+                        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-nx-caption">
                           <span>{ticket.project}</span>
                           <span aria-hidden>·</span>
                           <span>{ticket.channel}</span>
@@ -101,9 +101,9 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
   const { data, error } = usePoll<TaskDetail>(() => getApiNexusTicketsId({ id }), 5000, [id])
 
   if (error)
-    return <div className="p-4 text-[12px] text-[var(--dsw-alias-state-error-primary)]">{error}</div>
+    return <div className="p-4 text-[12px] text-nx-danger">{error}</div>
   if (!data)
-    return <div className="p-4 text-[12px] text-[var(--dsw-alias-label-primary)]-3">正在读取…</div>
+    return <div className="p-4 text-[12px] text-nx-text-3">正在读取…</div>
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 overflow-auto p-4 nx-scroll">
@@ -111,12 +111,12 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" icon={<BackIcon />} onClick={onBack}>返回</Button>
-            <span className="font-mono text-[12px] text-[var(--dsw-alias-label-primary)]-3">{data.id}</span>
+            <span className="font-mono text-[12px] text-nx-text-3">{data.id}</span>
             <StatusTag status={data.status} />
             {data.attention && <AttentionMark />}
           </div>
-          <h2 className="mt-1.5 text-[16px] font-medium text-[var(--dsw-alias-label-primary)]">{data.title}</h2>
-          <p className="mt-1 text-[11px] text-[var(--dsw-alias-label-caption)]">
+          <h2 className="mt-1.5 text-[16px] font-medium text-nx-text">{data.title}</h2>
+          <p className="mt-1 text-[11px] text-nx-caption">
             {data.project}
             {' '}
             ·
@@ -144,7 +144,7 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
       </header>
 
       {data.prepareError && (
-        <div className="rounded-nx-sm border border-[var(--dsw-alias-state-error-primary)] px-3 py-2 text-[12px] text-[var(--dsw-alias-state-error-primary)]">
+        <div className="rounded-nx-sm border border-nx-danger px-3 py-2 text-[12px] text-nx-danger">
           准备阶段失败：
           {data.prepareError}
         </div>
@@ -166,15 +166,15 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
           {data.links.length === 0
             ? <Empty text={EMPTY.links} />
             : (
-                <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+                <ul className="divide-y divide-nx-border-1">
                   {data.links.map(link => (
                     <li key={link.id} className="flex items-center justify-between gap-2 px-4 py-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[11px] text-[var(--dsw-alias-label-primary)]-3">{link.id}</span>
-                          <OneLine text={link.title} className="text-[12px] text-[var(--dsw-alias-label-primary)]" />
+                          <span className="font-mono text-[11px] text-nx-text-3">{link.id}</span>
+                          <OneLine text={link.title} className="text-[12px] text-nx-text" />
                         </div>
-                        <span className="block text-[11px] text-[var(--dsw-alias-label-caption)]">
+                        <span className="block text-[11px] text-nx-caption">
                           {link.kind === 'depends' ? '依赖' : '相关'}
                         </span>
                       </div>
@@ -190,12 +190,12 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
         {data.threads.length === 0
           ? <Empty text="没有关联话题" />
           : (
-              <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+              <ul className="divide-y divide-nx-border-1">
                 {data.threads.map(thread => (
                   <li key={thread.key} className="flex items-center justify-between gap-2 px-4 py-2">
                     <div className="min-w-0">
-                      <OneLine text={thread.title} className="text-[12px] text-[var(--dsw-alias-label-primary)]" />
-                      <span className="block text-[11px] text-[var(--dsw-alias-label-caption)]">
+                      <OneLine text={thread.title} className="text-[12px] text-nx-text" />
+                      <span className="block text-[11px] text-nx-caption">
                         {thread.kind}
                         {' '}
                         ·
@@ -218,25 +218,25 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
         {data.workers.length === 0
           ? <Empty text={EMPTY.workers} />
           : (
-              <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+              <ul className="divide-y divide-nx-border-1">
                 {data.workers.map(worker => (
                   <li key={worker.id} className="px-4 py-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <OneLine text={worker.title ?? worker.id} className="text-[12px] text-[var(--dsw-alias-label-primary)]" />
-                        <span className="block text-[11px] text-[var(--dsw-alias-label-caption)]">
+                        <OneLine text={worker.title ?? worker.id} className="text-[12px] text-nx-text" />
+                        <span className="block text-[11px] text-nx-caption">
                           {worker.branch ?? '无分支'}
                           {' '}
                           ·
                           {worker.status}
                         </span>
                       </div>
-                      {worker.reportState && <span className="text-[11px] text-[var(--dsw-alias-label-primary)]-2">{worker.reportState}</span>}
+                      {worker.reportState && <span className="text-[11px] text-nx-text-2">{worker.reportState}</span>}
                     </div>
                     {worker.report && (
-                      <p className="mt-1 line-clamp-2 text-[11px] text-[var(--dsw-alias-label-primary)]-2">{worker.report}</p>
+                      <p className="mt-1 line-clamp-2 text-[11px] text-nx-text-2">{worker.report}</p>
                     )}
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[var(--dsw-alias-label-caption)]">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-nx-caption">
                       {worker.reportAt && (
                         <span>
                           汇报于
@@ -244,13 +244,13 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
                         </span>
                       )}
                       {worker.backgroundUntil && (
-                        <span className="text-[var(--dsw-alias-state-warn-primary)]">
+                        <span className="text-nx-warn">
                           后台占槽
                           {remaining(worker.backgroundUntil)}
                         </span>
                       )}
                       {worker.recoveryNote && (
-                        <span className="text-[var(--dsw-alias-state-warn-primary)]">
+                        <span className="text-nx-warn">
                           恢复提示：
                           {worker.recoveryNote}
                         </span>
@@ -266,24 +266,24 @@ export function TaskDetailPage({ id, onBack, onTogglePause }: {
         {data.inbox.length === 0
           ? <Empty text={EMPTY.inbox} />
           : (
-              <ul className="divide-y divide-[var(--dsw-alias-border-l1)]">
+              <ul className="divide-y divide-nx-border-1">
                 {data.inbox.map(item => (
                   <li key={item.id} className="px-4 py-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--dsw-alias-label-primary)]">{item.title ?? item.message}</span>
-                      <span className="shrink-0 text-[10px] text-[var(--dsw-alias-label-caption)]">{item.type}</span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] text-nx-text">{item.title ?? item.message}</span>
+                      <span className="shrink-0 text-[10px] text-nx-caption">{item.type}</span>
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--dsw-alias-label-caption)]">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-nx-caption">
                       <span>{relative(item.createdAt)}</span>
                       {item.status === 'stalled' && (
-                        <span className="text-[var(--dsw-alias-state-error-primary)]">
+                        <span className="text-nx-danger">
                           投递失败
                           {item.deliveryAttempts}
                           {' '}
                           次
                         </span>
                       )}
-                      {item.deadline && item.status === 'pending' && <span className="text-[var(--dsw-alias-state-warn-primary)]">{remaining(item.deadline)}</span>}
+                      {item.deadline && item.status === 'pending' && <span className="text-nx-warn">{remaining(item.deadline)}</span>}
                       {item.escalations > 0 && (
                         <span>
                           已升级
