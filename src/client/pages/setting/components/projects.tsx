@@ -1,17 +1,15 @@
 import type { ReactNode } from 'react'
-import type { Project } from '../model'
 import { Button, Input, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useId, useState } from 'react'
+import { useActions, useStore } from '../../../hooks/use-store'
 import { useTranslation } from '../../../hooks/use-translation'
 import { eligibleProjects } from '../model'
 
-export function Projects({ projects, refreshedAt, onRefresh, onToggle }: {
-  projects: readonly Project[]
-  refreshedAt: string | null
-  onRefresh: () => void
-  onToggle: (id: string, enabled: boolean) => void
-}): ReactNode {
+export function Projects(): ReactNode {
   const { t } = useTranslation()
+  const projects = useStore(state => state.setting.projects)
+  const refreshedAt = useStore(state => state.setting.refreshedAt)
+  const { refreshSettingProjects, toggleSettingProject } = useActions()
   const id = useId()
   const [query, setQuery] = useState('')
   const normalized = query.trim().toLocaleLowerCase()
@@ -28,7 +26,7 @@ export function Projects({ projects, refreshedAt, onRefresh, onToggle }: {
           </div>
           <p className="m-0 mt-1.5 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]">{t('settingProjectsDescription')}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={onRefresh}>{t('settingRefresh')}</Button>
+        <Button size="sm" variant="outline" onClick={() => refreshSettingProjects(new Date().toISOString())}>{t('settingRefresh')}</Button>
       </header>
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4">
         <Input type="search" aria-label={t('settingSearchProjects')} placeholder={t('settingSearchProjects')} value={query} onChange={event => setQuery(event.currentTarget.value)} className="min-w-40 flex-1 !text-xs @min-[620px]:max-w-xs" />
@@ -49,7 +47,7 @@ export function Projects({ projects, refreshedAt, onRefresh, onToggle }: {
                   <li key={project.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--dsw-alias-border-l3)] px-5 py-4">
                     <div className="flex min-w-0 flex-1 basis-48 items-start gap-2">
                       <label className="flex size-6 shrink-0 cursor-pointer items-center justify-center">
-                        <input type="checkbox" checked={project.enabled} aria-label={t('settingSelectProject', { name: project.name })} aria-describedby={pathId} onChange={event => onToggle(project.id, event.currentTarget.checked)} className="size-3 cursor-pointer accent-[var(--dsw-alias-state-business-primary)]" />
+                        <input type="checkbox" checked={project.enabled} aria-label={t('settingSelectProject', { name: project.name })} aria-describedby={pathId} onChange={event => toggleSettingProject(project.id, event.currentTarget.checked)} className="size-3 cursor-pointer accent-[var(--dsw-alias-state-business-primary)]" />
                       </label>
                       <div className="min-w-0 pt-0.5">
                         <div className="truncate text-[13px] leading-5 font-medium text-[var(--dsw-alias-label-primary)]">{project.name}</div>

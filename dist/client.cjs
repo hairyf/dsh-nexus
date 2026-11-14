@@ -1736,9 +1736,9 @@ function useActions() {
 }
 // src/client/hooks/use-navigation.ts
 function usePage() {
-	return useStore(_temp$14);
+	return useStore(_temp$15);
 }
-function _temp$14(state) {
+function _temp$15(state) {
 	return state.navigation.page;
 }
 function useNavigate() {
@@ -2393,7 +2393,7 @@ function ChannelDetail() {
 	const $ = (0, import_dist.c)(17);
 	const { t } = useTranslation();
 	const { go } = useActions();
-	const kind = useStore(_temp$13);
+	const kind = useStore(_temp$14);
 	let t0;
 	if ($[0] !== kind) {
 		t0 = kind ? {
@@ -2505,7 +2505,7 @@ function ChannelDetail() {
 	} else t6 = $[16];
 	return t6;
 }
-function _temp$13(state) {
+function _temp$14(state) {
 	return state.channel.selected;
 }
 // src/client/pages/channel/components/card.tsx
@@ -53712,7 +53712,7 @@ function GraphCanvas(t0) {
 	const { nodes, edges } = t0;
 	const { t } = useTranslation();
 	const { zoomGraph, panGraph, resetGraph, selectAgent, openTicket } = useActions();
-	const { zoom, x, y, selectedId } = useStore(_temp$12);
+	const { zoom, x, y, selectedId } = useStore(_temp$13);
 	const drag = (0, react.useRef)(null);
 	const width = AGENT_GRAPH.width / zoom;
 	const height = AGENT_GRAPH.height / zoom;
@@ -53729,11 +53729,11 @@ function GraphCanvas(t0) {
 		const selected = nodes.find(t2);
 		let t3;
 		if ($[17] !== nodes) {
-			const supervised = nodes.filter(_temp2$4);
+			const supervised = nodes.filter(_temp2$7);
 			t3 = supervised.length ? {
-				x: Math.min(...supervised.map(_temp3$2)) - 16,
-				y: Math.min(...supervised.map(_temp4$1)) - 12,
-				width: Math.max(...supervised.map(_temp5)) - Math.min(...supervised.map(_temp6)) + AGENT_GRAPH.nodeWidth + 32,
+				x: Math.min(...supervised.map(_temp3$5)) - 16,
+				y: Math.min(...supervised.map(_temp4$2)) - 12,
+				width: Math.max(...supervised.map(_temp5$1)) - Math.min(...supervised.map(_temp6)) + AGENT_GRAPH.nodeWidth + 32,
 				height: Math.max(...supervised.map(_temp7)) - Math.min(...supervised.map(_temp8)) + AGENT_GRAPH.nodeHeight + 28
 			} : null;
 			$[17] = nodes;
@@ -54167,19 +54167,19 @@ function _temp7(node_5) {
 function _temp6(node_4) {
 	return node_4.x;
 }
-function _temp5(node_3) {
+function _temp5$1(node_3) {
 	return node_3.x;
 }
-function _temp4$1(node_2) {
+function _temp4$2(node_2) {
 	return node_2.y;
 }
-function _temp3$2(node_1) {
+function _temp3$5(node_1) {
 	return node_1.x;
 }
-function _temp2$4(node_0) {
+function _temp2$7(node_0) {
 	return node_0.group === "supervisor";
 }
-function _temp$12(state) {
+function _temp$13(state) {
 	return state.graph;
 }
 // src/client/pages/overview/components/graph.tsx
@@ -54370,7 +54370,7 @@ function TaskChart() {
 					cornerRadius: 4,
 					stroke: "none",
 					isAnimationActive: false,
-					children: OVERVIEW_TASK_SEGMENTS.map(_temp$11)
+					children: OVERVIEW_TASK_SEGMENTS.map(_temp$12)
 				})
 			})
 		});
@@ -54389,7 +54389,7 @@ function TaskChart() {
 	} else t2 = $[4];
 	return t2;
 }
-function _temp$11(segment) {
+function _temp$12(segment) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(import_lib.Cell, { fill: segment.color }, segment.name);
 }
 // src/client/pages/overview/page.tsx
@@ -54398,7 +54398,7 @@ function Overview() {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { setOverviewView } = useActions();
-	const view = useStore(_temp$10);
+	const view = useStore(_temp$11);
 	const t0 = (0, react.useId)();
 	let t1;
 	if ($[0] !== t0) {
@@ -54465,7 +54465,7 @@ function Overview() {
 	} else t11 = $[18];
 	let t12;
 	if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-		t12 = OVERVIEW_CHANNELS.filter(_temp2$3);
+		t12 = OVERVIEW_CHANNELS.filter(_temp2$6);
 		$[19] = t12;
 	} else t12 = $[19];
 	let t13;
@@ -54493,7 +54493,7 @@ function Overview() {
 	if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
 		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 			className: "mt-auto grid grid-cols-3 gap-2.5",
-			children: OVERVIEW_CHANNELS.slice(0, 3).map(_temp3$1)
+			children: OVERVIEW_CHANNELS.slice(0, 3).map(_temp3$4)
 		});
 		$[25] = t16;
 	} else t16 = $[25];
@@ -54919,7 +54919,7 @@ function Overview() {
 	if ($[139] !== view) {
 		t69 = view === "recent" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 			className: "pl-0",
-			children: OVERVIEW_TASKS.map(_temp4)
+			children: OVERVIEW_TASKS.map(_temp4$1)
 		}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Graph, {});
 		$[139] = view;
 		$[140] = t69;
@@ -54962,16 +54962,16 @@ function Overview() {
 	} else t72 = $[151];
 	return t72;
 }
-function _temp4(task) {
+function _temp4$1(task) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row$1, { task }, task.id);
 }
-function _temp3$1(channel_0) {
+function _temp3$4(channel_0) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChannelTile, { channel: channel_0 }, channel_0.name);
 }
-function _temp2$3(channel) {
+function _temp2$6(channel) {
 	return channel.connected;
 }
-function _temp$10(state) {
+function _temp$11(state) {
 	return state.overview.view;
 }
 // src/client/pages/setting/model.ts
@@ -55088,38 +55088,40 @@ function initialSettings() {
 	};
 }
 // src/client/pages/setting/components/projects.tsx
-function Projects(t0) {
-	const $ = (0, import_dist.c)(43);
-	const { projects, refreshedAt, onRefresh, onToggle } = t0;
+function Projects() {
+	const $ = (0, import_dist.c)(45);
 	const { t } = useTranslation();
+	const projects = useStore(_temp$10);
+	const refreshedAt = useStore(_temp2$5);
+	const { refreshSettingProjects, toggleSettingProject } = useActions();
 	const id = (0, react.useId)();
 	const [query, setQuery] = (0, react.useState)("");
-	let t1;
-	if ($[0] !== id || $[1] !== onRefresh || $[2] !== onToggle || $[3] !== projects || $[4] !== query || $[5] !== refreshedAt || $[6] !== t) {
+	let t0;
+	if ($[0] !== id || $[1] !== projects || $[2] !== query || $[3] !== refreshSettingProjects || $[4] !== refreshedAt || $[5] !== t || $[6] !== toggleSettingProject) {
 		const normalized = query.trim().toLocaleLowerCase();
 		const candidates = eligibleProjects(projects);
 		const visible = candidates.filter((project) => !normalized || [project.name, project.directory].join(" ").toLocaleLowerCase().includes(normalized));
-		const enabled = candidates.filter(_temp$9).length;
-		let t2;
+		const enabled = candidates.filter(_temp3$3).length;
+		let t1;
 		if ($[8] !== t) {
-			t2 = t("settingProjects");
+			t1 = t("settingProjects");
 			$[8] = t;
-			$[9] = t2;
-		} else t2 = $[9];
-		let t3;
-		if ($[10] !== id || $[11] !== t2) {
-			t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+			$[9] = t1;
+		} else t1 = $[9];
+		let t2;
+		if ($[10] !== id || $[11] !== t1) {
+			t2 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
 				id,
 				className: "m-0 text-sm font-medium",
-				children: t2
+				children: t1
 			});
 			$[10] = id;
-			$[11] = t2;
-			$[12] = t3;
-		} else t3 = $[12];
-		const t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			$[11] = t1;
+			$[12] = t2;
+		} else t2 = $[12];
+		const t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			className: "flex flex-wrap items-center gap-2",
-			children: [t3, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+			children: [t2, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
 				tone: "quiet",
 				children: t("settingEnabledCount", {
 					enabled,
@@ -55127,78 +55129,84 @@ function Projects(t0) {
 				})
 			})]
 		});
-		let t5;
+		let t4;
 		if ($[13] !== t) {
-			t5 = t("settingProjectsDescription");
+			t4 = t("settingProjectsDescription");
 			$[13] = t;
-			$[14] = t5;
-		} else t5 = $[14];
-		let t6;
-		if ($[15] !== t5) {
-			t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			$[14] = t4;
+		} else t4 = $[14];
+		let t5;
+		if ($[15] !== t4) {
+			t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 				className: "m-0 mt-1.5 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
-				children: t5
+				children: t4
 			});
-			$[15] = t5;
-			$[16] = t6;
-		} else t6 = $[16];
-		let t7;
-		if ($[17] !== t4 || $[18] !== t6) {
-			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			$[15] = t4;
+			$[16] = t5;
+		} else t5 = $[16];
+		let t6;
+		if ($[17] !== t3 || $[18] !== t5) {
+			t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "min-w-0",
-				children: [t4, t6]
+				children: [t3, t5]
 			});
-			$[17] = t4;
-			$[18] = t6;
-			$[19] = t7;
-		} else t7 = $[19];
+			$[17] = t3;
+			$[18] = t5;
+			$[19] = t6;
+		} else t6 = $[19];
+		let t7;
+		if ($[20] !== refreshSettingProjects) {
+			t7 = () => refreshSettingProjects((/* @__PURE__ */ new Date()).toISOString());
+			$[20] = refreshSettingProjects;
+			$[21] = t7;
+		} else t7 = $[21];
 		let t8;
-		if ($[20] !== t) {
+		if ($[22] !== t) {
 			t8 = t("settingRefresh");
-			$[20] = t;
-			$[21] = t8;
-		} else t8 = $[21];
+			$[22] = t;
+			$[23] = t8;
+		} else t8 = $[23];
 		let t9;
-		if ($[22] !== onRefresh || $[23] !== t8) {
+		if ($[24] !== t7 || $[25] !== t8) {
 			t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				size: "sm",
 				variant: "outline",
-				onClick: onRefresh,
+				onClick: t7,
 				children: t8
 			});
-			$[22] = onRefresh;
-			$[23] = t8;
-			$[24] = t9;
-		} else t9 = $[24];
+			$[24] = t7;
+			$[25] = t8;
+			$[26] = t9;
+		} else t9 = $[26];
 		let t10;
-		if ($[25] !== t7 || $[26] !== t9) {
+		if ($[27] !== t6 || $[28] !== t9) {
 			t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 				className: "flex flex-wrap items-start justify-between gap-3 p-5 pb-4",
-				children: [t7, t9]
+				children: [t6, t9]
 			});
-			$[25] = t7;
-			$[26] = t9;
-			$[27] = t10;
-		} else t10 = $[27];
+			$[27] = t6;
+			$[28] = t9;
+			$[29] = t10;
+		} else t10 = $[29];
 		let t11;
-		if ($[28] !== t) {
-			t11 = t("settingSearchProjects");
-			$[28] = t;
-			$[29] = t11;
-		} else t11 = $[29];
-		let t12;
 		if ($[30] !== t) {
-			t12 = t("settingSearchProjects");
+			t11 = t("settingSearchProjects");
 			$[30] = t;
-			$[31] = t12;
-		} else t12 = $[31];
+			$[31] = t11;
+		} else t11 = $[31];
+		let t12;
+		if ($[32] !== t) {
+			t12 = t("settingSearchProjects");
+			$[32] = t;
+			$[33] = t12;
+		} else t12 = $[33];
 		let t13;
-		if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
+		if ($[34] === Symbol.for("react.memo_cache_sentinel")) {
 			t13 = (event) => setQuery(event.currentTarget.value);
-			$[32] = t13;
-		} else t13 = $[32];
+			$[34] = t13;
+		} else t13 = $[34];
 		let t14;
-		if ($[33] !== query || $[34] !== t11 || $[35] !== t12) {
+		if ($[35] !== query || $[36] !== t11 || $[37] !== t12) {
 			t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
 				type: "search",
 				"aria-label": t11,
@@ -55207,13 +55215,13 @@ function Projects(t0) {
 				onChange: t13,
 				className: "min-w-40 flex-1 !text-xs @min-[620px]:max-w-xs"
 			});
-			$[33] = query;
-			$[34] = t11;
-			$[35] = t12;
-			$[36] = t14;
-		} else t14 = $[36];
+			$[35] = query;
+			$[36] = t11;
+			$[37] = t12;
+			$[38] = t14;
+		} else t14 = $[38];
 		let t15;
-		if ($[37] !== refreshedAt || $[38] !== t) {
+		if ($[39] !== refreshedAt || $[40] !== t) {
 			t15 = refreshedAt && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("time", {
 				dateTime: refreshedAt,
 				title: refreshedAt,
@@ -55224,21 +55232,21 @@ function Projects(t0) {
 					new Date(refreshedAt).toLocaleTimeString()
 				]
 			});
-			$[37] = refreshedAt;
-			$[38] = t;
-			$[39] = t15;
-		} else t15 = $[39];
+			$[39] = refreshedAt;
+			$[40] = t;
+			$[41] = t15;
+		} else t15 = $[41];
 		let t16;
-		if ($[40] !== t14 || $[41] !== t15) {
+		if ($[42] !== t14 || $[43] !== t15) {
 			t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "flex flex-wrap items-center justify-between gap-3 px-5 pb-4",
 				children: [t14, t15]
 			});
-			$[40] = t14;
-			$[41] = t15;
-			$[42] = t16;
-		} else t16 = $[42];
-		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			$[42] = t14;
+			$[43] = t15;
+			$[44] = t16;
+		} else t16 = $[44];
+		t0 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 			className: "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]",
 			"aria-labelledby": id,
 			children: [
@@ -55259,7 +55267,7 @@ function Projects(t0) {
 										checked: project_1.enabled,
 										"aria-label": t("settingSelectProject", { name: project_1.name }),
 										"aria-describedby": pathId,
-										onChange: (event_0) => onToggle(project_1.id, event_0.currentTarget.checked),
+										onChange: (event_0) => toggleSettingProject(project_1.id, event_0.currentTarget.checked),
 										className: "size-3 cursor-pointer accent-[var(--dsw-alias-state-business-primary)]"
 									})
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -55314,66 +55322,76 @@ function Projects(t0) {
 			]
 		});
 		$[0] = id;
-		$[1] = onRefresh;
-		$[2] = onToggle;
-		$[3] = projects;
-		$[4] = query;
-		$[5] = refreshedAt;
-		$[6] = t;
-		$[7] = t1;
-	} else t1 = $[7];
-	return t1;
+		$[1] = projects;
+		$[2] = query;
+		$[3] = refreshSettingProjects;
+		$[4] = refreshedAt;
+		$[5] = t;
+		$[6] = toggleSettingProject;
+		$[7] = t0;
+	} else t0 = $[7];
+	return t0;
 }
-function _temp$9(project_0) {
+function _temp3$3(project_0) {
 	return project_0.enabled;
 }
+function _temp2$5(state_0) {
+	return state_0.setting.refreshedAt;
+}
+function _temp$10(state) {
+	return state.setting.projects;
+}
 // src/client/pages/setting/components/runtime.tsx
-function Runtime(t0) {
-	const $ = (0, import_dist.c)(85);
-	const { section, draft, saved, onEdit, onSave, onReset } = t0;
+function Runtime() {
+	const $ = (0, import_dist.c)(89);
 	const { t } = useTranslation();
+	const section = useStore(_temp$9);
+	const draft = useStore(_temp2$4);
+	const saved = useStore(_temp3$2);
+	const { editSettings, saveSettings, resetSettings } = useActions();
 	const prefix = (0, react.useId)();
-	const t1 = GROUPS[section];
-	let t2;
-	if ($[0] !== draft || $[1] !== saved || $[2] !== t1) {
-		let t3;
+	if (section === "projects") return null;
+	const t0 = GROUPS[section];
+	let t1;
+	if ($[0] !== draft || $[1] !== saved || $[2] !== t0) {
+		let t2;
 		if ($[4] !== draft || $[5] !== saved) {
-			t3 = (key) => draft[key] !== saved[key];
+			t2 = (key) => draft[key] !== saved[key];
 			$[4] = draft;
 			$[5] = saved;
-			$[6] = t3;
-		} else t3 = $[6];
-		t2 = t1.some(t3);
+			$[6] = t2;
+		} else t2 = $[6];
+		t1 = t0.some(t2);
 		$[0] = draft;
 		$[1] = saved;
-		$[2] = t1;
-		$[3] = t2;
-	} else t2 = $[3];
-	const dirty = t2;
-	let t3;
+		$[2] = t0;
+		$[3] = t1;
+	} else t1 = $[3];
+	const dirty = t1;
+	let t2;
 	if ($[7] !== draft || $[8] !== saved || $[9] !== section) {
-		let t4;
+		let t3;
 		if ($[11] !== draft) {
-			t4 = (key_0) => [key_0, draft[key_0]];
+			t3 = (key_0) => [key_0, draft[key_0]];
 			$[11] = draft;
-			$[12] = t4;
-		} else t4 = $[12];
-		t3 = validSettings({
+			$[12] = t3;
+		} else t3 = $[12];
+		t2 = validSettings({
 			...saved,
-			...Object.fromEntries(GROUPS[section].map(t4))
+			...Object.fromEntries(GROUPS[section].map(t3))
 		});
 		$[7] = draft;
 		$[8] = saved;
 		$[9] = section;
-		$[10] = t3;
-	} else t3 = $[10];
-	const valid = t3;
+		$[10] = t2;
+	} else t2 = $[10];
+	const valid = t2;
+	let t3;
 	let t4;
 	let t5;
 	let t6;
 	let t7;
-	let t8;
-	if ($[13] !== dirty || $[14] !== draft || $[15] !== onEdit || $[16] !== onSave || $[17] !== prefix || $[18] !== section || $[19] !== t || $[20] !== valid) {
+	if ($[13] !== dirty || $[14] !== draft || $[15] !== editSettings || $[16] !== prefix || $[17] !== saveSettings || $[18] !== section || $[19] !== t || $[20] !== valid) {
 		const fields = [
 			{
 				key: "maxWorkers",
@@ -55406,65 +55424,66 @@ function Runtime(t0) {
 				unit: "settingSecondsUnit"
 			}
 		];
-		t4 = "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]";
-		if ($[26] !== dirty || $[27] !== onSave || $[28] !== valid) {
-			t5 = (event) => {
+		t3 = "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]";
+		if ($[26] !== dirty || $[27] !== saveSettings || $[28] !== section || $[29] !== valid) {
+			t4 = (event) => {
 				event.preventDefault();
-				if (valid && dirty) onSave();
+				if (valid && dirty) saveSettings(section);
 			};
 			$[26] = dirty;
-			$[27] = onSave;
-			$[28] = valid;
-			$[29] = t5;
-		} else t5 = $[29];
-		t6 = `${prefix}-runtime`;
-		const t9 = `${prefix}-runtime`;
-		const t10 = section === "execution" ? "settingExecution" : "settingDelivery";
+			$[27] = saveSettings;
+			$[28] = section;
+			$[29] = valid;
+			$[30] = t4;
+		} else t4 = $[30];
+		t5 = `${prefix}-runtime`;
+		const t8 = `${prefix}-runtime`;
+		const t9 = section === "execution" ? "settingExecution" : "settingDelivery";
+		let t10;
+		if ($[31] !== t || $[32] !== t9) {
+			t10 = t(t9);
+			$[31] = t;
+			$[32] = t9;
+			$[33] = t10;
+		} else t10 = $[33];
 		let t11;
-		if ($[30] !== t || $[31] !== t10) {
-			t11 = t(t10);
-			$[30] = t;
-			$[31] = t10;
-			$[32] = t11;
-		} else t11 = $[32];
-		let t12;
-		if ($[33] !== t11 || $[34] !== t9) {
-			t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-				id: t9,
+		if ($[34] !== t10 || $[35] !== t8) {
+			t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+				id: t8,
 				className: "m-0 text-sm font-medium",
-				children: t11
+				children: t10
 			});
-			$[33] = t11;
-			$[34] = t9;
-			$[35] = t12;
-		} else t12 = $[35];
-		const t13 = section === "execution" ? "settingExecutionDescription" : "settingDeliveryDescription";
+			$[34] = t10;
+			$[35] = t8;
+			$[36] = t11;
+		} else t11 = $[36];
+		const t12 = section === "execution" ? "settingExecutionDescription" : "settingDeliveryDescription";
+		let t13;
+		if ($[37] !== t || $[38] !== t12) {
+			t13 = t(t12);
+			$[37] = t;
+			$[38] = t12;
+			$[39] = t13;
+		} else t13 = $[39];
 		let t14;
-		if ($[36] !== t || $[37] !== t13) {
-			t14 = t(t13);
-			$[36] = t;
-			$[37] = t13;
-			$[38] = t14;
-		} else t14 = $[38];
-		let t15;
-		if ($[39] !== t14) {
-			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+		if ($[40] !== t13) {
+			t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 				className: "m-0 mt-1.5 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
-				children: t14
+				children: t13
 			});
-			$[39] = t14;
-			$[40] = t15;
-		} else t15 = $[40];
-		if ($[41] !== t12 || $[42] !== t15) {
-			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+			$[40] = t13;
+			$[41] = t14;
+		} else t14 = $[41];
+		if ($[42] !== t11 || $[43] !== t14) {
+			t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 				className: "px-4 py-3",
-				children: [t12, t15]
+				children: [t11, t14]
 			});
-			$[41] = t12;
-			$[42] = t15;
-			$[43] = t7;
-		} else t7 = $[43];
-		t8 = fields.filter((field) => GROUPS[section].includes(field.key)).map((field_0) => {
+			$[42] = t11;
+			$[43] = t14;
+			$[44] = t6;
+		} else t6 = $[44];
+		t7 = fields.filter((field) => GROUPS[section].includes(field.key)).map((field_0) => {
 			const limits = LIMITS[field_0.key];
 			const value = draft[field_0.key];
 			const disabled = field_0.key === "autoMergeMaxLines" && !draft.autoMerge;
@@ -55498,7 +55517,7 @@ function Runtime(t0) {
 							"aria-describedby": `${id}-help ${id}-range`,
 							"aria-invalid": invalid && !disabled,
 							disabled,
-							onChange: (event_0) => onEdit({ [field_0.key]: event_0.currentTarget.value === "" ? NaN : Number(event_0.currentTarget.value) }),
+							onChange: (event_0) => editSettings({ [field_0.key]: event_0.currentTarget.value === "" ? NaN : Number(event_0.currentTarget.value) }),
 							className: "w-24 !text-xs"
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: "text-xs text-[var(--dsw-alias-label-tertiary)]",
@@ -55517,28 +55536,28 @@ function Runtime(t0) {
 		});
 		$[13] = dirty;
 		$[14] = draft;
-		$[15] = onEdit;
-		$[16] = onSave;
-		$[17] = prefix;
+		$[15] = editSettings;
+		$[16] = prefix;
+		$[17] = saveSettings;
 		$[18] = section;
 		$[19] = t;
 		$[20] = valid;
-		$[21] = t4;
-		$[22] = t5;
-		$[23] = t6;
-		$[24] = t7;
-		$[25] = t8;
+		$[21] = t3;
+		$[22] = t4;
+		$[23] = t5;
+		$[24] = t6;
+		$[25] = t7;
 	} else {
-		t4 = $[21];
-		t5 = $[22];
-		t6 = $[23];
-		t7 = $[24];
-		t8 = $[25];
+		t3 = $[21];
+		t4 = $[22];
+		t5 = $[23];
+		t6 = $[24];
+		t7 = $[25];
 	}
-	let t9;
-	if ($[44] !== draft || $[45] !== onEdit || $[46] !== section || $[47] !== t) {
-		t9 = section === "execution" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "flex items-start justify-between gapx-4 py-3 border-t border-[var(--dsw-alias-border-l3)] px-4 py-3",
+	let t8;
+	if ($[45] !== draft || $[46] !== editSettings || $[47] !== section || $[48] !== t) {
+		t8 = section === "execution" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex items-start justify-between gap-5 border-t border-[var(--dsw-alias-border-l3)] px-4 py-3",
 			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: "min-w-0",
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
@@ -55551,83 +55570,90 @@ function Runtime(t0) {
 			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Switch, {
 				checked: draft.autoMerge,
 				label: t("settingAutoMerge"),
-				onChange: (autoMerge) => onEdit({ autoMerge })
+				onChange: (autoMerge) => editSettings({ autoMerge })
 			})]
 		});
-		$[44] = draft;
-		$[45] = onEdit;
-		$[46] = section;
-		$[47] = t;
-		$[48] = t9;
-	} else t9 = $[48];
+		$[45] = draft;
+		$[46] = editSettings;
+		$[47] = section;
+		$[48] = t;
+		$[49] = t8;
+	} else t8 = $[49];
+	let t9;
+	if ($[50] !== t) {
+		t9 = t("settingPersistenceOnly");
+		$[50] = t;
+		$[51] = t9;
+	} else t9 = $[51];
 	let t10;
-	if ($[49] !== t) {
-		t10 = t("settingPersistenceOnly");
-		$[49] = t;
-		$[50] = t10;
-	} else t10 = $[50];
-	let t11;
-	if ($[51] !== t10) {
-		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+	if ($[52] !== t9) {
+		t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
-			children: t10
+			children: t9
 		});
-		$[51] = t10;
-		$[52] = t11;
-	} else t11 = $[52];
-	let t12;
-	if ($[53] !== dirty || $[54] !== t || $[55] !== valid) {
-		t12 = dirty && !valid && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+		$[52] = t9;
+		$[53] = t10;
+	} else t10 = $[53];
+	let t11;
+	if ($[54] !== dirty || $[55] !== t || $[56] !== valid) {
+		t11 = dirty && !valid && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 			role: "status",
 			className: "m-0 mt-1 text-[11px] leading-5 text-[var(--dsw-alias-state-error-primary)]",
 			children: t("settingInvalid")
 		});
-		$[53] = dirty;
-		$[54] = t;
-		$[55] = valid;
-		$[56] = t12;
-	} else t12 = $[56];
-	let t13;
-	if ($[57] !== t11 || $[58] !== t12) {
-		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "min-w-0 flex-1 basis-60",
-			children: [t11, t12]
-		});
+		$[54] = dirty;
+		$[55] = t;
+		$[56] = valid;
 		$[57] = t11;
-		$[58] = t12;
-		$[59] = t13;
-	} else t13 = $[59];
-	const t14 = !dirty;
+	} else t11 = $[57];
+	let t12;
+	if ($[58] !== t10 || $[59] !== t11) {
+		t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "min-w-0 flex-1 basis-60",
+			children: [t10, t11]
+		});
+		$[58] = t10;
+		$[59] = t11;
+		$[60] = t12;
+	} else t12 = $[60];
+	const t13 = !dirty;
+	let t14;
+	if ($[61] !== resetSettings || $[62] !== section) {
+		t14 = () => resetSettings(section);
+		$[61] = resetSettings;
+		$[62] = section;
+		$[63] = t14;
+	} else t14 = $[63];
 	let t15;
-	if ($[60] !== t) {
+	if ($[64] !== t) {
 		t15 = t("settingDiscard");
-		$[60] = t;
-		$[61] = t15;
-	} else t15 = $[61];
+		$[64] = t;
+		$[65] = t15;
+	} else t15 = $[65];
 	let t16;
-	if ($[62] !== onReset || $[63] !== t14 || $[64] !== t15) {
+	if ($[66] !== t13 || $[67] !== t14 || $[68] !== t15) {
 		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 			type: "button",
 			size: "sm",
 			variant: "ghost",
-			disabled: t14,
-			onClick: onReset,
+			disabled: t13,
+			onClick: t14,
 			children: t15
 		});
-		$[62] = onReset;
-		$[63] = t14;
-		$[64] = t15;
-		$[65] = t16;
-	} else t16 = $[65];
+		$[66] = t13;
+		$[67] = t14;
+		$[68] = t15;
+		$[69] = t16;
+	} else t16 = $[69];
 	const t17 = !dirty || !valid;
 	let t18;
-	if ($[66] !== t) {
+	if ($[70] !== t) {
 		t18 = t("settingSave");
-		$[66] = t;
-		$[67] = t18;
-	} else t18 = $[67];
+		$[70] = t;
+		$[71] = t18;
+	} else t18 = $[71];
 	let t19;
-	if ($[68] !== t17 || $[69] !== t18) {
+	if ($[72] !== t17 || $[73] !== t18) {
 		t19 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 			type: "submit",
 			size: "sm",
@@ -55635,62 +55661,74 @@ function Runtime(t0) {
 			disabled: t17,
 			children: t18
 		});
-		$[68] = t17;
-		$[69] = t18;
-		$[70] = t19;
-	} else t19 = $[70];
+		$[72] = t17;
+		$[73] = t18;
+		$[74] = t19;
+	} else t19 = $[74];
 	let t20;
-	if ($[71] !== t16 || $[72] !== t19) {
+	if ($[75] !== t16 || $[76] !== t19) {
 		t20 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			className: "flex items-center gap-2",
 			children: [t16, t19]
 		});
-		$[71] = t16;
-		$[72] = t19;
-		$[73] = t20;
-	} else t20 = $[73];
+		$[75] = t16;
+		$[76] = t19;
+		$[77] = t20;
+	} else t20 = $[77];
 	let t21;
-	if ($[74] !== t13 || $[75] !== t20) {
+	if ($[78] !== t12 || $[79] !== t20) {
 		t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
 			className: "flex flex-wrap items-center justify-between gap-3 border-t border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-4 py-2.5",
-			children: [t13, t20]
+			children: [t12, t20]
 		});
-		$[74] = t13;
-		$[75] = t20;
-		$[76] = t21;
-	} else t21 = $[76];
+		$[78] = t12;
+		$[79] = t20;
+		$[80] = t21;
+	} else t21 = $[80];
 	let t22;
-	if ($[77] !== t21 || $[78] !== t4 || $[79] !== t5 || $[80] !== t6 || $[81] !== t7 || $[82] !== t8 || $[83] !== t9) {
+	if ($[81] !== t21 || $[82] !== t3 || $[83] !== t4 || $[84] !== t5 || $[85] !== t6 || $[86] !== t7 || $[87] !== t8) {
 		t22 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("form", {
-			className: t4,
-			onSubmit: t5,
-			"aria-labelledby": t6,
+			className: t3,
+			onSubmit: t4,
+			"aria-labelledby": t5,
 			children: [
+				t6,
 				t7,
 				t8,
-				t9,
 				t21
 			]
 		});
-		$[77] = t21;
-		$[78] = t4;
-		$[79] = t5;
-		$[80] = t6;
-		$[81] = t7;
-		$[82] = t8;
-		$[83] = t9;
-		$[84] = t22;
-	} else t22 = $[84];
+		$[81] = t21;
+		$[82] = t3;
+		$[83] = t4;
+		$[84] = t5;
+		$[85] = t6;
+		$[86] = t7;
+		$[87] = t8;
+		$[88] = t22;
+	} else t22 = $[88];
 	return t22;
+}
+function _temp3$2(state_1) {
+	return state_1.setting.saved;
+}
+function _temp2$4(state_0) {
+	return state_0.setting.draft;
+}
+function _temp$9(state) {
+	return state.setting.section;
 }
 // src/client/pages/setting/page.tsx
 function Setting() {
-	const $ = (0, import_dist.c)(98);
+	const $ = (0, import_dist.c)(90);
 	const { t } = useTranslation();
-	const state_0 = useStore(_temp$8);
-	const actions = useActions();
+	const activeSection = useStore(_temp$8);
+	const notice = useStore(_temp2$3);
+	const invalid = useStore(_temp3$1);
+	const executionDirty = useStore(_temp4);
+	const deliveryDirty = useStore(_temp5);
+	const { setSettingSection } = useActions();
 	const id = (0, react.useId)();
-	let dirty;
 	let t0;
 	let t1;
 	let t10;
@@ -55702,7 +55740,7 @@ function Setting() {
 	let t7;
 	let t8;
 	let t9;
-	if ($[0] !== actions || $[1] !== id || $[2] !== state_0.draft || $[3] !== state_0.invalid || $[4] !== state_0.notice || $[5] !== state_0.projects || $[6] !== state_0.refreshedAt || $[7] !== state_0.saved || $[8] !== state_0.section || $[9] !== t) {
+	if ($[0] !== activeSection || $[1] !== deliveryDirty || $[2] !== executionDirty || $[3] !== id || $[4] !== invalid || $[5] !== notice || $[6] !== setSettingSection || $[7] !== t) {
 		const notices = {
 			saved: "settingSaved",
 			refreshed: "settingRefreshed",
@@ -55712,7 +55750,7 @@ function Setting() {
 		let t12;
 		let t13;
 		let t14;
-		if ($[22] !== actions || $[23] !== id || $[24] !== state_0.draft || $[25] !== state_0.saved || $[26] !== state_0.section || $[27] !== t) {
+		if ($[19] !== activeSection || $[20] !== deliveryDirty || $[21] !== executionDirty || $[22] !== id || $[23] !== setSettingSection || $[24] !== t) {
 			const sections = [
 				{
 					value: "projects",
@@ -55730,247 +55768,229 @@ function Setting() {
 					icon: ActivityIcon
 				}
 			];
-			dirty = Object.keys(state_0.draft).some((key) => state_0.draft[key] !== state_0.saved[key]);
+			const dirty = {
+				projects: false,
+				execution: executionDirty,
+				delivery: deliveryDirty
+			};
 			t8 = "@container flex min-w-0 flex-col gap-4 pb-8";
-			if ($[37] !== t) {
+			if ($[33] !== t) {
 				t9 = t("tabSettings");
-				$[37] = t;
-				$[38] = t9;
-			} else t9 = $[38];
+				$[33] = t;
+				$[34] = t9;
+			} else t9 = $[34];
 			let t15;
-			if ($[39] !== t) {
+			if ($[35] !== t) {
 				t15 = t("tabSettings");
-				$[39] = t;
-				$[40] = t15;
-			} else t15 = $[40];
+				$[35] = t;
+				$[36] = t15;
+			} else t15 = $[36];
 			let t16;
-			if ($[41] !== t15) {
+			if ($[37] !== t15) {
 				t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
 					className: "m-0 text-base font-medium",
 					children: t15
 				});
-				$[41] = t15;
-				$[42] = t16;
-			} else t16 = $[42];
+				$[37] = t15;
+				$[38] = t16;
+			} else t16 = $[38];
 			let t17;
-			if ($[43] !== t) {
+			if ($[39] !== t) {
 				t17 = t("settingDescription");
-				$[43] = t;
-				$[44] = t17;
-			} else t17 = $[44];
+				$[39] = t;
+				$[40] = t17;
+			} else t17 = $[40];
 			let t18;
-			if ($[45] !== t17) {
+			if ($[41] !== t17) {
 				t18 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 					className: "m-0 mt-1.5 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]",
 					children: t17
 				});
-				$[45] = t17;
-				$[46] = t18;
-			} else t18 = $[46];
+				$[41] = t17;
+				$[42] = t18;
+			} else t18 = $[42];
 			let t19;
-			if ($[47] !== t16 || $[48] !== t18) {
+			if ($[43] !== t16 || $[44] !== t18) {
 				t19 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [t16, t18] });
-				$[47] = t16;
-				$[48] = t18;
-				$[49] = t19;
-			} else t19 = $[49];
+				$[43] = t16;
+				$[44] = t18;
+				$[45] = t19;
+			} else t19 = $[45];
 			let t20;
-			if ($[50] !== t) {
+			if ($[46] !== t) {
 				t20 = t("overviewDemo");
-				$[50] = t;
-				$[51] = t20;
-			} else t20 = $[51];
+				$[46] = t;
+				$[47] = t20;
+			} else t20 = $[47];
 			let t21;
-			if ($[52] !== t20) {
+			if ($[48] !== t20) {
 				t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
 					tone: "quiet",
 					children: t20
 				});
-				$[52] = t20;
-				$[53] = t21;
-			} else t21 = $[53];
-			if ($[54] !== t19 || $[55] !== t21) {
+				$[48] = t20;
+				$[49] = t21;
+			} else t21 = $[49];
+			if ($[50] !== t19 || $[51] !== t21) {
 				t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 					className: "flex flex-wrap items-start justify-between gap-3",
 					children: [t19, t21]
 				});
-				$[54] = t19;
-				$[55] = t21;
-				$[56] = t10;
-			} else t10 = $[56];
+				$[50] = t19;
+				$[51] = t21;
+				$[52] = t10;
+			} else t10 = $[52];
 			t6 = "grid min-w-0 gap-4 @min-[740px]:grid-cols-[160px_minmax(0,1fr)] @min-[940px]:gap-5";
 			t14 = "self-start @min-[740px]:sticky @min-[740px]:top-4";
-			if ($[57] !== t) {
+			if ($[53] !== t) {
 				t11 = t("settingNavigation");
-				$[57] = t;
-				$[58] = t11;
-			} else t11 = $[58];
+				$[53] = t;
+				$[54] = t11;
+			} else t11 = $[54];
 			t12 = "flex flex-wrap gap-1 rounded-xl bg-[var(--dsw-alias-card-fill)] p-1 @min-[740px]:flex-col @min-[740px]:bg-transparent @min-[740px]:p-0";
 			t13 = sections.map((section) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 				id: `${id}-${section.value}`,
 				type: "button",
-				"aria-current": state_0.section === section.value ? "page" : void 0,
+				"aria-current": activeSection === section.value ? "page" : void 0,
 				"aria-controls": `${id}-content`,
-				onClick: () => actions.setSettingSection(section.value),
-				className: `flex cursor-pointer items-center gap-2.5 rounded-lg border-0 px-3 py-2.5 text-left font-[inherit] text-xs outline-none transition-colors focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)] ${state_0.section === section.value ? "bg-[var(--dsw-alias-card-fill)] font-medium text-[var(--dsw-alias-label-primary)]" : "bg-transparent text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-card-fill)]"}`,
+				onClick: () => setSettingSection(section.value),
+				className: `flex cursor-pointer items-center gap-2.5 rounded-lg border-0 px-3 py-2.5 text-left font-[inherit] text-xs outline-none transition-colors focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)] ${activeSection === section.value ? "bg-[var(--dsw-alias-card-fill)] font-medium text-[var(--dsw-alias-label-primary)]" : "bg-transparent text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-card-fill)]"}`,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(section.icon, {
 						width: 16,
 						height: 16
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t(section.label) }),
-					section.value !== "projects" && GROUPS[section.value].some((key_0) => state_0.draft[key_0] !== state_0.saved[key_0]) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					dirty[section.value] && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: "ml-auto size-1.5 rounded-full bg-[var(--dsw-alias-state-business-primary)]",
 						"aria-label": t("settingUnsaved")
 					})
 				]
 			}, section.value));
-			$[22] = actions;
-			$[23] = id;
-			$[24] = state_0.draft;
-			$[25] = state_0.saved;
-			$[26] = state_0.section;
-			$[27] = t;
-			$[28] = dirty;
-			$[29] = t10;
-			$[30] = t11;
-			$[31] = t12;
-			$[32] = t13;
-			$[33] = t14;
-			$[34] = t6;
-			$[35] = t8;
-			$[36] = t9;
+			$[19] = activeSection;
+			$[20] = deliveryDirty;
+			$[21] = executionDirty;
+			$[22] = id;
+			$[23] = setSettingSection;
+			$[24] = t;
+			$[25] = t10;
+			$[26] = t11;
+			$[27] = t12;
+			$[28] = t13;
+			$[29] = t14;
+			$[30] = t6;
+			$[31] = t8;
+			$[32] = t9;
 		} else {
-			dirty = $[28];
-			t10 = $[29];
-			t11 = $[30];
-			t12 = $[31];
-			t13 = $[32];
-			t14 = $[33];
-			t6 = $[34];
-			t8 = $[35];
-			t9 = $[36];
+			t10 = $[25];
+			t11 = $[26];
+			t12 = $[27];
+			t13 = $[28];
+			t14 = $[29];
+			t6 = $[30];
+			t8 = $[31];
+			t9 = $[32];
 		}
 		let t15;
-		if ($[59] !== t11 || $[60] !== t12 || $[61] !== t13) {
+		if ($[55] !== t11 || $[56] !== t12 || $[57] !== t13) {
 			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
 				"aria-label": t11,
 				className: t12,
 				children: t13
 			});
-			$[59] = t11;
-			$[60] = t12;
-			$[61] = t13;
-			$[62] = t15;
-		} else t15 = $[62];
-		if ($[63] !== t14 || $[64] !== t15) {
+			$[55] = t11;
+			$[56] = t12;
+			$[57] = t13;
+			$[58] = t15;
+		} else t15 = $[58];
+		if ($[59] !== t14 || $[60] !== t15) {
 			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("aside", {
 				className: t14,
 				children: t15
 			});
-			$[63] = t14;
-			$[64] = t15;
-			$[65] = t7;
-		} else t7 = $[65];
+			$[59] = t14;
+			$[60] = t15;
+			$[61] = t7;
+		} else t7 = $[61];
 		t0 = `${id}-content`;
 		t1 = "region";
-		t2 = `${id}-${state_0.section}`;
+		t2 = `${id}-${activeSection}`;
 		t3 = "flex min-w-0 flex-col gap-4";
-		if ($[66] !== actions || $[67] !== state_0.draft || $[68] !== state_0.projects || $[69] !== state_0.refreshedAt || $[70] !== state_0.saved || $[71] !== state_0.section) {
-			t4 = state_0.section === "projects" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Projects, {
-				projects: state_0.projects,
-				refreshedAt: state_0.refreshedAt,
-				onRefresh: () => actions.refreshSettingProjects((/* @__PURE__ */ new Date()).toISOString()),
-				onToggle: actions.toggleSettingProject
-			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Runtime, {
-				section: state_0.section,
-				draft: state_0.draft,
-				saved: state_0.saved,
-				onEdit: actions.editSettings,
-				onSave: () => actions.saveSettings(state_0.section),
-				onReset: () => actions.resetSettings(state_0.section)
-			});
-			$[66] = actions;
-			$[67] = state_0.draft;
-			$[68] = state_0.projects;
-			$[69] = state_0.refreshedAt;
-			$[70] = state_0.saved;
-			$[71] = state_0.section;
-			$[72] = t4;
-		} else t4 = $[72];
-		t5 = state_0.invalid ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+		if ($[62] !== activeSection) {
+			t4 = activeSection === "projects" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Projects, {}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Runtime, {});
+			$[62] = activeSection;
+			$[63] = t4;
+		} else t4 = $[63];
+		t5 = invalid ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 			role: "alert",
 			className: "m-0 text-xs text-[var(--dsw-alias-state-error-primary)]",
 			children: t("settingInvalid")
-		}) : state_0.notice && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+		}) : notice && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 			role: "status",
 			className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
-			children: t(notices[state_0.notice])
+			children: t(notices[notice])
 		});
-		$[0] = actions;
-		$[1] = id;
-		$[2] = state_0.draft;
-		$[3] = state_0.invalid;
-		$[4] = state_0.notice;
-		$[5] = state_0.projects;
-		$[6] = state_0.refreshedAt;
-		$[7] = state_0.saved;
-		$[8] = state_0.section;
-		$[9] = t;
-		$[10] = dirty;
-		$[11] = t0;
-		$[12] = t1;
-		$[13] = t10;
-		$[14] = t2;
-		$[15] = t3;
-		$[16] = t4;
-		$[17] = t5;
-		$[18] = t6;
-		$[19] = t7;
-		$[20] = t8;
-		$[21] = t9;
+		$[0] = activeSection;
+		$[1] = deliveryDirty;
+		$[2] = executionDirty;
+		$[3] = id;
+		$[4] = invalid;
+		$[5] = notice;
+		$[6] = setSettingSection;
+		$[7] = t;
+		$[8] = t0;
+		$[9] = t1;
+		$[10] = t10;
+		$[11] = t2;
+		$[12] = t3;
+		$[13] = t4;
+		$[14] = t5;
+		$[15] = t6;
+		$[16] = t7;
+		$[17] = t8;
+		$[18] = t9;
 	} else {
-		dirty = $[10];
-		t0 = $[11];
-		t1 = $[12];
-		t10 = $[13];
-		t2 = $[14];
-		t3 = $[15];
-		t4 = $[16];
-		t5 = $[17];
-		t6 = $[18];
-		t7 = $[19];
-		t8 = $[20];
-		t9 = $[21];
+		t0 = $[8];
+		t1 = $[9];
+		t10 = $[10];
+		t2 = $[11];
+		t3 = $[12];
+		t4 = $[13];
+		t5 = $[14];
+		t6 = $[15];
+		t7 = $[16];
+		t8 = $[17];
+		t9 = $[18];
 	}
 	let t11;
-	if ($[73] !== t) {
+	if ($[64] !== t) {
 		t11 = t("settingPreview");
-		$[73] = t;
-		$[74] = t11;
-	} else t11 = $[74];
+		$[64] = t;
+		$[65] = t11;
+	} else t11 = $[65];
 	let t12;
-	if ($[75] !== dirty || $[76] !== t) {
-		t12 = dirty && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+	if ($[66] !== deliveryDirty || $[67] !== executionDirty || $[68] !== t) {
+		t12 = (executionDirty || deliveryDirty) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 			className: "ml-1",
 			children: t("settingUnsaved")
 		});
-		$[75] = dirty;
-		$[76] = t;
-		$[77] = t12;
-	} else t12 = $[77];
+		$[66] = deliveryDirty;
+		$[67] = executionDirty;
+		$[68] = t;
+		$[69] = t12;
+	} else t12 = $[69];
 	let t13;
-	if ($[78] !== t11 || $[79] !== t12) {
+	if ($[70] !== t11 || $[71] !== t12) {
 		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
 			children: [t11, t12]
 		});
-		$[78] = t11;
-		$[79] = t12;
-		$[80] = t13;
-	} else t13 = $[80];
+		$[70] = t11;
+		$[71] = t12;
+		$[72] = t13;
+	} else t13 = $[72];
 	let t14;
-	if ($[81] !== t0 || $[82] !== t1 || $[83] !== t13 || $[84] !== t2 || $[85] !== t3 || $[86] !== t4 || $[87] !== t5) {
+	if ($[73] !== t0 || $[74] !== t1 || $[75] !== t13 || $[76] !== t2 || $[77] !== t3 || $[78] !== t4 || $[79] !== t5) {
 		t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			id: t0,
 			role: t1,
@@ -55982,43 +56002,59 @@ function Setting() {
 				t13
 			]
 		});
-		$[81] = t0;
-		$[82] = t1;
-		$[83] = t13;
-		$[84] = t2;
-		$[85] = t3;
-		$[86] = t4;
-		$[87] = t5;
-		$[88] = t14;
-	} else t14 = $[88];
+		$[73] = t0;
+		$[74] = t1;
+		$[75] = t13;
+		$[76] = t2;
+		$[77] = t3;
+		$[78] = t4;
+		$[79] = t5;
+		$[80] = t14;
+	} else t14 = $[80];
 	let t15;
-	if ($[89] !== t14 || $[90] !== t6 || $[91] !== t7) {
+	if ($[81] !== t14 || $[82] !== t6 || $[83] !== t7) {
 		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			className: t6,
 			children: [t7, t14]
 		});
-		$[89] = t14;
-		$[90] = t6;
-		$[91] = t7;
-		$[92] = t15;
-	} else t15 = $[92];
+		$[81] = t14;
+		$[82] = t6;
+		$[83] = t7;
+		$[84] = t15;
+	} else t15 = $[84];
 	let t16;
-	if ($[93] !== t10 || $[94] !== t15 || $[95] !== t8 || $[96] !== t9) {
+	if ($[85] !== t10 || $[86] !== t15 || $[87] !== t8 || $[88] !== t9) {
 		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 			className: t8,
 			"aria-label": t9,
 			children: [t10, t15]
 		});
-		$[93] = t10;
-		$[94] = t15;
-		$[95] = t8;
-		$[96] = t9;
-		$[97] = t16;
-	} else t16 = $[97];
+		$[85] = t10;
+		$[86] = t15;
+		$[87] = t8;
+		$[88] = t9;
+		$[89] = t16;
+	} else t16 = $[89];
 	return t16;
 }
+function _temp5(t0) {
+	const { setting: t1 } = t0;
+	const { draft: draft_0, saved: saved_0 } = t1;
+	return GROUPS.delivery.some((key_0) => draft_0[key_0] !== saved_0[key_0]);
+}
+function _temp4(t0) {
+	const { setting: t1 } = t0;
+	const { draft, saved } = t1;
+	return GROUPS.execution.some((key) => draft[key] !== saved[key]);
+}
+function _temp3$1(state_1) {
+	return state_1.setting.invalid;
+}
+function _temp2$3(state_0) {
+	return state_0.setting.notice;
+}
 function _temp$8(state) {
-	return state.setting;
+	return state.setting.section;
 }
 // src/client/pages/ticket/detail/components/arrivals.tsx
 function Arrivals(t0) {
