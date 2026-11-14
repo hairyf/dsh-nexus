@@ -1100,6 +1100,95 @@ const dicts = {
 		tabTriggers: "触发",
 		tabChannels: "渠道",
 		tabSettings: "设置",
+		settingDescription: "管理 Nexus 可参与的 Git 项目与运行参数。",
+		settingNavigation: "设置分类",
+		settingExecution: "执行与合并",
+		settingExecutionDescription: "配置 Worker 并发、后台时限与 PR 自动合并条件。",
+		settingDelivery: "消息投递",
+		settingDeliveryDescription: "配置投递失败阈值与重试退避，不将受阻消息混入待处理。",
+		settingUnsaved: "有未保存的示例修改",
+		settingProjects: "项目范围",
+		settingPreview: "示例界面，修改仅保留在当前面板，尚未接入真实扫描与保存。",
+		settingProjectsDescription: "仅显示已配置 remote 的可用 Git 工作区。",
+		settingSelectProject: "选择项目 {name}",
+		settingOpenSession: "打开会话",
+		settingOpenRepository: "打开仓库",
+		settingEnabledCount: "已启用 {enabled} / {total}",
+		settingRefresh: "刷新示例列表",
+		settingSearchProjects: "搜索项目或目录",
+		settingLastSynced: "最近刷新",
+		settingNoMatchingProjects: "没有匹配的项目",
+		settingNoMatchingProjectsHelp: "尝试其他关键词，或清除搜索。",
+		settingNoProjects: "还没有 Git 项目",
+		settingNoProjectsHelp: "示例列表为空；真实 Git 工作区发现尚未接入，刷新只会重新载入示例。",
+		settingClearSearch: "清除搜索",
+		settingAutoMerge: "自动合并 PR",
+		settingAutoMergeHelp: "默认关闭。开启后仍须满足任务 ready、批准覆盖当前 head，以及改动行数上限；不是跳过审核直接合并。",
+		settingMaxWorkers: "Worker 并发上限",
+		settingMaxWorkersHelp: "默认 10 个，超出时排队。另留一个槽位处理人工消息与状态查询。",
+		settingBackgroundLimit: "后台工作时限",
+		settingBackgroundLimitHelp: "后台工作到达时限后应停止，并将任务退回等待状态。",
+		settingAutoMergeLines: "自动合并改动上限",
+		settingAutoMergeLinesHelp: "新增与删除行数合计不超过此值；仅在自动合并开启时适用。",
+		settingDeliveryAttempts: "投递失败次数上限",
+		settingDeliveryAttemptsHelp: "连续失败达到此次数后标记为投递受阻，与待处理消息分开统计。",
+		settingRetryCeiling: "投递重试间隔上限",
+		settingRetryCeilingHelp: "失败后从 2 秒开始指数退避，重试间隔最多增长到此值。",
+		settingWorkersUnit: "个",
+		settingMinutesUnit: "分钟",
+		settingLinesUnit: "行",
+		settingAttemptsUnit: "次",
+		settingSecondsUnit: "秒",
+		settingRange: "范围 {min}–{max}",
+		settingPersistenceOnly: "仅保存当前分类的示例参数，不写入数据库，也不影响真实运行。",
+		settingDiscard: "撤销修改",
+		settingSave: "保存参数",
+		settingInvalid: "请将所有数值填写为允许范围内的整数。",
+		settingSaved: "当前分类的示例参数已保留，未写入数据库。",
+		settingRefreshed: "示例列表已刷新，原有勾选已保留；未扫描真实工作区。",
+		settingProjectSaved: "示例项目选择已保留，未改变真实项目范围。",
+		channelDescription: "连接代码托管与协作平台，统一接收事件并派发任务。",
+		channelSingleAccount: "每个渠道仅配置一个全局账号，所有关联项目共用。",
+		channelGithubDescription: "接收 GitHub Issue、PR 与评论，通过专属 bot 账号协作。",
+		channelGitlabDescription: "接收 GitLab Issue 与合并请求，同时支持自建实例。",
+		channelFeishuDescription: "通过飞书接收协作消息与任务。",
+		channelNotConfigured: "未配置",
+		channelUnsupported: "暂不支持",
+		channelConfigure: "配置渠道",
+		channelSettings: "渠道设置",
+		channelBack: "返回渠道",
+		channelMissing: "请先选择一个渠道",
+		channelFeishuUnavailable: "飞书渠道尚未开放配置，请先使用 GitHub 或 GitLab。",
+		channelPreview: "配置预览",
+		channelUnavailable: "登录与保存服务尚未接入。此页面不会保存配置或接收真实 Token，也不会改变系统 CLI 的登录状态。",
+		channelSite: "服务站点",
+		channelSiteDescription: "GitLab 官方站和自建站共用同一个渠道，不额外创建账号。",
+		channelHost: "GitLab 站点",
+		channelHostHelp: "默认使用 gitlab.com；自建实例请填写 HTTPS 站点根地址，不含项目路径。",
+		channelHostInvalid: "请输入有效的 HTTPS 站点地址，不要包含账号、密码、项目路径、查询参数或片段。",
+		channelAccount: "渠道账号",
+		channelAccountDescription: "填写预期使用的 bot 身份，登录后必须核对实际账号。",
+		channelLoginName: "预期账号名",
+		channelLoginNameHelp: "身份验证结果必须与此账号一致，不一致时拒绝保存。",
+		channelCommitName: "Git 提交名称",
+		channelCommitEmail: "Git 提交邮箱",
+		channelCommitHelp: "提交身份由专属 gitconfig 提供，不通过 Token 环境变量传递。",
+		channelLoginMethod: "登录方式",
+		channelAuthorize: "授权登录",
+		channelAuthorizeRecommended: "推荐",
+		channelToken: "填写 Token",
+		channelAuthorizeDescription: "通过渠道授权完成登录。授权服务接入后，凭证会写入本渠道的专属目录。",
+		channelAuthorizeAction: "登录 {name}",
+		channelTokenLabel: "Personal Access Token",
+		channelTokenPlaceholder: "登录服务接入后可填写 Token",
+		channelTokenDescription: "Token 由后台 CLI 验证，核对账号身份后才写入专属目录；验证失败不会标记为已登录。",
+		channelTokenDisabled: "验证接口未接入，暂不接受真实 Token。",
+		channelSave: "验证并保存",
+		channelIdentity: "凭证与执行环境",
+		channelCredentialLocation: "凭证目录",
+		channelCredentialProtection: "Token / cookie 不进入数据库、浏览器持久化或普通配置。数据库只记录账号与登录状态。",
+		channelWorkerIdentity: "Worker 默认使用本渠道的专属 CLI 配置，清除会覆盖身份的 Token 变量；无需手动建目录或修改 PATH。",
+		channelSecurityNotice: "这不是安全隔离边界：同一系统用户仍可绕过默认配置。需要真正隔离时，应使用独立的操作系统用户。",
 		sessionListNotReady: "会话列表未就绪",
 		sessionNotListed: "会话未被列出",
 		overviewDemo: "示例数据",
@@ -1114,7 +1203,7 @@ const dicts = {
 		overviewMoreTasks: "前往任务页",
 		overviewConnected: "监听中",
 		overviewDisconnected: "未连接",
-		overviewOtherChannel: "另有 1 个渠道未连接",
+		overviewOtherChannel: "在渠道页配置账号与连接",
 		overviewPerHour: "/h",
 		overviewTotalMessages: "总消息",
 		overviewFiltered: "已过滤",
@@ -1217,7 +1306,87 @@ const dicts = {
 		graphRoot: "主会话",
 		graphLive: "实时",
 		graphSessionId: "会话 ID",
-		graphWorkspace: "工作区"
+		graphWorkspace: "工作区",
+		triggerTitle: "触发话题",
+		triggerTopicsUnit: "个话题",
+		triggerOpenTopic: "查看话题",
+		triggerEventCount: "{count} 条触发",
+		triggerTopicDetail: "话题详情",
+		triggerOpenComment: "查看原评论",
+		triggerOpenEvent: "查看来源",
+		triggerSampleLink: "在新标签页打开来源；当前为示例地址，内容及评论锚点未经核实。",
+		triggerBack: "返回触发话题",
+		triggerTopicNotFound: "未找到此话题，请返回列表重新选择。",
+		triggerTimeline: "触发时间线",
+		triggerNewestFirst: "最新在前",
+		triggerThreadId: "话题 ID",
+		triggerTopicIssue: "Issue",
+		triggerTopicPull: "PR / MR",
+		triggerTopicChat: "会话话题",
+		triggerTopicCi: "分支 CI",
+		triggerDescription: "查看渠道收到的事件，以及它们如何进入编排与任务。",
+		triggerSummary: "示例接收概况，点击筛选投递状态",
+		triggerReceived: "全部接收",
+		triggerPending: "待处理",
+		triggerDone: "已处理",
+		triggerStalled: "投递受阻",
+		triggerNotDelivered: "未投递",
+		triggerSearch: "搜索内容、话题、发送者或任务编号",
+		triggerChannelFilter: "按渠道筛选",
+		triggerKindFilter: "按事件类型筛选",
+		triggerStatusFilter: "按投递状态筛选",
+		triggerAllChannels: "全部渠道",
+		triggerAllKinds: "全部事件",
+		triggerAllStatuses: "全部状态",
+		triggerFeishu: "飞书",
+		triggerMentionedOnly: "仅看 @ 提及",
+		triggerMentioned: "@ 提及",
+		triggerAutomated: "自动事件",
+		triggerReset: "清除筛选",
+		triggerKindComment: "评论",
+		triggerKindOpen: "新建",
+		triggerKindClose: "关闭",
+		triggerKindCi: "CI 变化",
+		triggerKindPush: "推送",
+		triggerResultCount: "显示 {count} / {total} 个话题",
+		triggerSampleDay: "示例日期 · 2026-11-14 · UTC+8",
+		triggerExpand: "展开",
+		triggerCollapse: "收起",
+		triggerSourceText: "来源正文",
+		triggerExternalText: "外部渠道内容，按原始文本展示。",
+		triggerEventId: "事件 ID",
+		triggerRef: "来源引用",
+		triggerThread: "话题归属",
+		triggerTriagePending: "待分诊",
+		triggerTriageClaimed: "已归项目",
+		triggerTriageIgnored: "已忽略",
+		triggerNoProject: "尚未归属项目",
+		triggerDelivery: "消息投递",
+		triggerProjectAgent: "项目编排",
+		triggerUser: "人工",
+		triggerReadPending: "已读，等待处理完成",
+		triggerQueued: "排队中，尚未读取",
+		triggerAttempts: "已尝试 {count} 次",
+		triggerSkipIgnored: "话题已忽略，且未重新 @ 提及；本条未投递。",
+		triggerSkipMention: "本条未 @ 提及；已记录，但未唤醒代理。",
+		triggerNoDelivery: "暂无投递记录，不能据此判断处理结果。",
+		triggerLinkedTasks: "关联任务",
+		triggerNoTask: "尚未关联任务",
+		triggerEmpty: "没有匹配的触发记录",
+		triggerEmptyDescription: "试试其他关键词，或清除当前筛选。",
+		triggerPreviewNotice: "按话题内任一触发筛选，列表始终展示最新摘要。状态计数按话题去重，多份投递可同时待处理和受阻；受阻投递本身不计入待处理。当前为示例数据，实时接收与重试尚未接入。",
+		triggerThreadConsole: "控制台登录回调异常",
+		triggerThreadCi: "默认分支检查结果变化",
+		triggerThreadChatter: "日常讨论与进度同步",
+		triggerTextLogin: "@nexus 登录测试仍有偶发失败，请结合并发请求检查认证模块的 Token 校验。",
+		triggerTextApi: "@nexus 请校对 API 响应规范，重点确认错误码与分页字段是否一致。",
+		triggerTextReview: "@nexus 重新安装入口已经补齐，请再检查一次远程安装失败后的恢复流程。",
+		triggerTextDelivery: "@nexus 控制台登录回调偶发跳转失败，麻烦排查。",
+		triggerTextCi: "main 分支新提交 7e4b2c1 的检查结果发生变化：test 失败，lint 通过。",
+		triggerTextUnmentioned: "补充复现信息：连续运行登录用例时，大约每十次会出现一次 401。",
+		triggerTextIgnored: "收到，今天先按当前计划推进，其他细节下次讨论。",
+		triggerTextOpen: "@nexus 已创建 PR #81，补充远端一键安装的重新安装入口。",
+		triggerErrorSession: "编排会话暂时不可用"
 	},
 	en: {
 		panel: "Nexus",
@@ -1230,6 +1399,95 @@ const dicts = {
 		tabTriggers: "Triggers",
 		tabChannels: "Channels",
 		tabSettings: "Settings",
+		settingDescription: "Manage the Git projects Nexus can work on and its runtime parameters.",
+		settingNavigation: "Settings categories",
+		settingExecution: "Execution & merging",
+		settingExecutionDescription: "Configure Worker concurrency, background limits, and PR auto-merge conditions.",
+		settingDelivery: "Message delivery",
+		settingDeliveryDescription: "Configure failure thresholds and retry backoff. Stalled messages remain separate from pending.",
+		settingUnsaved: "Unsaved sample changes",
+		settingProjects: "Project scope",
+		settingPreview: "Sample UI. Changes stay in this panel; live scanning and persistence are not connected.",
+		settingProjectsDescription: "Only available Git workspaces with a configured remote are shown.",
+		settingSelectProject: "Select project {name}",
+		settingOpenSession: "Open session",
+		settingOpenRepository: "Open repository",
+		settingEnabledCount: "{enabled} / {total} enabled",
+		settingRefresh: "Refresh sample list",
+		settingSearchProjects: "Search projects or directories",
+		settingLastSynced: "Last refreshed",
+		settingNoMatchingProjects: "No matching projects",
+		settingNoMatchingProjectsHelp: "Try another keyword or clear the search.",
+		settingNoProjects: "No Git projects yet",
+		settingNoProjectsHelp: "The sample list is empty. Live Git workspace discovery is not connected; refresh only reloads the samples.",
+		settingClearSearch: "Clear search",
+		settingAutoMerge: "Automatically merge PRs",
+		settingAutoMergeHelp: "Off by default. Merging still requires a ready task, approval covering the current head, and the change-size limit. This does not bypass review.",
+		settingMaxWorkers: "Concurrent Workers",
+		settingMaxWorkersHelp: "Defaults to 10 Workers; additional work queues. One extra slot remains for human messages and status queries.",
+		settingBackgroundLimit: "Background work limit",
+		settingBackgroundLimitHelp: "Background work should stop at this limit and return the task to waiting.",
+		settingAutoMergeLines: "Automatic merge change limit",
+		settingAutoMergeLinesHelp: "Maximum total added and removed lines. Applies only when automatic merging is enabled.",
+		settingDeliveryAttempts: "Delivery failure limit",
+		settingDeliveryAttemptsHelp: "After this many consecutive failures, mark delivery as stalled, separately from pending messages.",
+		settingRetryCeiling: "Maximum retry interval",
+		settingRetryCeilingHelp: "Retry with exponential backoff starting at 2 seconds, capped at this interval.",
+		settingWorkersUnit: "workers",
+		settingMinutesUnit: "minutes",
+		settingLinesUnit: "lines",
+		settingAttemptsUnit: "attempts",
+		settingSecondsUnit: "seconds",
+		settingRange: "Range {min}–{max}",
+		settingPersistenceOnly: "Saves sample parameters in this category only, without database writes or effects on live work.",
+		settingDiscard: "Discard changes",
+		settingSave: "Save parameters",
+		settingInvalid: "Enter whole numbers within the allowed ranges for all numeric fields.",
+		settingSaved: "Sample parameters in this category retained. No database was updated.",
+		settingRefreshed: "Sample list refreshed and selections preserved. No live workspaces were scanned.",
+		settingProjectSaved: "Sample project choice retained. Live project scope is unchanged.",
+		channelDescription: "Connect code hosting and collaboration platforms to receive events and dispatch tasks.",
+		channelSingleAccount: "Each channel has one global account shared by all linked projects.",
+		channelGithubDescription: "Receive GitHub issues, pull requests, and comments using a dedicated bot account.",
+		channelGitlabDescription: "Receive GitLab issues and merge requests from gitlab.com or a self-managed instance.",
+		channelFeishuDescription: "Receive collaboration messages and tasks from Feishu.",
+		channelNotConfigured: "Not configured",
+		channelUnsupported: "Not supported yet",
+		channelConfigure: "Configure channel",
+		channelSettings: "Channel settings",
+		channelBack: "Back to channels",
+		channelMissing: "Select a channel first",
+		channelFeishuUnavailable: "Feishu configuration is not available yet. Use GitHub or GitLab for now.",
+		channelPreview: "Configuration preview",
+		channelUnavailable: "Sign-in and saving are not connected yet. This page does not save configuration, accept real tokens, or change your system CLI login.",
+		channelSite: "Service host",
+		channelSiteDescription: "GitLab.com and self-managed instances use the same single channel and account.",
+		channelHost: "GitLab host",
+		channelHostHelp: "Use gitlab.com by default, or enter the HTTPS root URL of a self-managed host without a project path.",
+		channelHostInvalid: "Enter a valid HTTPS host URL without credentials, project paths, query parameters, or fragments.",
+		channelAccount: "Channel account",
+		channelAccountDescription: "Specify the expected bot identity. The authenticated account must match.",
+		channelLoginName: "Expected username",
+		channelLoginNameHelp: "Saving must be rejected if the authenticated username does not match.",
+		channelCommitName: "Git commit name",
+		channelCommitEmail: "Git commit email",
+		channelCommitHelp: "Commit identity is provided by a dedicated gitconfig, not token environment variables.",
+		channelLoginMethod: "Sign-in method",
+		channelAuthorize: "Authorize",
+		channelAuthorizeRecommended: "Recommended",
+		channelToken: "Use a token",
+		channelAuthorizeDescription: "Sign in through provider authorization. When connected, credentials will be written to this channel’s dedicated directory.",
+		channelAuthorizeAction: "Sign in to {name}",
+		channelTokenLabel: "Personal Access Token",
+		channelTokenPlaceholder: "Token entry becomes available when sign-in is connected",
+		channelTokenDescription: "The host CLI validates the token and verifies account identity before writing credentials. Validation failures never mark an account as signed in.",
+		channelTokenDisabled: "Token verification is not connected. Do not enter a real token.",
+		channelSave: "Verify and save",
+		channelIdentity: "Credentials and execution environment",
+		channelCredentialLocation: "Credential directory",
+		channelCredentialProtection: "Tokens and cookies are not stored in the database, browser storage, or ordinary configuration. Only account metadata and sign-in status belong in the database.",
+		channelWorkerIdentity: "Workers use the channel-specific CLI configuration by default and clear overriding token variables. No manual directories or PATH changes are needed.",
+		channelSecurityNotice: "This is not a security boundary: the same OS user can bypass the defaults. Use a separate operating-system user for actual isolation.",
 		sessionListNotReady: "Session list not ready",
 		sessionNotListed: "Session not listed",
 		overviewDemo: "Sample data",
@@ -1244,7 +1502,7 @@ const dicts = {
 		overviewMoreTasks: "Go to tasks",
 		overviewConnected: "Listening",
 		overviewDisconnected: "Not connected",
-		overviewOtherChannel: "1 more channel not connected",
+		overviewOtherChannel: "Configure accounts and connections in Channels",
 		overviewPerHour: "/h",
 		overviewTotalMessages: "Total messages",
 		overviewFiltered: "Filtered",
@@ -1347,7 +1605,87 @@ const dicts = {
 		graphRoot: "Main session",
 		graphLive: "Live",
 		graphSessionId: "Session ID",
-		graphWorkspace: "Workspace"
+		graphWorkspace: "Workspace",
+		triggerTitle: "Trigger topics",
+		triggerTopicsUnit: "topics",
+		triggerOpenTopic: "View topic",
+		triggerEventCount: "{count} triggers",
+		triggerTopicDetail: "Topic details",
+		triggerOpenComment: "View original comment",
+		triggerOpenEvent: "View source",
+		triggerSampleLink: "Open source in a new tab. Sample URL; content and comment anchors are unverified.",
+		triggerBack: "Back to trigger topics",
+		triggerTopicNotFound: "Topic not found. Return to the list and select another topic.",
+		triggerTimeline: "Trigger timeline",
+		triggerNewestFirst: "Newest first",
+		triggerThreadId: "Topic ID",
+		triggerTopicIssue: "Issue",
+		triggerTopicPull: "PR / MR",
+		triggerTopicChat: "Conversation",
+		triggerTopicCi: "Branch CI",
+		triggerDescription: "Explore incoming channel events and their path into orchestration and tasks.",
+		triggerSummary: "Sample reception summary. Select a delivery status to filter.",
+		triggerReceived: "All received",
+		triggerPending: "Pending",
+		triggerDone: "Handled",
+		triggerStalled: "Delivery stalled",
+		triggerNotDelivered: "Not delivered",
+		triggerSearch: "Search content, topics, senders, or task IDs",
+		triggerChannelFilter: "Filter by channel",
+		triggerKindFilter: "Filter by event type",
+		triggerStatusFilter: "Filter by delivery status",
+		triggerAllChannels: "All channels",
+		triggerAllKinds: "All events",
+		triggerAllStatuses: "All statuses",
+		triggerFeishu: "Feishu",
+		triggerMentionedOnly: "Mentions only",
+		triggerMentioned: "@ mentioned",
+		triggerAutomated: "Automated event",
+		triggerReset: "Clear filters",
+		triggerKindComment: "Comment",
+		triggerKindOpen: "Opened",
+		triggerKindClose: "Closed",
+		triggerKindCi: "CI change",
+		triggerKindPush: "Push",
+		triggerResultCount: "Showing {count} / {total} topics",
+		triggerSampleDay: "Sample date · 2026-11-14 · UTC+8",
+		triggerExpand: "Expand",
+		triggerCollapse: "Collapse",
+		triggerSourceText: "Source text",
+		triggerExternalText: "External channel content, displayed as plain text.",
+		triggerEventId: "Event ID",
+		triggerRef: "Source reference",
+		triggerThread: "Topic ownership",
+		triggerTriagePending: "Needs triage",
+		triggerTriageClaimed: "Assigned to project",
+		triggerTriageIgnored: "Ignored",
+		triggerNoProject: "No project assigned",
+		triggerDelivery: "Message delivery",
+		triggerProjectAgent: "Project orchestrator",
+		triggerUser: "Human",
+		triggerReadPending: "Read, awaiting completion",
+		triggerQueued: "Queued, not read yet",
+		triggerAttempts: "{count} attempts",
+		triggerSkipIgnored: "Topic ignored and not mentioned again; this event was not delivered.",
+		triggerSkipMention: "Not mentioned. Recorded without waking an agent.",
+		triggerNoDelivery: "No delivery record. This does not establish the outcome.",
+		triggerLinkedTasks: "Linked tasks",
+		triggerNoTask: "No linked tasks yet",
+		triggerEmpty: "No matching triggers",
+		triggerEmptyDescription: "Try another search or clear the current filters.",
+		triggerPreviewNotice: "Filters match any trigger in a topic; the list always shows its latest summary. Counts use unique topics and may overlap across deliveries. Stalled deliveries themselves are not pending. Sample data only; live reception and retry are not connected.",
+		triggerThreadConsole: "Console login callback intermittently fails",
+		triggerThreadCi: "Default branch check results changed",
+		triggerThreadChatter: "Daily discussion and progress updates",
+		triggerTextLogin: "@nexus Login tests still fail intermittently. Check Token validation under concurrent requests.",
+		triggerTextApi: "@nexus Review API response conventions, especially error codes and pagination fields.",
+		triggerTextReview: "@nexus The reinstall entry is ready. Please check recovery after remote installation fails.",
+		triggerTextDelivery: "@nexus The console login callback sometimes fails to redirect. Please investigate.",
+		triggerTextCi: "Checks changed for commit 7e4b2c1 on main: test failed, lint passed.",
+		triggerTextUnmentioned: "More reproduction details: running login tests repeatedly returns a 401 about once every ten runs.",
+		triggerTextIgnored: "Understood. Follow the current plan today and discuss other details next time.",
+		triggerTextOpen: "@nexus PR #81 adds the reinstall entry for one-click remote installation.",
+		triggerErrorSession: "Orchestrator session is temporarily unavailable"
 	}
 };
 // node_modules/.pnpm/react-if-lite@0.1.0_react@18.3.1/node_modules/react-if-lite/dist/index.mjs
@@ -1362,7 +1700,7 @@ function Default(props) {
 	const { children, as, ...rest } = props;
 	return wrapper(as, rest, children);
 }
-function Switch(props) {
+function Switch$1(props) {
 	const { as, value, children, ...rest } = props;
 	const isUseValue = props.value !== void 0;
 	let matchingCase;
@@ -1398,9 +1736,9 @@ function useActions() {
 }
 // src/client/hooks/use-navigation.ts
 function usePage() {
-	return useStore(_temp$6);
+	return useStore(_temp$14);
 }
-function _temp$6(state) {
+function _temp$14(state) {
 	return state.navigation.page;
 }
 function useNavigate() {
@@ -1422,25 +1760,12 @@ function useTranslation() {
 	} else t1 = $[1];
 	return t1;
 }
-// src/client/pages/channel/detail/page.tsx
-function ChannelDetail() {
-	return "ChannelDetail";
-}
-// src/client/pages/channel/page.tsx
-function Channel() {
-	return "Channel";
-}
 // src/client/constants.ts
 const OVERVIEW_CHANNELS = [
 	{
 		kind: "github",
 		name: "GitHub",
-		connected: true
-	},
-	{
-		kind: "feishu",
-		name: "飞书",
-		connected: true
+		connected: false
 	},
 	{
 		kind: "gitlab",
@@ -1448,8 +1773,8 @@ const OVERVIEW_CHANNELS = [
 		connected: false
 	},
 	{
-		kind: "gitlab",
-		name: "GitLab · staging",
+		kind: "feishu",
+		name: "飞书",
 		connected: false
 	}
 ];
@@ -1795,8 +2120,665 @@ const AGENT_GRAPH_EDGE_COLORS = {
 	association: "var(--dsw-alias-state-business-primary)",
 	dependency: "#a56bce"
 };
+// src/client/pages/channel/detail/components/section.tsx
+function Section$1(t0) {
+	const $ = (0, import_dist.c)(10);
+	const { title, description, children } = t0;
+	let t1;
+	if ($[0] !== title) {
+		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+			className: "m-0 text-sm font-medium",
+			children: title
+		});
+		$[0] = title;
+		$[1] = t1;
+	} else t1 = $[1];
+	let t2;
+	if ($[2] !== description) {
+		t2 = description && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+			children: description
+		});
+		$[2] = description;
+		$[3] = t2;
+	} else t2 = $[3];
+	let t3;
+	if ($[4] !== t1 || $[5] !== t2) {
+		t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+			className: "flex flex-col gap-1.5",
+			children: [t1, t2]
+		});
+		$[4] = t1;
+		$[5] = t2;
+		$[6] = t3;
+	} else t3 = $[6];
+	let t4;
+	if ($[7] !== children || $[8] !== t3) {
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "flex min-w-0 flex-col gap-4 rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-5",
+			children: [t3, children]
+		});
+		$[7] = children;
+		$[8] = t3;
+		$[9] = t4;
+	} else t4 = $[9];
+	return t4;
+}
+// src/client/pages/channel/detail/components/configuration.tsx
+function Configuration({ kind }) {
+	const { t } = useTranslation();
+	const id = (0, react.useId)();
+	const [method, setMethod] = (0, react.useState)("authorize");
+	const [host, setHost] = (0, react.useState)("https://gitlab.com");
+	const [hostInvalid, setHostInvalid] = (0, react.useState)(false);
+	const validateHost = () => {
+		try {
+			const url = new URL(host);
+			setHostInvalid(url.protocol !== "https:" || !url.hostname || Boolean(url.username || url.password || url.search || url.hash) || url.pathname !== "/");
+		} catch {
+			setHostInvalid(true);
+		}
+	};
+	const name = OVERVIEW_CHANNEL_LABELS[kind];
+	const tabs = [{
+		value: "authorize",
+		label: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "inline-flex items-center gap-1.5",
+			children: t("channelAuthorize")
+		}),
+		id: `${id}-authorize`,
+		panelId: `${id}-authorize-panel`
+	}, {
+		value: "token",
+		label: t("channelToken"),
+		id: `${id}-token`,
+		panelId: `${id}-token-panel`
+	}];
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+		className: "grid min-w-0 items-start gap-4 @min-[780px]:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]",
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex min-w-0 flex-col gap-4",
+			children: [kind === "gitlab" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Section$1, {
+				title: t("channelSite"),
+				description: t("channelSiteDescription"),
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "flex flex-col gap-2",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+							htmlFor: `${id}-host`,
+							className: "text-xs font-medium",
+							children: t("channelHost")
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+							id: `${id}-host`,
+							type: "url",
+							value: host,
+							onChange: (event) => {
+								setHost(event.target.value);
+								setHostInvalid(false);
+							},
+							onBlur: validateHost,
+							spellCheck: false,
+							autoComplete: "url",
+							"aria-invalid": hostInvalid,
+							"aria-describedby": `${id}-host-help${hostInvalid ? ` ${id}-host-error` : ""}`
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							id: `${id}-host-help`,
+							className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+							children: t("channelHostHelp")
+						}),
+						hostInvalid && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							id: `${id}-host-error`,
+							role: "alert",
+							className: "m-0 text-xs text-[var(--dsw-alias-state-error-primary)]",
+							children: t("channelHostInvalid")
+						})
+					]
+				})
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Section$1, {
+				title: t("channelAccount"),
+				description: t("channelAccountDescription"),
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "flex flex-col gap-2",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+								htmlFor: `${id}-username`,
+								className: "text-xs font-medium",
+								children: t("channelLoginName")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+								id: `${id}-username`,
+								placeholder: "nexus-bot",
+								autoComplete: "off",
+								spellCheck: false,
+								"aria-describedby": `${id}-username-help`
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								id: `${id}-username-help`,
+								className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+								children: t("channelLoginNameHelp")
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "grid gap-3 @min-[540px]:grid-cols-2",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "flex flex-col gap-2",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+								htmlFor: `${id}-commit-name`,
+								className: "text-xs font-medium",
+								children: t("channelCommitName")
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+								id: `${id}-commit-name`,
+								placeholder: "Nexus Bot",
+								autoComplete: "off"
+							})]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: "flex flex-col gap-2",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+								htmlFor: `${id}-commit-email`,
+								className: "text-xs font-medium",
+								children: t("channelCommitEmail")
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+								id: `${id}-commit-email`,
+								type: "email",
+								placeholder: "bot@example.com",
+								autoComplete: "off",
+								spellCheck: false
+							})]
+						})]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+						children: t("channelCommitHelp")
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "flex flex-col gap-3 border-t border-[var(--dsw-alias-border-l3)] pt-4",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							className: "max-w-full overflow-x-auto",
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SegmentedTabs, {
+								value: method,
+								onChange: setMethod,
+								items: tabs,
+								label: t("channelLoginMethod"),
+								size: "sm",
+								className: "w-fit"
+							})
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							id: `${id}-${method}-panel`,
+							role: "tabpanel",
+							"aria-labelledby": `${id}-${method}`,
+							tabIndex: 0,
+							className: "flex min-w-0 flex-col items-start gap-3 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)]",
+							children: [method === "authorize" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+								children: t("channelAuthorizeDescription")
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+								size: "sm",
+								variant: "primary",
+								disabled: true,
+								"aria-describedby": `${id}-unavailable`,
+								children: t("channelAuthorizeAction", { name })
+							})] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+									htmlFor: `${id}-token-value`,
+									className: "text-xs font-medium",
+									children: t("channelTokenLabel")
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+									id: `${id}-token-value`,
+									className: "w-full min-w-0",
+									type: "password",
+									disabled: true,
+									autoComplete: "new-password",
+									placeholder: t("channelTokenPlaceholder"),
+									"aria-describedby": `${id}-token-help ${id}-unavailable`
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									id: `${id}-token-help`,
+									className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+									children: t("channelTokenDescription")
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+									size: "sm",
+									variant: "primary",
+									disabled: true,
+									"aria-describedby": `${id}-unavailable`,
+									children: t("channelSave")
+								})
+							] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								id: `${id}-unavailable`,
+								className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-tertiary)]",
+								children: t(method === "token" ? "channelTokenDisabled" : "channelUnavailable")
+							})]
+						}, method)]
+					})
+				]
+			})]
+		}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+			className: "flex min-w-0 flex-col gap-4",
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Section$1, {
+				title: t("channelIdentity"),
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", {
+						className: "m-0 flex flex-col gap-2",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", {
+							className: "text-xs text-[var(--dsw-alias-label-secondary)]",
+							children: t("channelCredentialLocation")
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", {
+							className: "m-0 break-all rounded-lg bg-[var(--dsw-alias-card-fill)] px-3 py-2 font-mono text-xs",
+							children: `~/.nexus/credentials/${kind}/`
+						})]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+						children: t("channelCredentialProtection")
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+						children: t("channelWorkerIdentity")
+					})
+				]
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 px-1 text-xs leading-5 text-[var(--dsw-alias-label-tertiary)]",
+				children: t("channelSecurityNotice")
+			})]
+		})]
+	});
+}
+// src/client/pages/channel/detail/page.tsx
+function ChannelDetail() {
+	const $ = (0, import_dist.c)(17);
+	const { t } = useTranslation();
+	const { go } = useActions();
+	const kind = useStore(_temp$13);
+	let t0;
+	if ($[0] !== kind) {
+		t0 = kind ? {
+			github: GitHubIcon,
+			gitlab: GitLabIcon,
+			feishu: FeishuIcon
+		}[kind] : null;
+		$[0] = kind;
+		$[1] = t0;
+	} else t0 = $[1];
+	const Icon = t0;
+	let t1;
+	if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
+		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ArrowLeftIcon, {
+			width: 16,
+			height: 16
+		});
+		$[2] = t1;
+	} else t1 = $[2];
+	let t2;
+	if ($[3] !== go) {
+		t2 = () => go("channel");
+		$[3] = go;
+		$[4] = t2;
+	} else t2 = $[4];
+	let t3;
+	if ($[5] !== t) {
+		t3 = t("channelBack");
+		$[5] = t;
+		$[6] = t3;
+	} else t3 = $[6];
+	let t4;
+	if ($[7] !== t2 || $[8] !== t3) {
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			size: "sm",
+			variant: "ghost",
+			icon: t1,
+			onClick: t2,
+			children: t3
+		}) });
+		$[7] = t2;
+		$[8] = t3;
+		$[9] = t4;
+	} else t4 = $[9];
+	let t5;
+	if ($[10] !== Icon || $[11] !== kind || $[12] !== t) {
+		t5 = !kind || !Icon ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "text-sm text-[var(--dsw-alias-label-secondary)]",
+			children: t("channelMissing")
+		}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+			className: "flex flex-wrap items-center gap-3",
+			children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "flex size-11 items-center justify-center rounded-xl bg-[var(--dsw-alias-card-fill)]",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Icon, {
+						width: 27,
+						height: 27
+					})
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "flex flex-col gap-1",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+						className: "m-0 text-base font-medium",
+						children: OVERVIEW_CHANNEL_LABELS[kind]
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: "m-0 text-xs text-[var(--dsw-alias-label-secondary)]",
+						children: t("channelSettings")
+					})]
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+					tone: kind === "feishu" ? "quiet" : "warning",
+					children: t(kind === "feishu" ? "channelUnsupported" : "channelPreview")
+				})
+			]
+		}), kind === "feishu" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-6",
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+				className: "m-0 text-sm font-medium",
+				children: t("channelUnsupported")
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "mb-0 mt-2 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: t("channelFeishuUnavailable")
+			})]
+		}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+			/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-4 py-3 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: t("channelUnavailable")
+			}),
+			/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 text-xs text-[var(--dsw-alias-label-secondary)]",
+				children: t("channelSingleAccount")
+			}),
+			/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Configuration, { kind }, kind)
+		] })] });
+		$[10] = Icon;
+		$[11] = kind;
+		$[12] = t;
+		$[13] = t5;
+	} else t5 = $[13];
+	let t6;
+	if ($[14] !== t4 || $[15] !== t5) {
+		t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "@container flex min-w-0 flex-col gap-5 pb-10",
+			children: [t4, t5]
+		});
+		$[14] = t4;
+		$[15] = t5;
+		$[16] = t6;
+	} else t6 = $[16];
+	return t6;
+}
+function _temp$13(state) {
+	return state.channel.selected;
+}
+// src/client/pages/channel/components/card.tsx
+function Card(t0) {
+	const $ = (0, import_dist.c)(51);
+	const { kind } = t0;
+	const { t } = useTranslation();
+	const { openChannel } = useActions();
+	let t1;
+	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
+		t1 = {
+			github: GitHubIcon,
+			gitlab: GitLabIcon,
+			feishu: FeishuIcon
+		};
+		$[0] = t1;
+	} else t1 = $[0];
+	const Icon = t1[kind];
+	let t10;
+	let t2;
+	let t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	let t9;
+	if ($[1] !== Icon || $[2] !== kind || $[3] !== openChannel || $[4] !== t) {
+		const description = {
+			github: "channelGithubDescription",
+			gitlab: "channelGitlabDescription",
+			feishu: "channelFeishuDescription"
+		};
+		t6 = "button";
+		if ($[14] !== kind || $[15] !== openChannel) {
+			t7 = () => openChannel(kind);
+			$[14] = kind;
+			$[15] = openChannel;
+			$[16] = t7;
+		} else t7 = $[16];
+		let t11;
+		if ($[17] !== t) {
+			t11 = t("channelSettings");
+			$[17] = t;
+			$[18] = t11;
+		} else t11 = $[18];
+		t8 = `${OVERVIEW_CHANNEL_LABELS[kind]} · ${t11}`;
+		t9 = "group flex min-h-48 min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-5 text-left font-[inherit] outline-none transition-colors hover:border-[var(--dsw-alias-border-l1)] hover:bg-[var(--dsw-alias-card-fill)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)]";
+		let t12;
+		if ($[19] !== Icon) {
+			t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: "flex size-11 items-center justify-center rounded-xl bg-[var(--dsw-alias-card-fill)]",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Icon, {
+					width: 27,
+					height: 27
+				})
+			});
+			$[19] = Icon;
+			$[20] = t12;
+		} else t12 = $[20];
+		const t13 = kind === "feishu" ? "channelUnsupported" : "channelNotConfigured";
+		let t14;
+		if ($[21] !== t || $[22] !== t13) {
+			t14 = t(t13);
+			$[21] = t;
+			$[22] = t13;
+			$[23] = t14;
+		} else t14 = $[23];
+		let t15;
+		if ($[24] !== t14) {
+			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "quiet",
+				children: t14
+			});
+			$[24] = t14;
+			$[25] = t15;
+		} else t15 = $[25];
+		if ($[26] !== t12 || $[27] !== t15) {
+			t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				className: "flex w-full items-center justify-between gap-3",
+				children: [t12, t15]
+			});
+			$[26] = t12;
+			$[27] = t15;
+			$[28] = t10;
+		} else t10 = $[28];
+		t4 = "flex min-w-0 flex-col gap-1.5";
+		const t16 = OVERVIEW_CHANNEL_LABELS[kind];
+		if ($[29] !== t16) {
+			t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: "text-sm font-medium text-[var(--dsw-alias-label-primary)]",
+				children: t16
+			});
+			$[29] = t16;
+			$[30] = t5;
+		} else t5 = $[30];
+		t2 = "text-xs leading-5 text-[var(--dsw-alias-label-secondary)]";
+		t3 = t(description[kind]);
+		$[1] = Icon;
+		$[2] = kind;
+		$[3] = openChannel;
+		$[4] = t;
+		$[5] = t10;
+		$[6] = t2;
+		$[7] = t3;
+		$[8] = t4;
+		$[9] = t5;
+		$[10] = t6;
+		$[11] = t7;
+		$[12] = t8;
+		$[13] = t9;
+	} else {
+		t10 = $[5];
+		t2 = $[6];
+		t3 = $[7];
+		t4 = $[8];
+		t5 = $[9];
+		t6 = $[10];
+		t7 = $[11];
+		t8 = $[12];
+		t9 = $[13];
+	}
+	let t11;
+	if ($[31] !== t2 || $[32] !== t3) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: t2,
+			children: t3
+		});
+		$[31] = t2;
+		$[32] = t3;
+		$[33] = t11;
+	} else t11 = $[33];
+	let t12;
+	if ($[34] !== t11 || $[35] !== t4 || $[36] !== t5) {
+		t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+			className: t4,
+			children: [t5, t11]
+		});
+		$[34] = t11;
+		$[35] = t4;
+		$[36] = t5;
+		$[37] = t12;
+	} else t12 = $[37];
+	const t13 = kind === "feishu" ? "channelUnsupported" : "channelConfigure";
+	let t14;
+	if ($[38] !== t || $[39] !== t13) {
+		t14 = t(t13);
+		$[38] = t;
+		$[39] = t13;
+		$[40] = t14;
+	} else t14 = $[40];
+	let t15;
+	if ($[41] !== t14) {
+		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "mt-auto text-xs text-[var(--dsw-alias-state-business-primary)] underline-offset-4 group-hover:underline",
+			children: t14
+		});
+		$[41] = t14;
+		$[42] = t15;
+	} else t15 = $[42];
+	let t16;
+	if ($[43] !== t10 || $[44] !== t12 || $[45] !== t15 || $[46] !== t6 || $[47] !== t7 || $[48] !== t8 || $[49] !== t9) {
+		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+			type: t6,
+			onClick: t7,
+			"aria-label": t8,
+			className: t9,
+			children: [
+				t10,
+				t12,
+				t15
+			]
+		});
+		$[43] = t10;
+		$[44] = t12;
+		$[45] = t15;
+		$[46] = t6;
+		$[47] = t7;
+		$[48] = t8;
+		$[49] = t9;
+		$[50] = t16;
+	} else t16 = $[50];
+	return t16;
+}
+// src/client/pages/channel/page.tsx
+function Channel() {
+	const $ = (0, import_dist.c)(19);
+	const { t } = useTranslation();
+	let t0;
+	if ($[0] !== t) {
+		t0 = t("tabChannels");
+		$[0] = t;
+		$[1] = t0;
+	} else t0 = $[1];
+	let t1;
+	if ($[2] !== t0) {
+		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+			className: "m-0 text-base font-medium",
+			children: t0
+		});
+		$[2] = t0;
+		$[3] = t1;
+	} else t1 = $[3];
+	let t2;
+	if ($[4] !== t) {
+		t2 = t("channelDescription");
+		$[4] = t;
+		$[5] = t2;
+	} else t2 = $[5];
+	let t3;
+	if ($[6] !== t2) {
+		t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]",
+			children: t2
+		});
+		$[6] = t2;
+		$[7] = t3;
+	} else t3 = $[7];
+	let t4;
+	if ($[8] !== t1 || $[9] !== t3) {
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+			className: "flex flex-col gap-1.5",
+			children: [t1, t3]
+		});
+		$[8] = t1;
+		$[9] = t3;
+		$[10] = t4;
+	} else t4 = $[10];
+	let t5;
+	if ($[11] === Symbol.for("react.memo_cache_sentinel")) {
+		t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "grid gap-4 @min-[500px]:grid-cols-2 @min-[840px]:grid-cols-3",
+			children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Card, { kind: "github" }),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Card, { kind: "gitlab" }),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Card, { kind: "feishu" })
+			]
+		});
+		$[11] = t5;
+	} else t5 = $[11];
+	let t6;
+	if ($[12] !== t) {
+		t6 = t("channelSingleAccount");
+		$[12] = t;
+		$[13] = t6;
+	} else t6 = $[13];
+	let t7;
+	if ($[14] !== t6) {
+		t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: t6
+		});
+		$[14] = t6;
+		$[15] = t7;
+	} else t7 = $[15];
+	let t8;
+	if ($[16] !== t4 || $[17] !== t7) {
+		t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "@container flex flex-col gap-5 pb-10",
+			children: [
+				t4,
+				t5,
+				t7
+			]
+		});
+		$[16] = t4;
+		$[17] = t7;
+		$[18] = t8;
+	} else t8 = $[18];
+	return t8;
+}
 // src/client/pages/ticket/components/row.tsx
-function Row(t0) {
+function Row$1(t0) {
 	const $ = (0, import_dist.c)(47);
 	const { task } = t0;
 	const { t } = useTranslation();
@@ -52455,7 +53437,7 @@ function ChannelTile(t0) {
 	let t9;
 	if ($[11] !== channel.connected) {
 		t9 = channel.connected && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-			className: "absolute top-1.5 right-1.5 flex size-3.5 items-center justify-center rounded-full text-black",
+			className: "absolute top-1.5 right-1.5 flex size-3.5 items-center justify-center rounded-full",
 			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CheckIcon, {
 				width: 10,
 				height: 10
@@ -52730,7 +53712,7 @@ function GraphCanvas(t0) {
 	const { nodes, edges } = t0;
 	const { t } = useTranslation();
 	const { zoomGraph, panGraph, resetGraph, selectAgent, openTicket } = useActions();
-	const { zoom, x, y, selectedId } = useStore(_temp$5);
+	const { zoom, x, y, selectedId } = useStore(_temp$12);
 	const drag = (0, react.useRef)(null);
 	const width = AGENT_GRAPH.width / zoom;
 	const height = AGENT_GRAPH.height / zoom;
@@ -52747,9 +53729,9 @@ function GraphCanvas(t0) {
 		const selected = nodes.find(t2);
 		let t3;
 		if ($[17] !== nodes) {
-			const supervised = nodes.filter(_temp2$2);
+			const supervised = nodes.filter(_temp2$4);
 			t3 = supervised.length ? {
-				x: Math.min(...supervised.map(_temp3$1)) - 16,
+				x: Math.min(...supervised.map(_temp3$2)) - 16,
 				y: Math.min(...supervised.map(_temp4$1)) - 12,
 				width: Math.max(...supervised.map(_temp5)) - Math.min(...supervised.map(_temp6)) + AGENT_GRAPH.nodeWidth + 32,
 				height: Math.max(...supervised.map(_temp7)) - Math.min(...supervised.map(_temp8)) + AGENT_GRAPH.nodeHeight + 28
@@ -53191,13 +54173,13 @@ function _temp5(node_3) {
 function _temp4$1(node_2) {
 	return node_2.y;
 }
-function _temp3$1(node_1) {
+function _temp3$2(node_1) {
 	return node_1.x;
 }
-function _temp2$2(node_0) {
+function _temp2$4(node_0) {
 	return node_0.group === "supervisor";
 }
-function _temp$5(state) {
+function _temp$12(state) {
 	return state.graph;
 }
 // src/client/pages/overview/components/graph.tsx
@@ -53388,7 +54370,7 @@ function TaskChart() {
 					cornerRadius: 4,
 					stroke: "none",
 					isAnimationActive: false,
-					children: OVERVIEW_TASK_SEGMENTS.map(_temp$4)
+					children: OVERVIEW_TASK_SEGMENTS.map(_temp$11)
 				})
 			})
 		});
@@ -53407,7 +54389,7 @@ function TaskChart() {
 	} else t2 = $[4];
 	return t2;
 }
-function _temp$4(segment) {
+function _temp$11(segment) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(import_lib.Cell, { fill: segment.color }, segment.name);
 }
 // src/client/pages/overview/page.tsx
@@ -53416,7 +54398,7 @@ function Overview() {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const { setOverviewView } = useActions();
-	const view = useStore(_temp$3);
+	const view = useStore(_temp$10);
 	const t0 = (0, react.useId)();
 	let t1;
 	if ($[0] !== t0) {
@@ -53483,7 +54465,7 @@ function Overview() {
 	} else t11 = $[18];
 	let t12;
 	if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-		t12 = OVERVIEW_CHANNELS.filter(_temp2$1);
+		t12 = OVERVIEW_CHANNELS.filter(_temp2$3);
 		$[19] = t12;
 	} else t12 = $[19];
 	let t13;
@@ -53511,7 +54493,7 @@ function Overview() {
 	if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
 		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 			className: "mt-auto grid grid-cols-3 gap-2.5",
-			children: OVERVIEW_CHANNELS.slice(0, 3).map(_temp3)
+			children: OVERVIEW_CHANNELS.slice(0, 3).map(_temp3$1)
 		});
 		$[25] = t16;
 	} else t16 = $[25];
@@ -53981,20 +54963,1062 @@ function Overview() {
 	return t72;
 }
 function _temp4(task) {
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, { task }, task.id);
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row$1, { task }, task.id);
 }
-function _temp3(channel_0) {
+function _temp3$1(channel_0) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChannelTile, { channel: channel_0 }, channel_0.name);
 }
-function _temp2$1(channel) {
+function _temp2$3(channel) {
 	return channel.connected;
 }
-function _temp$3(state) {
+function _temp$10(state) {
 	return state.overview.view;
+}
+// src/client/pages/setting/model.ts
+const GROUPS = {
+	execution: [
+		"maxWorkers",
+		"backgroundLimitMinutes",
+		"autoMerge",
+		"autoMergeMaxLines"
+	],
+	delivery: ["deliveryMaxAttempts", "deliveryRetryCeilingSeconds"]
+};
+const LIMITS = {
+	maxWorkers: {
+		min: 1,
+		max: 16
+	},
+	backgroundLimitMinutes: {
+		min: 1,
+		max: 1440
+	},
+	autoMergeMaxLines: {
+		min: 1,
+		max: 1e4
+	},
+	deliveryMaxAttempts: {
+		min: 1,
+		max: 20
+	},
+	deliveryRetryCeilingSeconds: {
+		min: 2,
+		max: 3600
+	}
+};
+const SAMPLE_WORKSPACES = [
+	{
+		id: "project-nexus",
+		workspaceId: "workspace-nexus",
+		name: "dsh-nexus",
+		directory: "E:\\projects\\dsh-nexus",
+		remoteUrl: "https://github.com/dsh-tauri-desk/dsh-nexus.git",
+		enabled: true,
+		available: true
+	},
+	{
+		id: "project-kernel",
+		workspaceId: "workspace-kernel",
+		name: "dsh-third-kernel",
+		directory: "E:\\projects\\dsh-third-kernel",
+		remoteUrl: "https://github.com/hairyf/dsh-third-kernel.git",
+		enabled: true,
+		available: true
+	},
+	{
+		id: "project-lab",
+		workspaceId: "workspace-lab",
+		name: "local-lab",
+		directory: "E:\\projects\\local-lab",
+		remoteUrl: null,
+		enabled: false,
+		available: true
+	},
+	{
+		id: "project-archived",
+		workspaceId: "workspace-archived",
+		name: "archived-console",
+		directory: "E:\\archive\\console",
+		remoteUrl: "https://gitlab.com/team/console.git",
+		enabled: false,
+		available: false
+	}
+];
+function validSettings(settings) {
+	return typeof settings.autoMerge === "boolean" && Object.entries(LIMITS).every(([key, limits]) => {
+		const value = settings[key];
+		return Number.isInteger(value) && value >= limits.min && value <= limits.max;
+	});
+}
+function eligibleProjects(projects) {
+	return projects.filter((project) => project.available && Boolean(project.remoteUrl?.trim()));
+}
+function refreshProjects(current, discovered = SAMPLE_WORKSPACES) {
+	const known = new Map(current.map((project) => [project.workspaceId, project]));
+	return [...discovered.map((project) => {
+		const existing = known.get(project.workspaceId);
+		known.delete(project.workspaceId);
+		return {
+			...project,
+			id: existing?.id ?? project.id,
+			enabled: existing?.enabled ?? project.enabled
+		};
+	}), ...[...known.values()].map((project) => ({
+		...project,
+		available: false
+	}))];
+}
+function initialSettings() {
+	const saved = {
+		maxWorkers: 10,
+		backgroundLimitMinutes: 30,
+		autoMerge: false,
+		autoMergeMaxLines: 200,
+		deliveryMaxAttempts: 3,
+		deliveryRetryCeilingSeconds: 60
+	};
+	return {
+		section: "projects",
+		projects: refreshProjects([]),
+		saved,
+		draft: { ...saved },
+		refreshedAt: null,
+		notice: null,
+		invalid: false
+	};
+}
+// src/client/pages/setting/components/projects.tsx
+function Projects(t0) {
+	const $ = (0, import_dist.c)(43);
+	const { projects, refreshedAt, onRefresh, onToggle } = t0;
+	const { t } = useTranslation();
+	const id = (0, react.useId)();
+	const [query, setQuery] = (0, react.useState)("");
+	let t1;
+	if ($[0] !== id || $[1] !== onRefresh || $[2] !== onToggle || $[3] !== projects || $[4] !== query || $[5] !== refreshedAt || $[6] !== t) {
+		const normalized = query.trim().toLocaleLowerCase();
+		const candidates = eligibleProjects(projects);
+		const visible = candidates.filter((project) => !normalized || [project.name, project.directory].join(" ").toLocaleLowerCase().includes(normalized));
+		const enabled = candidates.filter(_temp$9).length;
+		let t2;
+		if ($[8] !== t) {
+			t2 = t("settingProjects");
+			$[8] = t;
+			$[9] = t2;
+		} else t2 = $[9];
+		let t3;
+		if ($[10] !== id || $[11] !== t2) {
+			t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+				id,
+				className: "m-0 text-sm font-medium",
+				children: t2
+			});
+			$[10] = id;
+			$[11] = t2;
+			$[12] = t3;
+		} else t3 = $[12];
+		const t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex flex-wrap items-center gap-2",
+			children: [t3, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "quiet",
+				children: t("settingEnabledCount", {
+					enabled,
+					total: candidates.length
+				})
+			})]
+		});
+		let t5;
+		if ($[13] !== t) {
+			t5 = t("settingProjectsDescription");
+			$[13] = t;
+			$[14] = t5;
+		} else t5 = $[14];
+		let t6;
+		if ($[15] !== t5) {
+			t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 mt-1.5 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: t5
+			});
+			$[15] = t5;
+			$[16] = t6;
+		} else t6 = $[16];
+		let t7;
+		if ($[17] !== t4 || $[18] !== t6) {
+			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "min-w-0",
+				children: [t4, t6]
+			});
+			$[17] = t4;
+			$[18] = t6;
+			$[19] = t7;
+		} else t7 = $[19];
+		let t8;
+		if ($[20] !== t) {
+			t8 = t("settingRefresh");
+			$[20] = t;
+			$[21] = t8;
+		} else t8 = $[21];
+		let t9;
+		if ($[22] !== onRefresh || $[23] !== t8) {
+			t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				size: "sm",
+				variant: "outline",
+				onClick: onRefresh,
+				children: t8
+			});
+			$[22] = onRefresh;
+			$[23] = t8;
+			$[24] = t9;
+		} else t9 = $[24];
+		let t10;
+		if ($[25] !== t7 || $[26] !== t9) {
+			t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+				className: "flex flex-wrap items-start justify-between gap-3 p-5 pb-4",
+				children: [t7, t9]
+			});
+			$[25] = t7;
+			$[26] = t9;
+			$[27] = t10;
+		} else t10 = $[27];
+		let t11;
+		if ($[28] !== t) {
+			t11 = t("settingSearchProjects");
+			$[28] = t;
+			$[29] = t11;
+		} else t11 = $[29];
+		let t12;
+		if ($[30] !== t) {
+			t12 = t("settingSearchProjects");
+			$[30] = t;
+			$[31] = t12;
+		} else t12 = $[31];
+		let t13;
+		if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
+			t13 = (event) => setQuery(event.currentTarget.value);
+			$[32] = t13;
+		} else t13 = $[32];
+		let t14;
+		if ($[33] !== query || $[34] !== t11 || $[35] !== t12) {
+			t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				type: "search",
+				"aria-label": t11,
+				placeholder: t12,
+				value: query,
+				onChange: t13,
+				className: "min-w-40 flex-1 !text-xs @min-[620px]:max-w-xs"
+			});
+			$[33] = query;
+			$[34] = t11;
+			$[35] = t12;
+			$[36] = t14;
+		} else t14 = $[36];
+		let t15;
+		if ($[37] !== refreshedAt || $[38] !== t) {
+			t15 = refreshedAt && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("time", {
+				dateTime: refreshedAt,
+				title: refreshedAt,
+				className: "text-[11px] text-[var(--dsw-alias-label-tertiary)]",
+				children: [
+					t("settingLastSynced"),
+					" ",
+					new Date(refreshedAt).toLocaleTimeString()
+				]
+			});
+			$[37] = refreshedAt;
+			$[38] = t;
+			$[39] = t15;
+		} else t15 = $[39];
+		let t16;
+		if ($[40] !== t14 || $[41] !== t15) {
+			t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-center justify-between gap-3 px-5 pb-4",
+				children: [t14, t15]
+			});
+			$[40] = t14;
+			$[41] = t15;
+			$[42] = t16;
+		} else t16 = $[42];
+		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]",
+			"aria-labelledby": id,
+			children: [
+				t10,
+				t16,
+				visible.length ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+					className: "m-0 list-none p-0",
+					children: visible.map((project_1) => {
+						const pathId = `${id}-path-${project_1.id}`;
+						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+							className: "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[var(--dsw-alias-border-l3)] px-5 py-4",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "flex min-w-0 flex-1 basis-48 items-start gap-2",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+									className: "flex size-6 shrink-0 cursor-pointer items-center justify-center",
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										type: "checkbox",
+										checked: project_1.enabled,
+										"aria-label": t("settingSelectProject", { name: project_1.name }),
+										"aria-describedby": pathId,
+										onChange: (event_0) => onToggle(project_1.id, event_0.currentTarget.checked),
+										className: "size-3 cursor-pointer accent-[var(--dsw-alias-state-business-primary)]"
+									})
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: "min-w-0 pt-0.5",
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: "truncate text-[13px] leading-5 font-medium text-[var(--dsw-alias-label-primary)]",
+										children: project_1.name
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+										id: pathId,
+										className: "m-0 mt-1 truncate font-mono text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+										title: project_1.directory,
+										children: project_1.directory
+									})]
+								})]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: "ml-auto flex shrink-0 items-center gap-2",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+									type: "button",
+									size: "sm",
+									variant: "outline",
+									disabled: true,
+									children: t("settingOpenSession")
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+									type: "button",
+									size: "sm",
+									variant: "outline",
+									disabled: true,
+									children: t("settingOpenRepository")
+								})]
+							})]
+						}, project_1.id);
+					})
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "flex flex-col items-center gap-2 border-t border-[var(--dsw-alias-border-l3)] px-4 py-7 text-center",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
+							className: "m-0 text-xs font-medium",
+							children: t(normalized ? "settingNoMatchingProjects" : "settingNoProjects")
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: "m-0 max-w-md text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+							children: t(normalized ? "settingNoMatchingProjectsHelp" : "settingNoProjectsHelp")
+						}),
+						normalized && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							size: "sm",
+							variant: "ghost",
+							onClick: () => setQuery(""),
+							children: t("settingClearSearch")
+						})
+					]
+				})
+			]
+		});
+		$[0] = id;
+		$[1] = onRefresh;
+		$[2] = onToggle;
+		$[3] = projects;
+		$[4] = query;
+		$[5] = refreshedAt;
+		$[6] = t;
+		$[7] = t1;
+	} else t1 = $[7];
+	return t1;
+}
+function _temp$9(project_0) {
+	return project_0.enabled;
+}
+// src/client/pages/setting/components/runtime.tsx
+function Runtime(t0) {
+	const $ = (0, import_dist.c)(85);
+	const { section, draft, saved, onEdit, onSave, onReset } = t0;
+	const { t } = useTranslation();
+	const prefix = (0, react.useId)();
+	const t1 = GROUPS[section];
+	let t2;
+	if ($[0] !== draft || $[1] !== saved || $[2] !== t1) {
+		let t3;
+		if ($[4] !== draft || $[5] !== saved) {
+			t3 = (key) => draft[key] !== saved[key];
+			$[4] = draft;
+			$[5] = saved;
+			$[6] = t3;
+		} else t3 = $[6];
+		t2 = t1.some(t3);
+		$[0] = draft;
+		$[1] = saved;
+		$[2] = t1;
+		$[3] = t2;
+	} else t2 = $[3];
+	const dirty = t2;
+	let t3;
+	if ($[7] !== draft || $[8] !== saved || $[9] !== section) {
+		let t4;
+		if ($[11] !== draft) {
+			t4 = (key_0) => [key_0, draft[key_0]];
+			$[11] = draft;
+			$[12] = t4;
+		} else t4 = $[12];
+		t3 = validSettings({
+			...saved,
+			...Object.fromEntries(GROUPS[section].map(t4))
+		});
+		$[7] = draft;
+		$[8] = saved;
+		$[9] = section;
+		$[10] = t3;
+	} else t3 = $[10];
+	const valid = t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	if ($[13] !== dirty || $[14] !== draft || $[15] !== onEdit || $[16] !== onSave || $[17] !== prefix || $[18] !== section || $[19] !== t || $[20] !== valid) {
+		const fields = [
+			{
+				key: "maxWorkers",
+				label: "settingMaxWorkers",
+				help: "settingMaxWorkersHelp",
+				unit: "settingWorkersUnit"
+			},
+			{
+				key: "backgroundLimitMinutes",
+				label: "settingBackgroundLimit",
+				help: "settingBackgroundLimitHelp",
+				unit: "settingMinutesUnit"
+			},
+			{
+				key: "autoMergeMaxLines",
+				label: "settingAutoMergeLines",
+				help: "settingAutoMergeLinesHelp",
+				unit: "settingLinesUnit"
+			},
+			{
+				key: "deliveryMaxAttempts",
+				label: "settingDeliveryAttempts",
+				help: "settingDeliveryAttemptsHelp",
+				unit: "settingAttemptsUnit"
+			},
+			{
+				key: "deliveryRetryCeilingSeconds",
+				label: "settingRetryCeiling",
+				help: "settingRetryCeilingHelp",
+				unit: "settingSecondsUnit"
+			}
+		];
+		t4 = "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]";
+		if ($[26] !== dirty || $[27] !== onSave || $[28] !== valid) {
+			t5 = (event) => {
+				event.preventDefault();
+				if (valid && dirty) onSave();
+			};
+			$[26] = dirty;
+			$[27] = onSave;
+			$[28] = valid;
+			$[29] = t5;
+		} else t5 = $[29];
+		t6 = `${prefix}-runtime`;
+		const t9 = `${prefix}-runtime`;
+		const t10 = section === "execution" ? "settingExecution" : "settingDelivery";
+		let t11;
+		if ($[30] !== t || $[31] !== t10) {
+			t11 = t(t10);
+			$[30] = t;
+			$[31] = t10;
+			$[32] = t11;
+		} else t11 = $[32];
+		let t12;
+		if ($[33] !== t11 || $[34] !== t9) {
+			t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+				id: t9,
+				className: "m-0 text-sm font-medium",
+				children: t11
+			});
+			$[33] = t11;
+			$[34] = t9;
+			$[35] = t12;
+		} else t12 = $[35];
+		const t13 = section === "execution" ? "settingExecutionDescription" : "settingDeliveryDescription";
+		let t14;
+		if ($[36] !== t || $[37] !== t13) {
+			t14 = t(t13);
+			$[36] = t;
+			$[37] = t13;
+			$[38] = t14;
+		} else t14 = $[38];
+		let t15;
+		if ($[39] !== t14) {
+			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 mt-1.5 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: t14
+			});
+			$[39] = t14;
+			$[40] = t15;
+		} else t15 = $[40];
+		if ($[41] !== t12 || $[42] !== t15) {
+			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+				className: "px-4 py-3",
+				children: [t12, t15]
+			});
+			$[41] = t12;
+			$[42] = t15;
+			$[43] = t7;
+		} else t7 = $[43];
+		t8 = fields.filter((field) => GROUPS[section].includes(field.key)).map((field_0) => {
+			const limits = LIMITS[field_0.key];
+			const value = draft[field_0.key];
+			const disabled = field_0.key === "autoMergeMaxLines" && !draft.autoMerge;
+			const invalid = !Number.isInteger(value) || value < limits.min || value > limits.max;
+			const id = `${prefix}-${field_0.key}`;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-start justify-between gap-x-5 gap-y-3 border-t border-[var(--dsw-alias-border-l3)] px-4 py-3",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "min-w-0 flex-1 basis-52",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+						htmlFor: id,
+						className: "text-xs font-medium",
+						children: t(field_0.label)
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						id: `${id}-help`,
+						className: "m-0 mt-1.5 max-w-lg text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+						children: t(field_0.help)
+					})]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "w-36 shrink-0",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "flex items-center gap-2",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+							id,
+							type: "number",
+							min: limits.min,
+							max: limits.max,
+							step: 1,
+							required: true,
+							value: Number.isFinite(value) ? value : "",
+							"aria-describedby": `${id}-help ${id}-range`,
+							"aria-invalid": invalid && !disabled,
+							disabled,
+							onChange: (event_0) => onEdit({ [field_0.key]: event_0.currentTarget.value === "" ? NaN : Number(event_0.currentTarget.value) }),
+							className: "w-24 !text-xs"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "text-xs text-[var(--dsw-alias-label-tertiary)]",
+							children: t(field_0.unit)
+						})]
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						id: `${id}-range`,
+						className: `mt-1.5 block text-[11px] ${invalid && !disabled ? "text-[var(--dsw-alias-state-error-primary)]" : "text-[var(--dsw-alias-label-tertiary)]"}`,
+						children: t("settingRange", {
+							min: limits.min,
+							max: limits.max
+						})
+					})]
+				})]
+			}, field_0.key);
+		});
+		$[13] = dirty;
+		$[14] = draft;
+		$[15] = onEdit;
+		$[16] = onSave;
+		$[17] = prefix;
+		$[18] = section;
+		$[19] = t;
+		$[20] = valid;
+		$[21] = t4;
+		$[22] = t5;
+		$[23] = t6;
+		$[24] = t7;
+		$[25] = t8;
+	} else {
+		t4 = $[21];
+		t5 = $[22];
+		t6 = $[23];
+		t7 = $[24];
+		t8 = $[25];
+	}
+	let t9;
+	if ($[44] !== draft || $[45] !== onEdit || $[46] !== section || $[47] !== t) {
+		t9 = section === "execution" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex items-start justify-between gapx-4 py-3 border-t border-[var(--dsw-alias-border-l3)] px-4 py-3",
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "min-w-0",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", {
+					className: "m-0 text-xs font-medium",
+					children: t("settingAutoMerge")
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: "m-0 mt-1.5 max-w-lg text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+					children: t("settingAutoMergeHelp")
+				})]
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Switch, {
+				checked: draft.autoMerge,
+				label: t("settingAutoMerge"),
+				onChange: (autoMerge) => onEdit({ autoMerge })
+			})]
+		});
+		$[44] = draft;
+		$[45] = onEdit;
+		$[46] = section;
+		$[47] = t;
+		$[48] = t9;
+	} else t9 = $[48];
+	let t10;
+	if ($[49] !== t) {
+		t10 = t("settingPersistenceOnly");
+		$[49] = t;
+		$[50] = t10;
+	} else t10 = $[50];
+	let t11;
+	if ($[51] !== t10) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: t10
+		});
+		$[51] = t10;
+		$[52] = t11;
+	} else t11 = $[52];
+	let t12;
+	if ($[53] !== dirty || $[54] !== t || $[55] !== valid) {
+		t12 = dirty && !valid && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			role: "status",
+			className: "m-0 mt-1 text-[11px] leading-5 text-[var(--dsw-alias-state-error-primary)]",
+			children: t("settingInvalid")
+		});
+		$[53] = dirty;
+		$[54] = t;
+		$[55] = valid;
+		$[56] = t12;
+	} else t12 = $[56];
+	let t13;
+	if ($[57] !== t11 || $[58] !== t12) {
+		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "min-w-0 flex-1 basis-60",
+			children: [t11, t12]
+		});
+		$[57] = t11;
+		$[58] = t12;
+		$[59] = t13;
+	} else t13 = $[59];
+	const t14 = !dirty;
+	let t15;
+	if ($[60] !== t) {
+		t15 = t("settingDiscard");
+		$[60] = t;
+		$[61] = t15;
+	} else t15 = $[61];
+	let t16;
+	if ($[62] !== onReset || $[63] !== t14 || $[64] !== t15) {
+		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			type: "button",
+			size: "sm",
+			variant: "ghost",
+			disabled: t14,
+			onClick: onReset,
+			children: t15
+		});
+		$[62] = onReset;
+		$[63] = t14;
+		$[64] = t15;
+		$[65] = t16;
+	} else t16 = $[65];
+	const t17 = !dirty || !valid;
+	let t18;
+	if ($[66] !== t) {
+		t18 = t("settingSave");
+		$[66] = t;
+		$[67] = t18;
+	} else t18 = $[67];
+	let t19;
+	if ($[68] !== t17 || $[69] !== t18) {
+		t19 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			type: "submit",
+			size: "sm",
+			variant: "primary",
+			disabled: t17,
+			children: t18
+		});
+		$[68] = t17;
+		$[69] = t18;
+		$[70] = t19;
+	} else t19 = $[70];
+	let t20;
+	if ($[71] !== t16 || $[72] !== t19) {
+		t20 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex items-center gap-2",
+			children: [t16, t19]
+		});
+		$[71] = t16;
+		$[72] = t19;
+		$[73] = t20;
+	} else t20 = $[73];
+	let t21;
+	if ($[74] !== t13 || $[75] !== t20) {
+		t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
+			className: "flex flex-wrap items-center justify-between gap-3 border-t border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-4 py-2.5",
+			children: [t13, t20]
+		});
+		$[74] = t13;
+		$[75] = t20;
+		$[76] = t21;
+	} else t21 = $[76];
+	let t22;
+	if ($[77] !== t21 || $[78] !== t4 || $[79] !== t5 || $[80] !== t6 || $[81] !== t7 || $[82] !== t8 || $[83] !== t9) {
+		t22 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("form", {
+			className: t4,
+			onSubmit: t5,
+			"aria-labelledby": t6,
+			children: [
+				t7,
+				t8,
+				t9,
+				t21
+			]
+		});
+		$[77] = t21;
+		$[78] = t4;
+		$[79] = t5;
+		$[80] = t6;
+		$[81] = t7;
+		$[82] = t8;
+		$[83] = t9;
+		$[84] = t22;
+	} else t22 = $[84];
+	return t22;
 }
 // src/client/pages/setting/page.tsx
 function Setting() {
-	return "Setting";
+	const $ = (0, import_dist.c)(98);
+	const { t } = useTranslation();
+	const state_0 = useStore(_temp$8);
+	const actions = useActions();
+	const id = (0, react.useId)();
+	let dirty;
+	let t0;
+	let t1;
+	let t10;
+	let t2;
+	let t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	let t9;
+	if ($[0] !== actions || $[1] !== id || $[2] !== state_0.draft || $[3] !== state_0.invalid || $[4] !== state_0.notice || $[5] !== state_0.projects || $[6] !== state_0.refreshedAt || $[7] !== state_0.saved || $[8] !== state_0.section || $[9] !== t) {
+		const notices = {
+			saved: "settingSaved",
+			refreshed: "settingRefreshed",
+			project: "settingProjectSaved"
+		};
+		let t11;
+		let t12;
+		let t13;
+		let t14;
+		if ($[22] !== actions || $[23] !== id || $[24] !== state_0.draft || $[25] !== state_0.saved || $[26] !== state_0.section || $[27] !== t) {
+			const sections = [
+				{
+					value: "projects",
+					label: "settingProjects",
+					icon: GitBranchIcon
+				},
+				{
+					value: "execution",
+					label: "settingExecution",
+					icon: TasksIcon
+				},
+				{
+					value: "delivery",
+					label: "settingDelivery",
+					icon: ActivityIcon
+				}
+			];
+			dirty = Object.keys(state_0.draft).some((key) => state_0.draft[key] !== state_0.saved[key]);
+			t8 = "@container flex min-w-0 flex-col gap-4 pb-8";
+			if ($[37] !== t) {
+				t9 = t("tabSettings");
+				$[37] = t;
+				$[38] = t9;
+			} else t9 = $[38];
+			let t15;
+			if ($[39] !== t) {
+				t15 = t("tabSettings");
+				$[39] = t;
+				$[40] = t15;
+			} else t15 = $[40];
+			let t16;
+			if ($[41] !== t15) {
+				t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+					className: "m-0 text-base font-medium",
+					children: t15
+				});
+				$[41] = t15;
+				$[42] = t16;
+			} else t16 = $[42];
+			let t17;
+			if ($[43] !== t) {
+				t17 = t("settingDescription");
+				$[43] = t;
+				$[44] = t17;
+			} else t17 = $[44];
+			let t18;
+			if ($[45] !== t17) {
+				t18 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: "m-0 mt-1.5 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]",
+					children: t17
+				});
+				$[45] = t17;
+				$[46] = t18;
+			} else t18 = $[46];
+			let t19;
+			if ($[47] !== t16 || $[48] !== t18) {
+				t19 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [t16, t18] });
+				$[47] = t16;
+				$[48] = t18;
+				$[49] = t19;
+			} else t19 = $[49];
+			let t20;
+			if ($[50] !== t) {
+				t20 = t("overviewDemo");
+				$[50] = t;
+				$[51] = t20;
+			} else t20 = $[51];
+			let t21;
+			if ($[52] !== t20) {
+				t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+					tone: "quiet",
+					children: t20
+				});
+				$[52] = t20;
+				$[53] = t21;
+			} else t21 = $[53];
+			if ($[54] !== t19 || $[55] !== t21) {
+				t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+					className: "flex flex-wrap items-start justify-between gap-3",
+					children: [t19, t21]
+				});
+				$[54] = t19;
+				$[55] = t21;
+				$[56] = t10;
+			} else t10 = $[56];
+			t6 = "grid min-w-0 gap-4 @min-[740px]:grid-cols-[160px_minmax(0,1fr)] @min-[940px]:gap-5";
+			t14 = "self-start @min-[740px]:sticky @min-[740px]:top-4";
+			if ($[57] !== t) {
+				t11 = t("settingNavigation");
+				$[57] = t;
+				$[58] = t11;
+			} else t11 = $[58];
+			t12 = "flex flex-wrap gap-1 rounded-xl bg-[var(--dsw-alias-card-fill)] p-1 @min-[740px]:flex-col @min-[740px]:bg-transparent @min-[740px]:p-0";
+			t13 = sections.map((section) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+				id: `${id}-${section.value}`,
+				type: "button",
+				"aria-current": state_0.section === section.value ? "page" : void 0,
+				"aria-controls": `${id}-content`,
+				onClick: () => actions.setSettingSection(section.value),
+				className: `flex cursor-pointer items-center gap-2.5 rounded-lg border-0 px-3 py-2.5 text-left font-[inherit] text-xs outline-none transition-colors focus-visible:outline-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)] ${state_0.section === section.value ? "bg-[var(--dsw-alias-card-fill)] font-medium text-[var(--dsw-alias-label-primary)]" : "bg-transparent text-[var(--dsw-alias-label-secondary)] hover:bg-[var(--dsw-alias-card-fill)]"}`,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(section.icon, {
+						width: 16,
+						height: 16
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t(section.label) }),
+					section.value !== "projects" && GROUPS[section.value].some((key_0) => state_0.draft[key_0] !== state_0.saved[key_0]) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "ml-auto size-1.5 rounded-full bg-[var(--dsw-alias-state-business-primary)]",
+						"aria-label": t("settingUnsaved")
+					})
+				]
+			}, section.value));
+			$[22] = actions;
+			$[23] = id;
+			$[24] = state_0.draft;
+			$[25] = state_0.saved;
+			$[26] = state_0.section;
+			$[27] = t;
+			$[28] = dirty;
+			$[29] = t10;
+			$[30] = t11;
+			$[31] = t12;
+			$[32] = t13;
+			$[33] = t14;
+			$[34] = t6;
+			$[35] = t8;
+			$[36] = t9;
+		} else {
+			dirty = $[28];
+			t10 = $[29];
+			t11 = $[30];
+			t12 = $[31];
+			t13 = $[32];
+			t14 = $[33];
+			t6 = $[34];
+			t8 = $[35];
+			t9 = $[36];
+		}
+		let t15;
+		if ($[59] !== t11 || $[60] !== t12 || $[61] !== t13) {
+			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
+				"aria-label": t11,
+				className: t12,
+				children: t13
+			});
+			$[59] = t11;
+			$[60] = t12;
+			$[61] = t13;
+			$[62] = t15;
+		} else t15 = $[62];
+		if ($[63] !== t14 || $[64] !== t15) {
+			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("aside", {
+				className: t14,
+				children: t15
+			});
+			$[63] = t14;
+			$[64] = t15;
+			$[65] = t7;
+		} else t7 = $[65];
+		t0 = `${id}-content`;
+		t1 = "region";
+		t2 = `${id}-${state_0.section}`;
+		t3 = "flex min-w-0 flex-col gap-4";
+		if ($[66] !== actions || $[67] !== state_0.draft || $[68] !== state_0.projects || $[69] !== state_0.refreshedAt || $[70] !== state_0.saved || $[71] !== state_0.section) {
+			t4 = state_0.section === "projects" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Projects, {
+				projects: state_0.projects,
+				refreshedAt: state_0.refreshedAt,
+				onRefresh: () => actions.refreshSettingProjects((/* @__PURE__ */ new Date()).toISOString()),
+				onToggle: actions.toggleSettingProject
+			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Runtime, {
+				section: state_0.section,
+				draft: state_0.draft,
+				saved: state_0.saved,
+				onEdit: actions.editSettings,
+				onSave: () => actions.saveSettings(state_0.section),
+				onReset: () => actions.resetSettings(state_0.section)
+			});
+			$[66] = actions;
+			$[67] = state_0.draft;
+			$[68] = state_0.projects;
+			$[69] = state_0.refreshedAt;
+			$[70] = state_0.saved;
+			$[71] = state_0.section;
+			$[72] = t4;
+		} else t4 = $[72];
+		t5 = state_0.invalid ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			role: "alert",
+			className: "m-0 text-xs text-[var(--dsw-alias-state-error-primary)]",
+			children: t("settingInvalid")
+		}) : state_0.notice && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			role: "status",
+			className: "m-0 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+			children: t(notices[state_0.notice])
+		});
+		$[0] = actions;
+		$[1] = id;
+		$[2] = state_0.draft;
+		$[3] = state_0.invalid;
+		$[4] = state_0.notice;
+		$[5] = state_0.projects;
+		$[6] = state_0.refreshedAt;
+		$[7] = state_0.saved;
+		$[8] = state_0.section;
+		$[9] = t;
+		$[10] = dirty;
+		$[11] = t0;
+		$[12] = t1;
+		$[13] = t10;
+		$[14] = t2;
+		$[15] = t3;
+		$[16] = t4;
+		$[17] = t5;
+		$[18] = t6;
+		$[19] = t7;
+		$[20] = t8;
+		$[21] = t9;
+	} else {
+		dirty = $[10];
+		t0 = $[11];
+		t1 = $[12];
+		t10 = $[13];
+		t2 = $[14];
+		t3 = $[15];
+		t4 = $[16];
+		t5 = $[17];
+		t6 = $[18];
+		t7 = $[19];
+		t8 = $[20];
+		t9 = $[21];
+	}
+	let t11;
+	if ($[73] !== t) {
+		t11 = t("settingPreview");
+		$[73] = t;
+		$[74] = t11;
+	} else t11 = $[74];
+	let t12;
+	if ($[75] !== dirty || $[76] !== t) {
+		t12 = dirty && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "ml-1",
+			children: t("settingUnsaved")
+		});
+		$[75] = dirty;
+		$[76] = t;
+		$[77] = t12;
+	} else t12 = $[77];
+	let t13;
+	if ($[78] !== t11 || $[79] !== t12) {
+		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: [t11, t12]
+		});
+		$[78] = t11;
+		$[79] = t12;
+		$[80] = t13;
+	} else t13 = $[80];
+	let t14;
+	if ($[81] !== t0 || $[82] !== t1 || $[83] !== t13 || $[84] !== t2 || $[85] !== t3 || $[86] !== t4 || $[87] !== t5) {
+		t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			id: t0,
+			role: t1,
+			"aria-labelledby": t2,
+			className: t3,
+			children: [
+				t4,
+				t5,
+				t13
+			]
+		});
+		$[81] = t0;
+		$[82] = t1;
+		$[83] = t13;
+		$[84] = t2;
+		$[85] = t3;
+		$[86] = t4;
+		$[87] = t5;
+		$[88] = t14;
+	} else t14 = $[88];
+	let t15;
+	if ($[89] !== t14 || $[90] !== t6 || $[91] !== t7) {
+		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: t6,
+			children: [t7, t14]
+		});
+		$[89] = t14;
+		$[90] = t6;
+		$[91] = t7;
+		$[92] = t15;
+	} else t15 = $[92];
+	let t16;
+	if ($[93] !== t10 || $[94] !== t15 || $[95] !== t8 || $[96] !== t9) {
+		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: t8,
+			"aria-label": t9,
+			children: [t10, t15]
+		});
+		$[93] = t10;
+		$[94] = t15;
+		$[95] = t8;
+		$[96] = t9;
+		$[97] = t16;
+	} else t16 = $[97];
+	return t16;
+}
+function _temp$8(state) {
+	return state.setting;
 }
 // src/client/pages/ticket/detail/components/arrivals.tsx
 function Arrivals(t0) {
@@ -54160,7 +56184,7 @@ function Issues(t0) {
 			className: "text-xs font-normal text-[var(--dsw-alias-label-tertiary)]",
 			children: t("ticketIssueCount", {
 				total: issues.length,
-				open: issues.filter(_temp$2).length
+				open: issues.filter(_temp$7).length
 			})
 		});
 		$[2] = issues;
@@ -54194,7 +56218,7 @@ function Issues(t0) {
 							children: t(issue_0.title)
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: "ml-2 inline-flex flex-wrap gap-1 align-middle",
-							children: issue_0.labels.map(_temp2)
+							children: issue_0.labels.map(_temp2$2)
 						})]
 					})]
 				}) }, issue_0.title);
@@ -54221,14 +56245,14 @@ function Issues(t0) {
 	} else t4 = $[11];
 	return t4;
 }
-function _temp2(label) {
+function _temp2$2(label) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
 		tone: label === "bug" ? "danger" : label === "linux" ? "success" : "info",
 		className: "!px-1.5 !py-0 !text-[10px] !leading-4",
 		children: label
 	}, label);
 }
-function _temp$2(issue) {
+function _temp$7(issue) {
 	return issue.state === "open";
 }
 // src/client/pages/ticket/detail/components/metric.tsx
@@ -54278,7 +56302,7 @@ function Metric(t0) {
 }
 // src/client/pages/ticket/detail/components/pr-status.tsx
 function PrStatus(t0) {
-	const $ = (0, import_dist.c)(22);
+	const $ = (0, import_dist.c)(24);
 	const { pullRequest } = t0;
 	const { t } = useTranslation();
 	const blocked = pullRequest.state === "open" && (pullRequest.checks === "failure" || pullRequest.reviewDecision === "changes-requested" || pullRequest.mergeability === "conflicting");
@@ -54290,6 +56314,7 @@ function PrStatus(t0) {
 	let t5;
 	let t6;
 	let t7;
+	let t8;
 	if ($[0] !== pullRequest.number || $[1] !== t || $[2] !== tone) {
 		const { Icon, color, label } = {
 			open: {
@@ -54319,23 +56344,24 @@ function PrStatus(t0) {
 			}
 		}[tone];
 		const description = `PR #${pullRequest.number} · ${t(label)}`;
-		t3 = description;
+		t3 = "button";
 		t4 = description;
-		t5 = "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-2.5 text-xs leading-4 font-medium text-[var(--dsw-alias-label-primary)]";
-		t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Icon, {
+		t5 = description;
+		t6 = "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-2.5 text-xs leading-4 font-medium text-[var(--dsw-alias-label-primary)] outline-none transition-colors hover:bg-[var(--dsw-alias-interactive-bg-hover)] active:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)]";
+		t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Icon, {
 			width: 12,
 			height: 12,
 			style: { color }
 		});
-		const t8 = `PR #${pullRequest.number}`;
-		if ($[10] !== t8) {
-			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+		const t9 = `PR #${pullRequest.number}`;
+		if ($[11] !== t9) {
+			t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 				className: "tabular-nums",
-				children: t8
+				children: t9
 			});
-			$[10] = t8;
-			$[11] = t7;
-		} else t7 = $[11];
+			$[11] = t9;
+			$[12] = t8;
+		} else t8 = $[12];
 		t1 = "text-[11px] font-normal text-[var(--dsw-alias-label-secondary)]";
 		t2 = t(label);
 		$[0] = pullRequest.number;
@@ -54348,6 +56374,7 @@ function PrStatus(t0) {
 		$[7] = t5;
 		$[8] = t6;
 		$[9] = t7;
+		$[10] = t8;
 	} else {
 		t1 = $[3];
 		t2 = $[4];
@@ -54356,38 +56383,41 @@ function PrStatus(t0) {
 		t5 = $[7];
 		t6 = $[8];
 		t7 = $[9];
+		t8 = $[10];
 	}
-	let t8;
-	if ($[12] !== t1 || $[13] !== t2) {
-		t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+	let t9;
+	if ($[13] !== t1 || $[14] !== t2) {
+		t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 			className: t1,
 			children: t2
 		});
-		$[12] = t1;
-		$[13] = t2;
-		$[14] = t8;
-	} else t8 = $[14];
-	let t9;
-	if ($[15] !== t3 || $[16] !== t4 || $[17] !== t5 || $[18] !== t6 || $[19] !== t7 || $[20] !== t8) {
-		t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-			"aria-label": t3,
-			title: t4,
-			className: t5,
+		$[13] = t1;
+		$[14] = t2;
+		$[15] = t9;
+	} else t9 = $[15];
+	let t10;
+	if ($[16] !== t3 || $[17] !== t4 || $[18] !== t5 || $[19] !== t6 || $[20] !== t7 || $[21] !== t8 || $[22] !== t9) {
+		t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+			type: t3,
+			"aria-label": t4,
+			title: t5,
+			className: t6,
 			children: [
-				t6,
 				t7,
-				t8
+				t8,
+				t9
 			]
 		});
-		$[15] = t3;
-		$[16] = t4;
-		$[17] = t5;
-		$[18] = t6;
-		$[19] = t7;
-		$[20] = t8;
-		$[21] = t9;
-	} else t9 = $[21];
-	return t9;
+		$[16] = t3;
+		$[17] = t4;
+		$[18] = t5;
+		$[19] = t6;
+		$[20] = t7;
+		$[21] = t8;
+		$[22] = t9;
+		$[23] = t10;
+	} else t10 = $[23];
+	return t10;
 }
 // src/client/pages/ticket/detail/components/relations.tsx
 function Relations(t0) {
@@ -54443,7 +56473,7 @@ function TicketDetail() {
 	const { t } = useTranslation();
 	const { go } = useActions();
 	const executionDescriptionId = (0, react.useId)();
-	const { ticketId, returnTo } = useStore(_temp$1);
+	const { ticketId, returnTo } = useStore(_temp$6);
 	let associations;
 	let connected;
 	let dependencies;
@@ -55175,7 +57205,7 @@ function TicketDetail() {
 	} else t59 = $[195];
 	return t59;
 }
-function _temp$1(state) {
+function _temp$6(state) {
 	return state.navigation;
 }
 // src/client/pages/ticket/page.tsx
@@ -55226,7 +57256,7 @@ function Ticket() {
 	if ($[11] === Symbol.for("react.memo_cache_sentinel")) {
 		t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 			className: "m-0 pl-0",
-			children: OVERVIEW_TASKS.map(_temp)
+			children: OVERVIEW_TASKS.map(_temp$5)
 		});
 		$[11] = t5;
 	} else t5 = $[11];
@@ -55241,12 +57271,2016 @@ function Ticket() {
 	} else t6 = $[13];
 	return t6;
 }
-function _temp(task) {
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, { task }, task.id);
+function _temp$5(task) {
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row$1, { task }, task.id);
+}
+// src/client/pages/trigger/model.ts
+const KINDS = {
+	comment: "triggerKindComment",
+	open: "triggerKindOpen",
+	close: "triggerKindClose",
+	ci: "triggerKindCi",
+	push: "triggerKindPush"
+};
+const STATUSES = {
+	"pending": {
+		label: "triggerPending",
+		tone: "info"
+	},
+	"done": {
+		label: "triggerDone",
+		tone: "success"
+	},
+	"stalled": {
+		label: "triggerStalled",
+		tone: "danger"
+	},
+	"not-delivered": {
+		label: "triggerNotDelivered",
+		tone: "quiet"
+	}
+};
+function sourceHref(channel, url) {
+	if (channel === "feishu" || !url || !URL.canParse(url)) return void 0;
+	const parsed = new URL(url);
+	return ["http:", "https:"].includes(parsed.protocol) && !parsed.username && !parsed.password ? parsed.href : void 0;
+}
+function deliveryStatus(record) {
+	if (record.deliveries.some((delivery) => delivery.status === "stalled")) return "stalled";
+	if (record.deliveries.some((delivery) => delivery.status === "pending")) return "pending";
+	return record.deliveries.length ? "done" : "not-delivered";
+}
+function filterRecords(records, filters, text) {
+	const query = filters.query.trim().toLocaleLowerCase();
+	return records.filter((record) => (filters.channel === "all" || record.channel === filters.channel) && (filters.status === "all" || (filters.status === "not-delivered" ? !record.deliveries.length : record.deliveries.some((delivery) => delivery.status === filters.status))) && (filters.kind === "all" || record.kind === filters.kind) && (!filters.mentionedOnly || record.mentioned) && (!query || [
+		record.id,
+		record.actor,
+		record.channel,
+		record.thread.ref,
+		record.thread.project,
+		record.ref,
+		text(record.thread.title),
+		text(record.text),
+		...record.tickets
+	].join(" ").toLocaleLowerCase().includes(query))).sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
+}
+function groupTopics(records) {
+	const grouped = /* @__PURE__ */ new Map();
+	for (const record of records) {
+		const events = grouped.get(record.thread.id) ?? [];
+		events.push(record);
+		grouped.set(record.thread.id, events);
+	}
+	return [...grouped.values()].map((events) => {
+		events.sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
+		return {
+			latest: events[0],
+			events
+		};
+	}).sort((a, b) => Date.parse(b.latest.at) - Date.parse(a.latest.at) || b.latest.id.localeCompare(a.latest.id));
+}
+function filterTopics(topics, filters, text) {
+	return topics.filter((topic) => filterRecords(topic.events, filters, text).length > 0);
+}
+const TRIAGE = {
+	pending: "triggerTriagePending",
+	claimed: "triggerTriageClaimed",
+	ignored: "triggerTriageIgnored"
+};
+const THREAD_KINDS = {
+	issue: "triggerTopicIssue",
+	pull: "triggerTopicPull",
+	chat: "triggerTopicChat",
+	ci: "triggerTopicCi"
+};
+const RECORDS = [
+	{
+		id: "github:hairyf/dsh-third-kernel:issue-162:comment-421",
+		channel: "github",
+		kind: "comment",
+		actor: "hairyf",
+		human: true,
+		mentioned: true,
+		url: "https://github.com/hairyf/dsh-third-kernel/issues/162#issuecomment-421",
+		text: "triggerTextLogin",
+		at: "2026-11-14T21:56:00+08:00",
+		thread: {
+			id: "github:issue-162",
+			kind: "issue",
+			ref: "#162",
+			title: "overviewTaskLogin",
+			triage: "claimed",
+			project: "hairyf/dsh-third-kernel",
+			url: "https://github.com/hairyf/dsh-third-kernel/issues/162"
+		},
+		tickets: ["T-105"],
+		deliveries: [{
+			target: "project",
+			project: "hairyf/dsh-third-kernel",
+			status: "pending",
+			read: true
+		}]
+	},
+	{
+		id: "feishu:topic-api:message-82",
+		channel: "feishu",
+		kind: "comment",
+		actor: "林晓",
+		human: true,
+		mentioned: true,
+		text: "triggerTextApi",
+		at: "2026-11-14T21:48:00+08:00",
+		thread: {
+			id: "feishu:topic-api",
+			kind: "chat",
+			ref: "API",
+			title: "overviewTaskApi",
+			triage: "pending"
+		},
+		tickets: [],
+		deliveries: [{
+			target: "main",
+			status: "pending",
+			read: false
+		}]
+	},
+	{
+		id: "github:hairyf/dsh-third-kernel:pull-81:review-23",
+		channel: "github",
+		kind: "comment",
+		actor: "hairyf",
+		human: true,
+		mentioned: true,
+		url: "https://github.com/hairyf/dsh-third-kernel/pull/81#pullrequestreview-23",
+		text: "triggerTextReview",
+		at: "2026-11-14T21:35:00+08:00",
+		thread: {
+			id: "github:pull-81",
+			kind: "pull",
+			ref: "PR #81",
+			title: "overviewTaskRemote",
+			triage: "claimed",
+			project: "hairyf/dsh-third-kernel",
+			url: "https://github.com/hairyf/dsh-third-kernel/pull/81"
+		},
+		tickets: ["T-104"],
+		deliveries: [{
+			target: "project",
+			project: "hairyf/dsh-third-kernel",
+			status: "done",
+			read: true
+		}]
+	},
+	{
+		id: "gitlab:team/console:issue-38:comment-15",
+		channel: "gitlab",
+		kind: "comment",
+		actor: "chen",
+		human: true,
+		mentioned: true,
+		url: "https://gitlab.com/team/console/-/issues/38#note_15",
+		text: "triggerTextDelivery",
+		at: "2026-11-14T21:22:00+08:00",
+		thread: {
+			id: "gitlab:issue-38",
+			kind: "issue",
+			ref: "#38",
+			title: "triggerThreadConsole",
+			triage: "pending",
+			url: "https://gitlab.com/team/console/-/issues/38"
+		},
+		tickets: [],
+		deliveries: [{
+			target: "main",
+			status: "stalled",
+			read: false,
+			attempts: 3,
+			error: "triggerErrorSession"
+		}]
+	},
+	{
+		id: "github:hairyf/dsh-third-kernel:ci-main:revision-12",
+		channel: "github",
+		kind: "ci",
+		actor: "GitHub Actions",
+		human: false,
+		mentioned: false,
+		text: "triggerTextCi",
+		at: "2026-11-14T21:10:00+08:00",
+		ref: "7e4b2c1",
+		thread: {
+			id: "github:ci:main",
+			kind: "ci",
+			ref: "main",
+			title: "triggerThreadCi",
+			triage: "claimed",
+			project: "hairyf/dsh-third-kernel"
+		},
+		tickets: [],
+		deliveries: [{
+			target: "project",
+			project: "hairyf/dsh-third-kernel",
+			status: "done",
+			read: true
+		}]
+	},
+	{
+		id: "github:hairyf/dsh-third-kernel:issue-162:comment-419",
+		channel: "github",
+		kind: "comment",
+		actor: "contributor",
+		human: true,
+		mentioned: false,
+		url: "https://github.com/hairyf/dsh-third-kernel/issues/162#issuecomment-419",
+		text: "triggerTextUnmentioned",
+		at: "2026-11-14T20:52:00+08:00",
+		thread: {
+			id: "github:issue-162",
+			kind: "issue",
+			ref: "#162",
+			title: "overviewTaskLogin",
+			triage: "claimed",
+			project: "hairyf/dsh-third-kernel",
+			url: "https://github.com/hairyf/dsh-third-kernel/issues/162"
+		},
+		tickets: ["T-105"],
+		deliveries: [],
+		skipped: "not-mentioned"
+	},
+	{
+		id: "feishu:topic-chatter:message-17",
+		channel: "feishu",
+		kind: "comment",
+		actor: "林晓",
+		human: true,
+		mentioned: false,
+		text: "triggerTextIgnored",
+		at: "2026-11-14T20:35:00+08:00",
+		thread: {
+			id: "feishu:topic-chatter",
+			kind: "chat",
+			ref: "讨论",
+			title: "triggerThreadChatter",
+			triage: "ignored"
+		},
+		tickets: [],
+		deliveries: [],
+		skipped: "ignored"
+	},
+	{
+		id: "github:hairyf/dsh-third-kernel:pull-81:open",
+		channel: "github",
+		kind: "open",
+		actor: "hairyf",
+		human: true,
+		mentioned: true,
+		url: "https://github.com/hairyf/dsh-third-kernel/pull/81",
+		text: "triggerTextOpen",
+		at: "2026-11-14T20:18:00+08:00",
+		ref: "nexus/T-104",
+		thread: {
+			id: "github:pull-81",
+			kind: "pull",
+			ref: "PR #81",
+			title: "overviewTaskRemote",
+			triage: "claimed",
+			project: "hairyf/dsh-third-kernel",
+			url: "https://github.com/hairyf/dsh-third-kernel/pull/81"
+		},
+		tickets: ["T-104"],
+		deliveries: [{
+			target: "project",
+			project: "hairyf/dsh-third-kernel",
+			status: "done",
+			read: true
+		}]
+	}
+];
+// src/client/pages/trigger/detail/components/event.tsx
+function Event(t0) {
+	const $ = (0, import_dist.c)(80);
+	const { record } = t0;
+	const { t } = useTranslation();
+	let t1;
+	if ($[0] !== record.channel || $[1] !== record.url) {
+		t1 = sourceHref(record.channel, record.url);
+		$[0] = record.channel;
+		$[1] = record.url;
+		$[2] = t1;
+	} else t1 = $[2];
+	const href = t1;
+	let t2;
+	let t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	if ($[3] !== href || $[4] !== record.actor || $[5] !== record.at || $[6] !== record.deliveries || $[7] !== record.human || $[8] !== record.kind || $[9] !== record.mentioned || $[10] !== record.skipped || $[11] !== record.text || $[12] !== t) {
+		const targets = {
+			main: "graphOrchestrator",
+			project: "triggerProjectAgent",
+			supervisor: "graphSupervisor",
+			user: "triggerUser"
+		};
+		t7 = "relative min-w-0 border-l border-[var(--dsw-alias-border-l3)] pb-6 pl-5 last:pb-0";
+		if ($[20] === Symbol.for("react.memo_cache_sentinel")) {
+			t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: "absolute top-1.5 -left-[3.5px] size-1.5 rounded-full bg-[var(--dsw-alias-state-business-primary)]",
+				"aria-hidden": "true"
+			});
+			$[20] = t8;
+		} else t8 = $[20];
+		t2 = "min-w-0 rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-4";
+		let t9;
+		if ($[21] !== record.actor) {
+			t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: "font-medium",
+				children: record.actor
+			});
+			$[21] = record.actor;
+			$[22] = t9;
+		} else t9 = $[22];
+		const t10 = KINDS[record.kind];
+		let t11;
+		if ($[23] !== t || $[24] !== t10) {
+			t11 = t(t10);
+			$[23] = t;
+			$[24] = t10;
+			$[25] = t11;
+		} else t11 = $[25];
+		let t12;
+		if ($[26] !== t11) {
+			t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "neutral",
+				children: t11
+			});
+			$[26] = t11;
+			$[27] = t12;
+		} else t12 = $[27];
+		let t13;
+		if ($[28] !== record.mentioned || $[29] !== t) {
+			t13 = record.mentioned && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "info",
+				children: t("triggerMentioned")
+			});
+			$[28] = record.mentioned;
+			$[29] = t;
+			$[30] = t13;
+		} else t13 = $[30];
+		let t14;
+		if ($[31] !== record.human || $[32] !== t) {
+			t14 = !record.human && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				className: "text-[var(--dsw-alias-label-tertiary)]",
+				children: t("triggerAutomated")
+			});
+			$[31] = record.human;
+			$[32] = t;
+			$[33] = t14;
+		} else t14 = $[33];
+		let t15;
+		if ($[34] !== t12 || $[35] !== t13 || $[36] !== t14 || $[37] !== t9) {
+			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-center gap-2",
+				children: [
+					t9,
+					t12,
+					t13,
+					t14
+				]
+			});
+			$[34] = t12;
+			$[35] = t13;
+			$[36] = t14;
+			$[37] = t9;
+			$[38] = t15;
+		} else t15 = $[38];
+		let t16;
+		if ($[39] !== href || $[40] !== record.kind || $[41] !== t) {
+			t16 = href && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("a", {
+				href,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				title: t("triggerSampleLink"),
+				className: "text-[11px] text-[var(--dsw-alias-state-business-primary)] underline-offset-4 hover:underline focus-visible:underline",
+				children: [
+					t(record.kind === "comment" ? "triggerOpenComment" : "triggerOpenEvent"),
+					" ",
+					"↗"
+				]
+			});
+			$[39] = href;
+			$[40] = record.kind;
+			$[41] = t;
+			$[42] = t16;
+		} else t16 = $[42];
+		const t17 = record.at;
+		const t18 = record.at;
+		let t19;
+		if ($[43] !== record.at) {
+			t19 = record.at.slice(0, 10);
+			$[43] = record.at;
+			$[44] = t19;
+		} else t19 = $[44];
+		let t20;
+		if ($[45] !== record.at) {
+			t20 = record.at.slice(11, 16);
+			$[45] = record.at;
+			$[46] = t20;
+		} else t20 = $[46];
+		let t21;
+		if ($[47] !== record.at || $[48] !== t19 || $[49] !== t20) {
+			t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("time", {
+				dateTime: t17,
+				title: t18,
+				className: "text-[11px] text-[var(--dsw-alias-label-tertiary)] tabular-nums",
+				children: [
+					t19,
+					" ",
+					"·",
+					" ",
+					t20
+				]
+			});
+			$[47] = record.at;
+			$[48] = t19;
+			$[49] = t20;
+			$[50] = t21;
+		} else t21 = $[50];
+		let t22;
+		if ($[51] !== t16 || $[52] !== t21) {
+			t22 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-center gap-3",
+				children: [t16, t21]
+			});
+			$[51] = t16;
+			$[52] = t21;
+			$[53] = t22;
+		} else t22 = $[53];
+		if ($[54] !== t15 || $[55] !== t22) {
+			t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+				className: "flex flex-wrap items-center justify-between gap-2 text-xs",
+				children: [t15, t22]
+			});
+			$[54] = t15;
+			$[55] = t22;
+			$[56] = t3;
+		} else t3 = $[56];
+		let t23;
+		if ($[57] !== record.text || $[58] !== t) {
+			t23 = t(record.text);
+			$[57] = record.text;
+			$[58] = t;
+			$[59] = t23;
+		} else t23 = $[59];
+		if ($[60] !== t23) {
+			t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "my-3 whitespace-pre-wrap text-[13px] leading-6 text-[var(--dsw-alias-label-primary)] [overflow-wrap:anywhere]",
+				children: t23
+			});
+			$[60] = t23;
+			$[61] = t4;
+		} else t4 = $[61];
+		let t24;
+		if ($[62] !== t) {
+			t24 = t("triggerDelivery");
+			$[62] = t;
+			$[63] = t24;
+		} else t24 = $[63];
+		if ($[64] !== t24) {
+			t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: "flex flex-wrap items-center gap-2 border-t border-[var(--dsw-alias-border-l3)] pt-3 text-xs text-[var(--dsw-alias-label-secondary)]",
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t24 })
+			});
+			$[64] = t24;
+			$[65] = t5;
+		} else t5 = $[65];
+		t6 = record.deliveries.length ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+			className: "m-0 mt-2 flex list-none flex-col gap-2 p-0",
+			children: record.deliveries.map((delivery, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+				className: "text-xs leading-5",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: "flex flex-wrap items-center gap-2",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t(targets[delivery.target]) }),
+							delivery.project && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "break-all text-[var(--dsw-alias-label-tertiary)]",
+								children: delivery.project
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+								tone: STATUSES[delivery.status].tone,
+								children: t(STATUSES[delivery.status].label)
+							})
+						]
+					}),
+					delivery.status === "pending" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: "block text-[11px] text-[var(--dsw-alias-label-secondary)]",
+						children: t(delivery.read ? "triggerReadPending" : "triggerQueued")
+					}),
+					delivery.error && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: "m-0 mt-1 text-[11px] text-[var(--dsw-alias-state-error-primary)]",
+						children: [
+							t(delivery.error),
+							" ",
+							"·",
+							" ",
+							t("triggerAttempts", { count: delivery.attempts })
+						]
+					})
+				]
+			}, `${delivery.target}-${delivery.project ?? index}`))
+		}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "mb-0 mt-2 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+			children: t(record.skipped === "ignored" ? "triggerSkipIgnored" : record.skipped === "not-mentioned" ? "triggerSkipMention" : "triggerNoDelivery")
+		});
+		$[3] = href;
+		$[4] = record.actor;
+		$[5] = record.at;
+		$[6] = record.deliveries;
+		$[7] = record.human;
+		$[8] = record.kind;
+		$[9] = record.mentioned;
+		$[10] = record.skipped;
+		$[11] = record.text;
+		$[12] = t;
+		$[13] = t2;
+		$[14] = t3;
+		$[15] = t4;
+		$[16] = t5;
+		$[17] = t6;
+		$[18] = t7;
+		$[19] = t8;
+	} else {
+		t2 = $[13];
+		t3 = $[14];
+		t4 = $[15];
+		t5 = $[16];
+		t6 = $[17];
+		t7 = $[18];
+		t8 = $[19];
+	}
+	let t9;
+	if ($[66] !== record.ref || $[67] !== t) {
+		t9 = record.ref && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+			className: "mb-0 mt-3 break-all text-[11px] text-[var(--dsw-alias-label-secondary)]",
+			children: [
+				t("triggerRef"),
+				":",
+				" ",
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: record.ref })
+			]
+		});
+		$[66] = record.ref;
+		$[67] = t;
+		$[68] = t9;
+	} else t9 = $[68];
+	let t10;
+	if ($[69] !== t2 || $[70] !== t3 || $[71] !== t4 || $[72] !== t5 || $[73] !== t6 || $[74] !== t9) {
+		t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
+			className: t2,
+			children: [
+				t3,
+				t4,
+				t5,
+				t6,
+				t9
+			]
+		});
+		$[69] = t2;
+		$[70] = t3;
+		$[71] = t4;
+		$[72] = t5;
+		$[73] = t6;
+		$[74] = t9;
+		$[75] = t10;
+	} else t10 = $[75];
+	let t11;
+	if ($[76] !== t10 || $[77] !== t7 || $[78] !== t8) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+			className: t7,
+			children: [t8, t10]
+		});
+		$[76] = t10;
+		$[77] = t7;
+		$[78] = t8;
+		$[79] = t11;
+	} else t11 = $[79];
+	return t11;
+}
+// src/client/pages/trigger/detail/page.tsx
+function TriggerDetail() {
+	const $ = (0, import_dist.c)(140);
+	const { t } = useTranslation();
+	const { go, openTicket } = useActions();
+	const id = useStore(_temp$4);
+	let href;
+	let latest;
+	let t0;
+	let t1;
+	let t2;
+	let t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	let t9;
+	let tickets;
+	if ($[0] !== go || $[1] !== id || $[2] !== t) {
+		t9 = Symbol.for("react.early_return_sentinel");
+		bb0: {
+			let t10;
+			if ($[16] !== id) {
+				t10 = (topic) => topic.latest.thread.id === id;
+				$[16] = id;
+				$[17] = t10;
+			} else t10 = $[17];
+			const topic_0 = groupTopics(RECORDS).find(t10);
+			let t11;
+			if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
+				t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ArrowLeftIcon, {
+					width: 16,
+					height: 16
+				});
+				$[18] = t11;
+			} else t11 = $[18];
+			let t12;
+			if ($[19] !== go) {
+				t12 = () => go("trigger");
+				$[19] = go;
+				$[20] = t12;
+			} else t12 = $[20];
+			let t13;
+			if ($[21] !== t) {
+				t13 = t("triggerBack");
+				$[21] = t;
+				$[22] = t13;
+			} else t13 = $[22];
+			let t14;
+			if ($[23] !== t12 || $[24] !== t13) {
+				t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					size: "sm",
+					variant: "ghost",
+					icon: t11,
+					onClick: t12,
+					children: t13
+				});
+				$[23] = t12;
+				$[24] = t13;
+				$[25] = t14;
+			} else t14 = $[25];
+			const back = t14;
+			if (!topic_0) {
+				let t15;
+				if ($[26] !== back) {
+					t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: back });
+					$[26] = back;
+					$[27] = t15;
+				} else t15 = $[27];
+				let t16;
+				if ($[28] !== t) {
+					t16 = t("triggerTopicNotFound");
+					$[28] = t;
+					$[29] = t16;
+				} else t16 = $[29];
+				let t17;
+				if ($[30] !== t16) {
+					t17 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: "rounded-xl border border-[var(--dsw-alias-border-l3)] p-5 text-sm",
+						children: t16
+					});
+					$[30] = t16;
+					$[31] = t17;
+				} else t17 = $[31];
+				let t18;
+				if ($[32] !== t15 || $[33] !== t17) {
+					t18 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: "flex flex-col gap-5 pb-10",
+						children: [t15, t17]
+					});
+					$[32] = t15;
+					$[33] = t17;
+					$[34] = t18;
+				} else t18 = $[34];
+				t9 = t18;
+				break bb0;
+			}
+			const { latest: t15, events } = topic_0;
+			latest = t15;
+			href = sourceHref(latest.channel, latest.thread.url);
+			const channel = latest.channel === "feishu" ? t("triggerFeishu") : latest.channel === "github" ? "GitHub" : "GitLab";
+			tickets = [...new Set(events.flatMap(_temp2$1))];
+			t5 = "@container flex min-w-0 flex-col gap-5 pb-10";
+			if ($[35] !== t) {
+				t6 = t("triggerTopicDetail");
+				$[35] = t;
+				$[36] = t6;
+			} else t6 = $[36];
+			if ($[37] !== back) {
+				t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: back });
+				$[37] = back;
+				$[38] = t7;
+			} else t7 = $[38];
+			let t16;
+			if ($[39] !== channel) {
+				t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: channel });
+				$[39] = channel;
+				$[40] = t16;
+			} else t16 = $[40];
+			const t17 = href ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("a", {
+				href,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				title: t("triggerSampleLink"),
+				className: "text-[var(--dsw-alias-state-business-primary)] underline-offset-4 hover:underline focus-visible:underline",
+				children: [
+					latest.thread.ref,
+					" ",
+					"↗"
+				]
+			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: latest.thread.ref });
+			const t18 = THREAD_KINDS[latest.thread.kind];
+			let t19;
+			if ($[41] !== t || $[42] !== t18) {
+				t19 = t(t18);
+				$[41] = t;
+				$[42] = t18;
+				$[43] = t19;
+			} else t19 = $[43];
+			let t20;
+			if ($[44] !== t19) {
+				t20 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+					tone: "neutral",
+					children: t19
+				});
+				$[44] = t19;
+				$[45] = t20;
+			} else t20 = $[45];
+			const t21 = TRIAGE[latest.thread.triage];
+			let t22;
+			if ($[46] !== t || $[47] !== t21) {
+				t22 = t(t21);
+				$[46] = t;
+				$[47] = t21;
+				$[48] = t22;
+			} else t22 = $[48];
+			let t23;
+			if ($[49] !== t22) {
+				t23 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+					tone: "outline",
+					children: t22
+				});
+				$[49] = t22;
+				$[50] = t23;
+			} else t23 = $[50];
+			let t24;
+			if ($[51] !== t) {
+				t24 = t("overviewDemo");
+				$[51] = t;
+				$[52] = t24;
+			} else t24 = $[52];
+			let t25;
+			if ($[53] !== t24) {
+				t25 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+					tone: "quiet",
+					children: t24
+				});
+				$[53] = t24;
+				$[54] = t25;
+			} else t25 = $[54];
+			let t26;
+			if ($[55] !== t16 || $[56] !== t17 || $[57] !== t20 || $[58] !== t23 || $[59] !== t25) {
+				t26 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: "mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--dsw-alias-label-tertiary)]",
+					children: [
+						t16,
+						t17,
+						t20,
+						t23,
+						t25
+					]
+				});
+				$[55] = t16;
+				$[56] = t17;
+				$[57] = t20;
+				$[58] = t23;
+				$[59] = t25;
+				$[60] = t26;
+			} else t26 = $[60];
+			t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", { children: [t26, /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+				className: "m-0 text-lg leading-7 font-medium [overflow-wrap:anywhere]",
+				children: t(latest.thread.title)
+			})] });
+			t4 = "grid min-w-0 gap-5 @min-[780px]:grid-cols-[minmax(0,1fr)_250px]";
+			t2 = "min-w-0";
+			let t27;
+			if ($[61] !== t) {
+				t27 = t("triggerTimeline");
+				$[61] = t;
+				$[62] = t27;
+			} else t27 = $[62];
+			let t28;
+			if ($[63] !== t27) {
+				t28 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+					className: "m-0 text-sm font-medium",
+					children: t27
+				});
+				$[63] = t27;
+				$[64] = t28;
+			} else t28 = $[64];
+			const t29 = t("triggerEventCount", { count: events.length });
+			let t30;
+			if ($[65] !== t) {
+				t30 = t("triggerNewestFirst");
+				$[65] = t;
+				$[66] = t30;
+			} else t30 = $[66];
+			t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: "mb-4 flex items-center justify-between gap-2",
+				children: [t28, /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					className: "text-xs text-[var(--dsw-alias-label-tertiary)]",
+					children: [
+						t29,
+						" ",
+						"·",
+						" ",
+						t30
+					]
+				})]
+			});
+			t0 = "m-0 list-none p-0 pl-1.5";
+			t1 = events.map(_temp3);
+		}
+		$[0] = go;
+		$[1] = id;
+		$[2] = t;
+		$[3] = href;
+		$[4] = latest;
+		$[5] = t0;
+		$[6] = t1;
+		$[7] = t2;
+		$[8] = t3;
+		$[9] = t4;
+		$[10] = t5;
+		$[11] = t6;
+		$[12] = t7;
+		$[13] = t8;
+		$[14] = t9;
+		$[15] = tickets;
+	} else {
+		href = $[3];
+		latest = $[4];
+		t0 = $[5];
+		t1 = $[6];
+		t2 = $[7];
+		t3 = $[8];
+		t4 = $[9];
+		t5 = $[10];
+		t6 = $[11];
+		t7 = $[12];
+		t8 = $[13];
+		t9 = $[14];
+		tickets = $[15];
+	}
+	if (t9 !== Symbol.for("react.early_return_sentinel")) return t9;
+	let t10;
+	if ($[67] !== t0 || $[68] !== t1) {
+		t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
+			className: t0,
+			children: t1
+		});
+		$[67] = t0;
+		$[68] = t1;
+		$[69] = t10;
+	} else t10 = $[69];
+	let t11;
+	if ($[70] !== t10 || $[71] !== t2 || $[72] !== t3) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: t2,
+			children: [t3, t10]
+		});
+		$[70] = t10;
+		$[71] = t2;
+		$[72] = t3;
+		$[73] = t11;
+	} else t11 = $[73];
+	let t12;
+	if ($[74] !== t) {
+		t12 = t("triggerThread");
+		$[74] = t;
+		$[75] = t12;
+	} else t12 = $[75];
+	let t13;
+	if ($[76] !== t12) {
+		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+			className: "m-0 text-sm font-medium",
+			children: t12
+		});
+		$[76] = t12;
+		$[77] = t13;
+	} else t13 = $[77];
+	let t14;
+	if ($[78] !== t) {
+		t14 = t("ticketProject");
+		$[78] = t;
+		$[79] = t14;
+	} else t14 = $[79];
+	let t15;
+	if ($[80] !== t14) {
+		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", {
+			className: "text-[var(--dsw-alias-label-tertiary)]",
+			children: t14
+		});
+		$[80] = t14;
+		$[81] = t15;
+	} else t15 = $[81];
+	let t16;
+	if ($[82] !== latest.thread.project || $[83] !== t) {
+		t16 = latest.thread.project ?? t("triggerNoProject");
+		$[82] = latest.thread.project;
+		$[83] = t;
+		$[84] = t16;
+	} else t16 = $[84];
+	let t17;
+	if ($[85] !== t16) {
+		t17 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", {
+			className: "m-0 mt-1 break-all leading-5",
+			children: t16
+		});
+		$[85] = t16;
+		$[86] = t17;
+	} else t17 = $[86];
+	let t18;
+	if ($[87] !== t15 || $[88] !== t17) {
+		t18 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [t15, t17] });
+		$[87] = t15;
+		$[88] = t17;
+		$[89] = t18;
+	} else t18 = $[89];
+	let t19;
+	if ($[90] !== t) {
+		t19 = t("triggerThreadId");
+		$[90] = t;
+		$[91] = t19;
+	} else t19 = $[91];
+	let t20;
+	if ($[92] !== t19) {
+		t20 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", {
+			className: "text-[var(--dsw-alias-label-tertiary)]",
+			children: t19
+		});
+		$[92] = t19;
+		$[93] = t20;
+	} else t20 = $[93];
+	let t21;
+	if ($[94] !== latest.thread.id) {
+		t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", {
+			className: "m-0 mt-1 break-all font-mono text-[11px] leading-5",
+			children: latest.thread.id
+		});
+		$[94] = latest.thread.id;
+		$[95] = t21;
+	} else t21 = $[95];
+	let t22;
+	if ($[96] !== t20 || $[97] !== t21) {
+		t22 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [t20, t21] });
+		$[96] = t20;
+		$[97] = t21;
+		$[98] = t22;
+	} else t22 = $[98];
+	let t23;
+	if ($[99] !== t18 || $[100] !== t22) {
+		t23 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", {
+			className: "m-0 mt-3 flex flex-col gap-3 text-xs",
+			children: [t18, t22]
+		});
+		$[99] = t18;
+		$[100] = t22;
+		$[101] = t23;
+	} else t23 = $[101];
+	let t24;
+	if ($[102] !== t13 || $[103] !== t23) {
+		t24 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-4",
+			children: [t13, t23]
+		});
+		$[102] = t13;
+		$[103] = t23;
+		$[104] = t24;
+	} else t24 = $[104];
+	let t25;
+	if ($[105] !== t) {
+		t25 = t("triggerLinkedTasks");
+		$[105] = t;
+		$[106] = t25;
+	} else t25 = $[106];
+	let t26;
+	if ($[107] !== t25) {
+		t26 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+			className: "m-0 text-sm font-medium",
+			children: t25
+		});
+		$[107] = t25;
+		$[108] = t26;
+	} else t26 = $[108];
+	let t27;
+	if ($[109] !== openTicket || $[110] !== t || $[111] !== tickets) {
+		t27 = tickets.length ? tickets.map((ticket) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			size: "sm",
+			variant: "outline",
+			onClick: () => openTicket(ticket),
+			children: ticket
+		}, ticket)) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "text-xs text-[var(--dsw-alias-label-tertiary)]",
+			children: t("triggerNoTask")
+		});
+		$[109] = openTicket;
+		$[110] = t;
+		$[111] = tickets;
+		$[112] = t27;
+	} else t27 = $[112];
+	let t28;
+	if ($[113] !== t27) {
+		t28 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			className: "mt-3 flex flex-wrap gap-2",
+			children: t27
+		});
+		$[113] = t27;
+		$[114] = t28;
+	} else t28 = $[114];
+	let t29;
+	if ($[115] !== t26 || $[116] !== t28) {
+		t29 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-4",
+			children: [t26, t28]
+		});
+		$[115] = t26;
+		$[116] = t28;
+		$[117] = t29;
+	} else t29 = $[117];
+	let t30;
+	if ($[118] !== t) {
+		t30 = t("triggerExternalText");
+		$[118] = t;
+		$[119] = t30;
+	} else t30 = $[119];
+	let t31;
+	if ($[120] !== t30) {
+		t31 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: t30
+		});
+		$[120] = t30;
+		$[121] = t31;
+	} else t31 = $[121];
+	let t32;
+	if ($[122] !== href || $[123] !== t) {
+		t32 = href && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: t("triggerSampleLink")
+		});
+		$[122] = href;
+		$[123] = t;
+		$[124] = t32;
+	} else t32 = $[124];
+	let t33;
+	if ($[125] !== t24 || $[126] !== t29 || $[127] !== t31 || $[128] !== t32) {
+		t33 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+			className: "flex min-w-0 flex-col gap-4 self-start @min-[780px]:sticky @min-[780px]:top-4",
+			children: [
+				t24,
+				t29,
+				t31,
+				t32
+			]
+		});
+		$[125] = t24;
+		$[126] = t29;
+		$[127] = t31;
+		$[128] = t32;
+		$[129] = t33;
+	} else t33 = $[129];
+	let t34;
+	if ($[130] !== t11 || $[131] !== t33 || $[132] !== t4) {
+		t34 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: t4,
+			children: [t11, t33]
+		});
+		$[130] = t11;
+		$[131] = t33;
+		$[132] = t4;
+		$[133] = t34;
+	} else t34 = $[133];
+	let t35;
+	if ($[134] !== t34 || $[135] !== t5 || $[136] !== t6 || $[137] !== t7 || $[138] !== t8) {
+		t35 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: t5,
+			"aria-label": t6,
+			children: [
+				t7,
+				t8,
+				t34
+			]
+		});
+		$[134] = t34;
+		$[135] = t5;
+		$[136] = t6;
+		$[137] = t7;
+		$[138] = t8;
+		$[139] = t35;
+	} else t35 = $[139];
+	return t35;
+}
+function _temp3(event_0) {
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Event, { record: event_0 }, event_0.id);
+}
+function _temp2$1(event) {
+	return [...event.tickets];
+}
+function _temp$4(state) {
+	return state.trigger.selectedId;
+}
+// src/client/pages/trigger/components/filters.tsx
+function Filters() {
+	const $ = (0, import_dist.c)(48);
+	const { t } = useTranslation();
+	const { filters, openFilter } = useStore(_temp$3);
+	const { setTriggerFilters, resetTriggerFilters, setTriggerFilterMenu } = useActions();
+	let t0;
+	if ($[0] !== filters.channel || $[1] !== filters.kind || $[2] !== filters.mentionedOnly || $[3] !== filters.query || $[4] !== filters.status) {
+		t0 = filters.query.trim() || filters.channel !== "all" || filters.status !== "all" || filters.kind !== "all" || filters.mentionedOnly;
+		$[0] = filters.channel;
+		$[1] = filters.kind;
+		$[2] = filters.mentionedOnly;
+		$[3] = filters.query;
+		$[4] = filters.status;
+		$[5] = t0;
+	} else t0 = $[5];
+	const active = t0;
+	let t1;
+	let t2;
+	let t3;
+	let t4;
+	if ($[6] !== active || $[7] !== filters || $[8] !== openFilter || $[9] !== resetTriggerFilters || $[10] !== setTriggerFilterMenu || $[11] !== setTriggerFilters || $[12] !== t) {
+		const menus = [
+			{
+				key: "channel",
+				label: t("triggerChannelFilter"),
+				items: [
+					{
+						id: "all",
+						label: t("triggerAllChannels")
+					},
+					{
+						id: "github",
+						label: "GitHub"
+					},
+					{
+						id: "gitlab",
+						label: "GitLab"
+					},
+					{
+						id: "feishu",
+						label: t("triggerFeishu")
+					}
+				]
+			},
+			{
+				key: "kind",
+				label: t("triggerKindFilter"),
+				items: [{
+					id: "all",
+					label: t("triggerAllKinds")
+				}, ...Object.entries(KINDS).map((t5) => {
+					const [id, label] = t5;
+					return {
+						id,
+						label: t(label)
+					};
+				})]
+			},
+			{
+				key: "status",
+				label: t("triggerStatusFilter"),
+				items: [{
+					id: "all",
+					label: t("triggerAllStatuses")
+				}, ...Object.entries(STATUSES).map((t6) => {
+					const [id_0, status] = t6;
+					return {
+						id: id_0,
+						label: t(status.label)
+					};
+				})]
+			}
+		];
+		t1 = "flex flex-wrap items-center gap-2";
+		const t7 = filters.query;
+		let t8;
+		if ($[17] !== setTriggerFilters) {
+			t8 = (event) => setTriggerFilters({ query: event.currentTarget.value });
+			$[17] = setTriggerFilters;
+			$[18] = t8;
+		} else t8 = $[18];
+		let t9;
+		if ($[19] !== t) {
+			t9 = t("triggerSearch");
+			$[19] = t;
+			$[20] = t9;
+		} else t9 = $[20];
+		let t10;
+		if ($[21] !== t) {
+			t10 = t("triggerSearch");
+			$[21] = t;
+			$[22] = t10;
+		} else t10 = $[22];
+		if ($[23] !== filters.query || $[24] !== t10 || $[25] !== t8 || $[26] !== t9) {
+			t2 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				type: "search",
+				value: t7,
+				onChange: t8,
+				placeholder: t9,
+				"aria-label": t10,
+				className: "min-w-48 flex-1 !text-xs"
+			});
+			$[23] = filters.query;
+			$[24] = t10;
+			$[25] = t8;
+			$[26] = t9;
+			$[27] = t2;
+		} else t2 = $[27];
+		if ($[28] !== active || $[29] !== resetTriggerFilters || $[30] !== t) {
+			t3 = active && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				size: "sm",
+				variant: "ghost",
+				onClick: resetTriggerFilters,
+				children: t("triggerReset")
+			});
+			$[28] = active;
+			$[29] = resetTriggerFilters;
+			$[30] = t;
+			$[31] = t3;
+		} else t3 = $[31];
+		t4 = menus.map((menu) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+			open: openFilter === menu.key,
+			items: menu.items,
+			selectedId: filters[menu.key],
+			onClose: () => setTriggerFilterMenu(null),
+			onSelect: (value) => setTriggerFilters({ [menu.key]: value }),
+			portal: true,
+			minWidthFromAnchor: true,
+			dense: true,
+			anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				size: "sm",
+				variant: "outline",
+				"aria-label": `${menu.label}: ${menu.items.find((item) => item.id === filters[menu.key])?.label}`,
+				"aria-haspopup": "menu",
+				"aria-expanded": openFilter === menu.key,
+				onClick: () => setTriggerFilterMenu(openFilter === menu.key ? null : menu.key),
+				children: [menu.items.find((item_0) => item_0.id === filters[menu.key])?.label, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, { size: 14 })]
+			})
+		}, menu.key));
+		$[6] = active;
+		$[7] = filters;
+		$[8] = openFilter;
+		$[9] = resetTriggerFilters;
+		$[10] = setTriggerFilterMenu;
+		$[11] = setTriggerFilters;
+		$[12] = t;
+		$[13] = t1;
+		$[14] = t2;
+		$[15] = t3;
+		$[16] = t4;
+	} else {
+		t1 = $[13];
+		t2 = $[14];
+		t3 = $[15];
+		t4 = $[16];
+	}
+	let t5;
+	if ($[32] !== setTriggerFilters) {
+		t5 = (event_0) => setTriggerFilters({ mentionedOnly: event_0.currentTarget.checked });
+		$[32] = setTriggerFilters;
+		$[33] = t5;
+	} else t5 = $[33];
+	let t6;
+	if ($[34] !== filters.mentionedOnly || $[35] !== t5) {
+		t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+			type: "checkbox",
+			checked: filters.mentionedOnly,
+			onChange: t5,
+			className: "accent-[var(--dsw-alias-state-business-primary)]"
+		});
+		$[34] = filters.mentionedOnly;
+		$[35] = t5;
+		$[36] = t6;
+	} else t6 = $[36];
+	let t7;
+	if ($[37] !== t) {
+		t7 = t("triggerMentionedOnly");
+		$[37] = t;
+		$[38] = t7;
+	} else t7 = $[38];
+	let t8;
+	if ($[39] !== t6 || $[40] !== t7) {
+		t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+			className: "flex h-8 cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs text-[var(--dsw-alias-label-secondary)]",
+			children: [t6, t7]
+		});
+		$[39] = t6;
+		$[40] = t7;
+		$[41] = t8;
+	} else t8 = $[41];
+	let t9;
+	if ($[42] !== t1 || $[43] !== t2 || $[44] !== t3 || $[45] !== t4 || $[46] !== t8) {
+		t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: t1,
+			children: [
+				t2,
+				t3,
+				t4,
+				t8
+			]
+		});
+		$[42] = t1;
+		$[43] = t2;
+		$[44] = t3;
+		$[45] = t4;
+		$[46] = t8;
+		$[47] = t9;
+	} else t9 = $[47];
+	return t9;
+}
+function _temp$3(state) {
+	return state.trigger;
+}
+// src/client/pages/trigger/components/row.tsx
+function Row(t0) {
+	const $ = (0, import_dist.c)(93);
+	const { topic } = t0;
+	const { t } = useTranslation();
+	const { openThread } = useActions();
+	const record = topic.latest;
+	let t1;
+	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
+		t1 = {
+			github: GitHubIcon,
+			gitlab: GitLabIcon,
+			feishu: FeishuIcon
+		};
+		$[0] = t1;
+	} else t1 = $[0];
+	const Icon = t1[record.channel];
+	const status = STATUSES[deliveryStatus({
+		...record,
+		deliveries: topic.events.flatMap(_temp$2)
+	})];
+	let t2;
+	if ($[1] !== record.channel || $[2] !== t) {
+		t2 = record.channel === "feishu" ? t("triggerFeishu") : record.channel === "github" ? "GitHub" : "GitLab";
+		$[1] = record.channel;
+		$[2] = t;
+		$[3] = t2;
+	} else t2 = $[3];
+	const channel = t2;
+	let t3;
+	if ($[4] !== openThread || $[5] !== record.thread.id) {
+		t3 = () => openThread(record.thread.id);
+		$[4] = openThread;
+		$[5] = record.thread.id;
+		$[6] = t3;
+	} else t3 = $[6];
+	let t4;
+	if ($[7] !== t) {
+		t4 = t("triggerOpenTopic");
+		$[7] = t;
+		$[8] = t4;
+	} else t4 = $[8];
+	let t5;
+	if ($[9] !== record.thread.title || $[10] !== t) {
+		t5 = t(record.thread.title);
+		$[9] = record.thread.title;
+		$[10] = t;
+		$[11] = t5;
+	} else t5 = $[11];
+	const t6 = `${t4} ${t5}`;
+	let t7;
+	if ($[12] !== Icon) {
+		t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Icon, {
+			width: 18,
+			height: 18
+		});
+		$[12] = Icon;
+		$[13] = t7;
+	} else t7 = $[13];
+	let t8;
+	if ($[14] !== channel || $[15] !== t7) {
+		t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--dsw-alias-card-fill)]",
+			title: channel,
+			children: t7
+		});
+		$[14] = channel;
+		$[15] = t7;
+		$[16] = t8;
+	} else t8 = $[16];
+	let t9;
+	if ($[17] !== record.thread.title || $[18] !== t) {
+		t9 = t(record.thread.title);
+		$[17] = record.thread.title;
+		$[18] = t;
+		$[19] = t9;
+	} else t9 = $[19];
+	let t10;
+	if ($[20] !== t9) {
+		t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "min-w-0 font-medium text-[var(--dsw-alias-label-primary)] underline-offset-4 group-hover/topic:underline",
+			children: t9
+		});
+		$[20] = t9;
+		$[21] = t10;
+	} else t10 = $[21];
+	let t11;
+	if ($[22] !== record.thread.ref) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "text-xs text-[var(--dsw-alias-label-tertiary)]",
+			children: record.thread.ref
+		});
+		$[22] = record.thread.ref;
+		$[23] = t11;
+	} else t11 = $[23];
+	const t12 = KINDS[record.kind];
+	let t13;
+	if ($[24] !== t || $[25] !== t12) {
+		t13 = t(t12);
+		$[24] = t;
+		$[25] = t12;
+		$[26] = t13;
+	} else t13 = $[26];
+	let t14;
+	if ($[27] !== t13) {
+		t14 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+			tone: "neutral",
+			children: t13
+		});
+		$[27] = t13;
+		$[28] = t14;
+	} else t14 = $[28];
+	let t15;
+	if ($[29] !== record.mentioned || $[30] !== t) {
+		t15 = record.mentioned && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+			tone: "info",
+			children: t("triggerMentioned")
+		});
+		$[29] = record.mentioned;
+		$[30] = t;
+		$[31] = t15;
+	} else t15 = $[31];
+	let t16;
+	if ($[32] !== t10 || $[33] !== t11 || $[34] !== t14 || $[35] !== t15) {
+		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+			className: "flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-5",
+			children: [
+				t10,
+				t11,
+				t14,
+				t15
+			]
+		});
+		$[32] = t10;
+		$[33] = t11;
+		$[34] = t14;
+		$[35] = t15;
+		$[36] = t16;
+	} else t16 = $[36];
+	let t17;
+	if ($[37] !== record.text || $[38] !== t) {
+		t17 = t(record.text);
+		$[37] = record.text;
+		$[38] = t;
+		$[39] = t17;
+	} else t17 = $[39];
+	let t18;
+	if ($[40] !== t17) {
+		t18 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "mt-1 block truncate text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+			children: t17
+		});
+		$[40] = t17;
+		$[41] = t18;
+	} else t18 = $[41];
+	let t19;
+	if ($[42] !== channel) {
+		t19 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: channel });
+		$[42] = channel;
+		$[43] = t19;
+	} else t19 = $[43];
+	let t20;
+	if ($[44] === Symbol.for("react.memo_cache_sentinel")) {
+		t20 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			"aria-hidden": "true",
+			children: "·"
+		});
+		$[44] = t20;
+	} else t20 = $[44];
+	let t21;
+	if ($[45] !== record.actor) {
+		t21 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: record.actor });
+		$[45] = record.actor;
+		$[46] = t21;
+	} else t21 = $[46];
+	let t22;
+	if ($[47] !== record.human || $[48] !== t) {
+		t22 = !record.human && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("triggerAutomated") });
+		$[47] = record.human;
+		$[48] = t;
+		$[49] = t22;
+	} else t22 = $[49];
+	let t23;
+	if ($[50] === Symbol.for("react.memo_cache_sentinel")) {
+		t23 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			"aria-hidden": "true",
+			children: "·"
+		});
+		$[50] = t23;
+	} else t23 = $[50];
+	let t24;
+	if ($[51] !== t || $[52] !== topic.events.length) {
+		t24 = t("triggerEventCount", { count: topic.events.length });
+		$[51] = t;
+		$[52] = topic.events.length;
+		$[53] = t24;
+	} else t24 = $[53];
+	let t25;
+	if ($[54] !== t24) {
+		t25 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t24 });
+		$[54] = t24;
+		$[55] = t25;
+	} else t25 = $[55];
+	let t26;
+	if ($[56] !== record.thread.project) {
+		t26 = record.thread.project && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			"aria-hidden": "true",
+			children: "·"
+		}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "[overflow-wrap:anywhere]",
+			children: record.thread.project
+		})] });
+		$[56] = record.thread.project;
+		$[57] = t26;
+	} else t26 = $[57];
+	let t27;
+	if ($[58] !== t19 || $[59] !== t21 || $[60] !== t22 || $[61] !== t25 || $[62] !== t26) {
+		t27 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+			className: "mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-4 text-[var(--dsw-alias-label-tertiary)]",
+			children: [
+				t19,
+				t20,
+				t21,
+				t22,
+				t23,
+				t25,
+				t26
+			]
+		});
+		$[58] = t19;
+		$[59] = t21;
+		$[60] = t22;
+		$[61] = t25;
+		$[62] = t26;
+		$[63] = t27;
+	} else t27 = $[63];
+	let t28;
+	if ($[64] !== t16 || $[65] !== t18 || $[66] !== t27) {
+		t28 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+			className: "min-w-0 flex-1",
+			children: [
+				t16,
+				t18,
+				t27
+			]
+		});
+		$[64] = t16;
+		$[65] = t18;
+		$[66] = t27;
+		$[67] = t28;
+	} else t28 = $[67];
+	const t29 = status.tone;
+	let t30;
+	if ($[68] !== status.label || $[69] !== t) {
+		t30 = t(status.label);
+		$[68] = status.label;
+		$[69] = t;
+		$[70] = t30;
+	} else t30 = $[70];
+	let t31;
+	if ($[71] !== status.tone || $[72] !== t30) {
+		t31 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+			tone: t29,
+			children: t30
+		});
+		$[71] = status.tone;
+		$[72] = t30;
+		$[73] = t31;
+	} else t31 = $[73];
+	const t32 = record.at;
+	const t33 = record.at;
+	let t34;
+	if ($[74] !== record.at) {
+		t34 = record.at.slice(11, 16);
+		$[74] = record.at;
+		$[75] = t34;
+	} else t34 = $[75];
+	let t35;
+	if ($[76] !== record.at || $[77] !== t34) {
+		t35 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("time", {
+			dateTime: t32,
+			title: t33,
+			className: "text-[11px] text-[var(--dsw-alias-label-tertiary)] tabular-nums",
+			children: t34
+		});
+		$[76] = record.at;
+		$[77] = t34;
+		$[78] = t35;
+	} else t35 = $[78];
+	let t36;
+	if ($[79] !== t) {
+		t36 = t("triggerOpenTopic");
+		$[79] = t;
+		$[80] = t36;
+	} else t36 = $[80];
+	let t37;
+	if ($[81] !== t36) {
+		t37 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+			className: "text-[11px] text-[var(--dsw-alias-label-tertiary)]",
+			children: t36
+		});
+		$[81] = t36;
+		$[82] = t37;
+	} else t37 = $[82];
+	let t38;
+	if ($[83] !== t31 || $[84] !== t35 || $[85] !== t37) {
+		t38 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+			className: "flex shrink-0 flex-col items-end gap-2",
+			children: [
+				t31,
+				t35,
+				t37
+			]
+		});
+		$[83] = t31;
+		$[84] = t35;
+		$[85] = t37;
+		$[86] = t38;
+	} else t38 = $[86];
+	let t39;
+	if ($[87] !== t28 || $[88] !== t3 || $[89] !== t38 || $[90] !== t6 || $[91] !== t8) {
+		t39 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+			className: "border-t border-[var(--dsw-alias-border-l3)] first:border-t-0",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+				type: "button",
+				onClick: t3,
+				"aria-label": t6,
+				className: "group/topic flex w-full cursor-pointer items-start gap-3 rounded-xl border-0 bg-transparent p-4 text-left font-[inherit] outline-none transition-colors hover:bg-[var(--dsw-alias-card-fill)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--dsw-alias-state-business-primary)]",
+				children: [
+					t8,
+					t28,
+					t38
+				]
+			})
+		});
+		$[87] = t28;
+		$[88] = t3;
+		$[89] = t38;
+		$[90] = t6;
+		$[91] = t8;
+		$[92] = t39;
+	} else t39 = $[92];
+	return t39;
+}
+function _temp$2(event) {
+	return [...event.deliveries];
+}
+// src/client/pages/trigger/components/summary.tsx
+function Summary() {
+	const $ = (0, import_dist.c)(12);
+	const { t } = useTranslation();
+	const { setTriggerFilters } = useActions();
+	const selected = useStore(_temp$1);
+	let t0;
+	if ($[0] !== t) {
+		const topics = groupTopics(RECORDS);
+		t0 = [{
+			value: "all",
+			label: t("triggerReceived"),
+			count: topics.length,
+			color: "var(--dsw-alias-label-primary)"
+		}, ...[
+			"pending",
+			"done",
+			"stalled"
+		].map((value) => ({
+			value,
+			label: t(STATUSES[value].label),
+			count: filterTopics(topics, {
+				query: "",
+				channel: "all",
+				kind: "all",
+				mentionedOnly: false,
+				status: value
+			}, t).length,
+			color: `var(--dsw-alias-state-${value === "stalled" ? "error" : value === "done" ? "success" : "business"}-primary)`
+		}))];
+		$[0] = t;
+		$[1] = t0;
+	} else t0 = $[1];
+	const cards = t0;
+	let t1;
+	if ($[2] !== t) {
+		t1 = t("triggerSummary");
+		$[2] = t;
+		$[3] = t1;
+	} else t1 = $[3];
+	let t2;
+	if ($[4] !== cards || $[5] !== selected || $[6] !== setTriggerFilters || $[7] !== t) {
+		t2 = cards.map((card) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+			type: "button",
+			"aria-pressed": selected === card.value,
+			onClick: () => setTriggerFilters({ status: card.value }),
+			className: `flex min-w-0 cursor-pointer flex-col gap-2 rounded-2xl border bg-[var(--dsw-alias-bg-layer-1)] px-4 py-3.5 text-left outline-none transition-colors hover:bg-[var(--dsw-alias-card-fill)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)] ${selected === card.value ? "border-[var(--dsw-alias-state-business-primary)]" : "border-[var(--dsw-alias-border-l3)]"}`,
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				className: "flex items-center gap-2 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "size-1.5 rounded-full",
+					style: { background: card.color }
+				}), card.label]
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				className: "text-[26px] leading-8 font-semibold tracking-tight tabular-nums",
+				children: [card.count, /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: "ml-2 text-xs font-normal text-[var(--dsw-alias-label-tertiary)]",
+					children: t("triggerTopicsUnit")
+				})]
+			})]
+		}, card.value));
+		$[4] = cards;
+		$[5] = selected;
+		$[6] = setTriggerFilters;
+		$[7] = t;
+		$[8] = t2;
+	} else t2 = $[8];
+	let t3;
+	if ($[9] !== t1 || $[10] !== t2) {
+		t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			className: "grid grid-cols-2 gap-3 @min-[740px]:grid-cols-4",
+			role: "group",
+			"aria-label": t1,
+			children: t2
+		});
+		$[9] = t1;
+		$[10] = t2;
+		$[11] = t3;
+	} else t3 = $[11];
+	return t3;
+}
+function _temp$1(state) {
+	return state.trigger.filters.status;
 }
 // src/client/pages/trigger/page.tsx
 function Trigger() {
-	return "Trigger";
+	const $ = (0, import_dist.c)(57);
+	const { t } = useTranslation();
+	const filters = useStore(_temp);
+	const { resetTriggerFilters } = useActions();
+	let t0;
+	let t1;
+	let t2;
+	let t3;
+	let t4;
+	let t5;
+	let t6;
+	let t7;
+	let t8;
+	if ($[0] !== filters || $[1] !== resetTriggerFilters || $[2] !== t) {
+		const topics = groupTopics(RECORDS);
+		const records = filterTopics(topics, filters, t);
+		t5 = "@container flex min-w-0 flex-col gap-5 pb-10";
+		if ($[12] !== t) {
+			t6 = t("tabTriggers");
+			$[12] = t;
+			$[13] = t6;
+		} else t6 = $[13];
+		let t9;
+		if ($[14] !== t) {
+			t9 = t("triggerTitle");
+			$[14] = t;
+			$[15] = t9;
+		} else t9 = $[15];
+		let t10;
+		if ($[16] !== t9) {
+			t10 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+				className: "m-0 text-base leading-6 font-medium",
+				children: t9
+			});
+			$[16] = t9;
+			$[17] = t10;
+		} else t10 = $[17];
+		let t11;
+		if ($[18] !== t) {
+			t11 = t("triggerDescription");
+			$[18] = t;
+			$[19] = t11;
+		} else t11 = $[19];
+		let t12;
+		if ($[20] !== t11) {
+			t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: "m-0 mt-1 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]",
+				children: t11
+			});
+			$[20] = t11;
+			$[21] = t12;
+		} else t12 = $[21];
+		let t13;
+		if ($[22] !== t10 || $[23] !== t12) {
+			t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [t10, t12] });
+			$[22] = t10;
+			$[23] = t12;
+			$[24] = t13;
+		} else t13 = $[24];
+		let t14;
+		if ($[25] !== t) {
+			t14 = t("overviewDemo");
+			$[25] = t;
+			$[26] = t14;
+		} else t14 = $[26];
+		let t15;
+		if ($[27] !== t14) {
+			t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Tag, {
+				tone: "quiet",
+				children: t14
+			});
+			$[27] = t14;
+			$[28] = t15;
+		} else t15 = $[28];
+		if ($[29] !== t13 || $[30] !== t15) {
+			t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+				className: "flex flex-wrap items-start justify-between gap-3",
+				children: [t13, t15]
+			});
+			$[29] = t13;
+			$[30] = t15;
+			$[31] = t7;
+		} else t7 = $[31];
+		if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
+			t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Summary, {});
+			$[32] = t8;
+		} else t8 = $[32];
+		t2 = "flex flex-col gap-3";
+		if ($[33] === Symbol.for("react.memo_cache_sentinel")) {
+			t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Filters, {});
+			$[33] = t3;
+		} else t3 = $[33];
+		let t16;
+		if ($[34] !== t) {
+			t16 = t("triggerSampleDay");
+			$[34] = t;
+			$[35] = t16;
+		} else t16 = $[35];
+		let t17;
+		if ($[36] !== t16) {
+			t17 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t16 });
+			$[36] = t16;
+			$[37] = t17;
+		} else t17 = $[37];
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--dsw-alias-label-tertiary)]",
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				role: "status",
+				children: t("triggerResultCount", {
+					count: records.length,
+					total: topics.length
+				})
+			}), t17]
+		});
+		t0 = "overflow-hidden rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)]";
+		t1 = records.length ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+			className: "m-0 list-none p-0",
+			children: records.map(_temp2)
+		}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "flex flex-col items-center gap-3 px-5 py-12 text-center",
+			children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActivityIcon, {
+					width: 24,
+					height: 24,
+					className: "text-[var(--dsw-alias-label-tertiary)]"
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+					className: "m-0 text-sm font-medium",
+					children: t("triggerEmpty")
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: "m-0 text-xs text-[var(--dsw-alias-label-secondary)]",
+					children: t("triggerEmptyDescription")
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					size: "sm",
+					variant: "outline",
+					onClick: resetTriggerFilters,
+					children: t("triggerReset")
+				})
+			]
+		});
+		$[0] = filters;
+		$[1] = resetTriggerFilters;
+		$[2] = t;
+		$[3] = t0;
+		$[4] = t1;
+		$[5] = t2;
+		$[6] = t3;
+		$[7] = t4;
+		$[8] = t5;
+		$[9] = t6;
+		$[10] = t7;
+		$[11] = t8;
+	} else {
+		t0 = $[3];
+		t1 = $[4];
+		t2 = $[5];
+		t3 = $[6];
+		t4 = $[7];
+		t5 = $[8];
+		t6 = $[9];
+		t7 = $[10];
+		t8 = $[11];
+	}
+	let t9;
+	if ($[38] !== t0 || $[39] !== t1) {
+		t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			className: t0,
+			children: t1
+		});
+		$[38] = t0;
+		$[39] = t1;
+		$[40] = t9;
+	} else t9 = $[40];
+	let t10;
+	if ($[41] !== t) {
+		t10 = t("triggerPreviewNotice");
+		$[41] = t;
+		$[42] = t10;
+	} else t10 = $[42];
+	let t11;
+	if ($[43] !== t10) {
+		t11 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+			className: "m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]",
+			children: t10
+		});
+		$[43] = t10;
+		$[44] = t11;
+	} else t11 = $[44];
+	let t12;
+	if ($[45] !== t11 || $[46] !== t2 || $[47] !== t3 || $[48] !== t4 || $[49] !== t9) {
+		t12 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: t2,
+			children: [
+				t3,
+				t4,
+				t9,
+				t11
+			]
+		});
+		$[45] = t11;
+		$[46] = t2;
+		$[47] = t3;
+		$[48] = t4;
+		$[49] = t9;
+		$[50] = t12;
+	} else t12 = $[50];
+	let t13;
+	if ($[51] !== t12 || $[52] !== t5 || $[53] !== t6 || $[54] !== t7 || $[55] !== t8) {
+		t13 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: t5,
+			"aria-label": t6,
+			children: [
+				t7,
+				t8,
+				t12
+			]
+		});
+		$[51] = t12;
+		$[52] = t5;
+		$[53] = t6;
+		$[54] = t7;
+		$[55] = t8;
+		$[56] = t13;
+	} else t13 = $[56];
+	return t13;
+}
+function _temp2(topic) {
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Row, { topic }, topic.latest.thread.id);
+}
+function _temp(state) {
+	return state.trigger.filters;
 }
 // src/client/store/index.ts
 const TABS = [
@@ -55281,7 +59315,20 @@ const store = (0, _deepseek_ai_dsh_client_store.defineStore)({
 			ticketId: null,
 			returnTo: "overview"
 		},
+		channel: { selected: null },
 		overview: { view: "recent" },
+		setting: initialSettings(),
+		trigger: {
+			selectedId: null,
+			openFilter: null,
+			filters: {
+				query: "",
+				channel: "all",
+				status: "all",
+				kind: "all",
+				mentionedOnly: false
+			}
+		},
 		graph: {
 			zoom: 1,
 			x: 0,
@@ -55292,12 +59339,85 @@ const store = (0, _deepseek_ai_dsh_client_store.defineStore)({
 	actions: {
 		go: (draft, page) => {
 			draft.navigation.page = page;
+			draft.trigger.openFilter = null;
 			if (page !== "ticket/detail") draft.navigation.ticketId = null;
+			if (page !== "channel/detail") draft.channel.selected = null;
+		},
+		openChannel: (draft, kind) => {
+			draft.channel.selected = kind;
+			draft.navigation.ticketId = null;
+			draft.navigation.page = "channel/detail";
 		},
 		openTicket: (draft, id) => {
-			if (draft.navigation.page !== "ticket/detail") draft.navigation.returnTo = draft.navigation.page === "overview" ? "overview" : "ticket";
+			if (draft.navigation.page !== "ticket/detail") draft.navigation.returnTo = draft.navigation.page === "overview" || draft.navigation.page === "trigger" || draft.navigation.page === "trigger/detail" ? draft.navigation.page : "ticket";
 			draft.navigation.ticketId = id;
+			draft.channel.selected = null;
 			draft.navigation.page = "ticket/detail";
+		},
+		openThread: (draft, id) => {
+			draft.trigger.selectedId = id;
+			draft.navigation.ticketId = null;
+			draft.channel.selected = null;
+			draft.navigation.page = "trigger/detail";
+		},
+		setTriggerFilterMenu: (draft, filter) => {
+			draft.trigger.openFilter = filter;
+		},
+		setTriggerFilters: (draft, filters) => {
+			Object.assign(draft.trigger.filters, filters);
+			draft.trigger.openFilter = null;
+		},
+		resetTriggerFilters: (draft) => {
+			draft.trigger.openFilter = null;
+			draft.trigger.filters = {
+				query: "",
+				channel: "all",
+				status: "all",
+				kind: "all",
+				mentionedOnly: false
+			};
+		},
+		setSettingSection: (draft, section) => {
+			draft.setting.section = section;
+			draft.setting.invalid = false;
+			draft.setting.notice = null;
+		},
+		refreshSettingProjects: (draft, at) => {
+			draft.setting.projects = refreshProjects(draft.setting.projects);
+			draft.setting.refreshedAt = at;
+			draft.setting.notice = "refreshed";
+		},
+		toggleSettingProject: (draft, id, enabled) => {
+			const project = draft.setting.projects.find((project) => project.id === id);
+			if (!project || enabled && !project.available) return;
+			project.enabled = enabled;
+			draft.setting.notice = "project";
+		},
+		editSettings: (draft, patch) => {
+			Object.assign(draft.setting.draft, patch);
+			if (patch.autoMerge === false && !validSettings({
+				...draft.setting.saved,
+				autoMergeMaxLines: draft.setting.draft.autoMergeMaxLines
+			})) draft.setting.draft.autoMergeMaxLines = draft.setting.saved.autoMergeMaxLines;
+			draft.setting.invalid = false;
+			draft.setting.notice = null;
+		},
+		resetSettings: (draft, section) => {
+			for (const key of GROUPS[section]) Object.assign(draft.setting.draft, { [key]: draft.setting.saved[key] });
+			draft.setting.invalid = false;
+			draft.setting.notice = null;
+		},
+		saveSettings: (draft, section) => {
+			const next = { ...draft.setting.saved };
+			for (const key of GROUPS[section]) Object.assign(next, { [key]: draft.setting.draft[key] });
+			if (!validSettings(next)) {
+				draft.setting.invalid = true;
+				draft.setting.notice = null;
+				return;
+			}
+			draft.setting.saved = next;
+			draft.setting.invalid = false;
+			draft.setting.notice = "saved";
 		},
 		setOverviewView: (draft, view) => {
 			draft.overview.view = view;
@@ -55321,7 +59441,7 @@ const store = (0, _deepseek_ai_dsh_client_store.defineStore)({
 });
 // src/client/panel.tsx
 function Panel() {
-	const $ = (0, import_dist.c)(55);
+	const $ = (0, import_dist.c)(56);
 	const { t } = useTranslation();
 	const page = usePage();
 	const navigate = useNavigate();
@@ -55441,13 +59561,16 @@ function Panel() {
 	} else t14 = $[30];
 	let t15;
 	if ($[31] !== items || $[32] !== navigate || $[33] !== t14 || $[34] !== tab_0) {
-		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SegmentedTabs, {
-			size: "sm",
-			items,
-			value: tab_0,
-			onChange: navigate,
-			label: t14,
-			className: "w-fit"
+		t15 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			className: "w-full min-w-0 overflow-x-auto",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.SegmentedTabs, {
+				size: "sm",
+				items,
+				value: tab_0,
+				onChange: navigate,
+				label: t14,
+				className: "w-fit"
+			})
 		});
 		$[31] = items;
 		$[32] = navigate;
@@ -55458,7 +59581,7 @@ function Panel() {
 	let t16;
 	if ($[36] !== t13 || $[37] !== t15) {
 		t16 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-			className: "flex w-full max-w-[1080px] flex-none flex-col gap-5 pt-7",
+			className: "flex w-full min-w-0 max-w-[1080px] flex-none flex-col gap-5 pt-7",
 			children: [t13, t15]
 		});
 		$[36] = t13;
@@ -55502,30 +59625,38 @@ function Panel() {
 	let t23;
 	if ($[43] === Symbol.for("react.memo_cache_sentinel")) {
 		t23 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Case, {
-			cond: "channel",
-			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Channel, {})
+			cond: "trigger/detail",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TriggerDetail, {})
 		});
 		$[43] = t23;
 	} else t23 = $[43];
 	let t24;
 	if ($[44] === Symbol.for("react.memo_cache_sentinel")) {
 		t24 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Case, {
-			cond: "channel/detail",
-			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChannelDetail, {})
+			cond: "channel",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Channel, {})
 		});
 		$[44] = t24;
 	} else t24 = $[44];
 	let t25;
 	if ($[45] === Symbol.for("react.memo_cache_sentinel")) {
 		t25 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Case, {
-			cond: "setting",
-			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Setting, {})
+			cond: "channel/detail",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ChannelDetail, {})
 		});
 		$[45] = t25;
 	} else t25 = $[45];
 	let t26;
-	if ($[46] !== page) {
-		t26 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Switch, {
+	if ($[46] === Symbol.for("react.memo_cache_sentinel")) {
+		t26 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Case, {
+			cond: "setting",
+			children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Setting, {})
+		});
+		$[46] = t26;
+	} else t26 = $[46];
+	let t27;
+	if ($[47] !== page) {
+		t27 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(Switch$1, {
 			value: page,
 			children: [
 				t19,
@@ -55534,38 +59665,39 @@ function Panel() {
 				t22,
 				t23,
 				t24,
-				t25
+				t25,
+				t26
 			]
 		});
-		$[46] = page;
-		$[47] = t26;
-	} else t26 = $[47];
-	let t27;
-	if ($[48] !== t17 || $[49] !== t18 || $[50] !== t26) {
-		t27 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+		$[47] = page;
+		$[48] = t27;
+	} else t27 = $[48];
+	let t28;
+	if ($[49] !== t17 || $[50] !== t18 || $[51] !== t27) {
+		t28 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 			id: t17,
 			role: "tabpanel",
 			"aria-labelledby": t18,
-			className: "mt-6 flex w-full max-w-[1080px] flex-none flex-col gap-6",
-			children: t26
+			className: "mt-6 flex w-full min-w-0 max-w-[1080px] flex-none flex-col gap-6",
+			children: t27
 		});
-		$[48] = t17;
-		$[49] = t18;
-		$[50] = t26;
+		$[49] = t17;
+		$[50] = t18;
 		$[51] = t27;
-	} else t27 = $[51];
-	let t28;
-	if ($[52] !== t16 || $[53] !== t27) {
-		t28 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-			className: "flex h-full min-w-0 w-full flex-col items-center overflow-y-auto px-[clamp(20px,4vw,48px)] text-[13px] leading-5 text-[var(--dsw-alias-label-primary)]",
+		$[52] = t28;
+	} else t28 = $[52];
+	let t29;
+	if ($[53] !== t16 || $[54] !== t28) {
+		t29 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "box-border flex h-full min-h-0 w-full min-w-0 max-w-full flex-col items-center overflow-y-auto px-[clamp(20px,4vw,48px)] text-[13px] leading-5 text-[var(--dsw-alias-label-primary)] [&_*]:box-border",
 			style: t4,
-			children: [t16, t27]
+			children: [t16, t28]
 		});
-		$[52] = t16;
-		$[53] = t27;
+		$[53] = t16;
 		$[54] = t28;
-	} else t28 = $[54];
-	return t28;
+		$[55] = t29;
+	} else t29 = $[55];
+	return t29;
 }
 // src/client/index.tsx
 const inject = [

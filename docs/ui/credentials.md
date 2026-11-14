@@ -179,16 +179,5 @@ GLAB_HOST="<Channel.host 或 gitlab.com>" exec glab "$@"
 **理由**：环境变量是隐式的，模型看不见它有什么；`read_channel` 的返回是显式的，
 模型能直接读到。
 
-## 十、初始化流程
-
-```
-1. 首启：Setting 行不存在 → 建一行默认值
-2. 渠道页：没有账号 → 显示「添加机器人账号 / 添加管理员账号」
-3. 用户点登录或填 key → 凭证落盘 + ChannelAccount 落库
-4. 渠道 enabled 默认 false → 用户开启后才开始轮询
-5. 开启时验证：跑一次 `gh api user` 确认身份对得上
-6. 验证失败 → ChannelAccount.status = offline + 渠道页显示原因
-```
-
 第 5 步很重要：**凭证能读不代表身份对**。填了别人账号的 token，
 `gh api user` 会返回别人的登录名，此时应该报错而不是静默接受。

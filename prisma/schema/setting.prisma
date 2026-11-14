@@ -20,7 +20,7 @@ model Setting {
   ///
   /// **额外留 1 个槽位给「人的消息」和状态查询**：正常槽位满时仍能插进去，
   /// 所以新人派活永远挤不掉你已经在做的活。
-  maxWorkers Int @default(4)
+  maxWorkers Int @default(10)
 
   /// 后台工作最多还能跑几分钟。到点杀掉后台、把票报成 waiting。
   ///

@@ -28,7 +28,6 @@ model Channel {
   createdAt String
 
   accounts ChannelAccount[]
-  projects Project[]
   threads  Thread[]
   triggers Trigger[]
   tickets  Ticket[]

@@ -11,7 +11,7 @@ export function ChannelTile({ channel }: { channel: OverviewChannel }): ReactNod
       <Icon width={27} height={27} className={channel.connected ? '' : 'opacity-50'} />
       <span className="max-w-full truncate text-xs leading-4">{channel.name}</span>
       <span className="sr-only">{t(channel.connected ? 'overviewConnected' : 'overviewDisconnected')}</span>
-      {channel.connected && <span className="absolute top-1.5 right-1.5 flex size-3.5 items-center justify-center rounded-full text-black"><CheckIcon width={10} height={10} /></span>}
+      {channel.connected && <span className="absolute top-1.5 right-1.5 flex size-3.5 items-center justify-center rounded-full"><CheckIcon width={10} height={10} /></span>}
     </div>
   )
 }

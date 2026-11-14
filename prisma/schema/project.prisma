@@ -1,29 +1,24 @@
-// ===========================================================================
-// 项目
-// ===========================================================================
-
-/// 一个项目 = 一个 git 仓库 + 一个 DSH 工作区。
-/// 侧边栏里的 `[路由] owner/project-1` 就是它。项目编排会话挂在这个工作区上。
+/// 一个项目对应一个 DSH Git 工作区；消息渠道不是项目存在的前提。
 model Project {
   id                    String  @id
-  /// 项目挂在哪条 git 渠道下
-  channelId             String
-  /// 仓库全名，例如 `hairyf/dsh-third-kernel`
+  /// 工作区显示名；同名工作区允许存在，不作为仓库身份。
   name                  String
-  /// 对应的 DSH 工作区 id；一个工作区最多属于一个项目
+  /// 一个工作区最多对应一个项目。
   workspaceId           String  @unique
-  /// 本地克隆目录
+  /// 本地 Git 工作区目录。
   directory             String
-  /// 项目编排会话 id；为空表示还没起过。冒号后面的 session 可以随时换，这里只记最近一次
+  /// Git remote 地址；可空以兼容历史，自动发现候选须配置 remote。
+  remoteUrl             String?
+  /// 是否纳入 Nexus 编排范围；工作区同步不得覆盖人工选择。
+  enabled               Boolean @default(true)
+  /// 最近一次项目编排会话。
   orchestratorSessionId String?
   createdAt             String
   updatedAt             String
 
-  channel Channel  @relation(fields: [channelId], references: [id])
   threads Thread[]
   tickets Ticket[]
   inbox   Inbox[]
 
-  @@unique([channelId, name])
   @@map("project")
 }

@@ -1,10 +1,9 @@
 import type { AgentGraphEdge, AgentGraphNode, OverviewActivityPoint, OverviewChannel, OverviewTask, OverviewTaskSegment, OverviewTaskStatus, TicketDetailPreview } from './types'
 
 export const OVERVIEW_CHANNELS: readonly OverviewChannel[] = [
-  { kind: 'github', name: 'GitHub', connected: true },
-  { kind: 'feishu', name: '飞书', connected: true },
+  { kind: 'github', name: 'GitHub', connected: false },
   { kind: 'gitlab', name: 'GitLab', connected: false },
-  { kind: 'gitlab', name: 'GitLab · staging', connected: false },
+  { kind: 'feishu', name: '飞书', connected: false },
 ]
 
 export const OVERVIEW_ACTIVITY: OverviewActivityPoint[] = [

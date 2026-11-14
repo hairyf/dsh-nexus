@@ -17,10 +17,10 @@ export function PrStatus({ pullRequest }: { pullRequest: TicketPullRequest }): R
   const { Icon, color, label } = appearance[tone]
   const description = `PR #${pullRequest.number} · ${t(label)}`
   return (
-    <span aria-label={description} title={description} className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-2.5 text-xs leading-4 font-medium text-[var(--dsw-alias-label-primary)]">
+    <button type="button" aria-label={description} title={description} className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-2.5 text-xs leading-4 font-medium text-[var(--dsw-alias-label-primary)] outline-none transition-colors hover:bg-[var(--dsw-alias-interactive-bg-hover)] active:bg-[var(--dsw-alias-interactive-bg-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)]">
       <Icon width={12} height={12} style={{ color }} />
       <span className="tabular-nums">{`PR #${pullRequest.number}`}</span>
       <span className="text-[11px] font-normal text-[var(--dsw-alias-label-secondary)]">{t(label)}</span>
-    </span>
+    </button>
   )
 }
