@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import type { OverviewTask } from '../../types'
+import type { OverviewTask } from '../../../types'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { TasksIcon } from '../../components/icons'
-import { OVERVIEW_CHANNEL_LABELS, OVERVIEW_STATUS } from '../../constants'
-import { useActions } from '../../hooks/use-store'
-import { useTranslation } from '../../hooks/use-translation'
+import { TasksIcon } from '../../../components/icons'
+import { OVERVIEW_CHANNEL_LABELS, OVERVIEW_STATUS } from '../../../constants'
+import { useActions } from '../../../hooks/use-store'
+import { useTranslation } from '../../../hooks/use-translation'
 
-export function TaskRow({ task }: { task: OverviewTask }): ReactNode {
+export function Row({ task }: { task: OverviewTask }): ReactNode {
   const { t } = useTranslation()
   const { openTicket } = useActions()
   const status = OVERVIEW_STATUS[task.status]

@@ -1,4 +1,4 @@
-import type { AgentGraphEdge, AgentGraphNode, OverviewActivityPoint, OverviewChannel, OverviewTask, OverviewTaskSegment, OverviewTaskStatus } from './types'
+import type { AgentGraphEdge, AgentGraphNode, OverviewActivityPoint, OverviewChannel, OverviewTask, OverviewTaskSegment, OverviewTaskStatus, TicketDetailPreview } from './types'
 
 export const OVERVIEW_CHANNELS: readonly OverviewChannel[] = [
   { kind: 'github', name: 'GitHub', connected: true },
@@ -33,6 +33,34 @@ export const OVERVIEW_TASKS: readonly OverviewTask[] = [
   { id: 'T-106', title: 'overviewTaskApi', status: 'waiting', channel: 'feishu', duration: '42s' },
   { id: 'T-107', title: 'overviewTaskApi', status: 'intervention', channel: 'feishu', duration: '1m 18s', action: 'session' },
 ]
+
+export const TICKET_DETAIL_PREVIEWS: Partial<Record<OverviewTask['id'], TicketDetailPreview>> = {
+  'T-104': {
+    repository: 'hairyf/dsh-third-kernel',
+    branch: 'nexus/T-104',
+    pullRequest: { number: 81, state: 'draft' },
+    execution: 'linked',
+    arrivals: [{ message: 'ticketArrivalPullRequest', hoursAgo: 1 }],
+  },
+  'T-105': {
+    repository: 'hairyf/dsh-third-kernel',
+    branch: 'nexus/T-105',
+    pullRequest: { number: 121, state: 'open' },
+    execution: 'linked',
+    issues: [
+      { title: 'ticketIssueToken', state: 'open', labels: ['app', 'bug'] },
+      { title: 'ticketIssueArchived', state: 'closed', labels: ['bug', 'linux'] },
+    ],
+    arrivals: [
+      { message: 'ticketArrivalResearch', hoursAgo: 3 },
+      { message: 'ticketArrivalLinkedIssue', hoursAgo: 3 },
+      { message: 'ticketArrivalProject', hoursAgo: 4 },
+      { message: 'ticketArrivalCreated', hoursAgo: 4 },
+    ],
+  },
+  'T-106': { execution: 'not-created' },
+  'T-107': { branch: 'nexus/T-107', execution: 'linked' },
+}
 
 export const OVERVIEW_STATUS = {
   review: { label: 'overviewStatusReview', tone: 'warning' },

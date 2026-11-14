@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { useTranslation } from '../../hooks/use-translation'
+import { useTranslation } from '../../../hooks/use-translation'
 
 export function SummaryCard({ title, meta, icon, actionLabel, onMore, children, background }: { title: string, meta?: string, icon: ReactNode, actionLabel: string, onMore: () => void, children: ReactNode, background?: ReactNode }): ReactNode {
   const { t } = useTranslation()

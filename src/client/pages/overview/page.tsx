@@ -1,19 +1,19 @@
 import type { SegmentedTab } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReactNode } from 'react'
-import type { OverviewView } from '../types'
+import type { OverviewView } from '../../types'
 import { SegmentedTabs, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useId } from 'react'
-import { ActivityIcon, ChannelsIcon, TasksIcon } from '../components/icons'
-import { OVERVIEW_CHANNELS, OVERVIEW_METRICS, OVERVIEW_TASK_SEGMENTS, OVERVIEW_TASKS } from '../constants'
-import { useNavigate } from '../hooks/use-navigation'
-import { useActions, useStore } from '../hooks/use-store'
-import { useTranslation } from '../hooks/use-translation'
-import { AgentGraph } from './agent-graph'
+import { ActivityIcon, ChannelsIcon, TasksIcon } from '../../components/icons'
+import { OVERVIEW_CHANNELS, OVERVIEW_METRICS, OVERVIEW_TASK_SEGMENTS, OVERVIEW_TASKS } from '../../constants'
+import { useNavigate } from '../../hooks/use-navigation'
+import { useActions, useStore } from '../../hooks/use-store'
+import { useTranslation } from '../../hooks/use-translation'
+import { Row } from '../ticket/components/row'
 import { ActivityChart } from './components/activity-chart'
 import { ChannelTile } from './components/channel-tile'
+import { Graph } from './components/graph'
 import { SummaryCard } from './components/summary-card'
 import { TaskChart } from './components/task-chart'
-import { TaskRow } from './components/task-row'
 
 export function Overview(): ReactNode {
   const { t } = useTranslation()
@@ -84,7 +84,7 @@ export function Overview(): ReactNode {
           <span title={t('overviewDemoDescription')}><Tag tone="quiet">{t('overviewDemo')}</Tag></span>
         </div>
         <div id={`${id}-${view}-panel`} role="tabpanel" aria-labelledby={`${id}-${view}`} tabIndex={0} className="rounded-2xl outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--dsw-alias-state-business-primary)]">
-          {view === 'recent' ? <ul className="pl-0">{OVERVIEW_TASKS.map(task => <TaskRow key={task.id} task={task} />)}</ul> : <AgentGraph />}
+          {view === 'recent' ? <ul className="pl-0">{OVERVIEW_TASKS.map(task => <Row key={task.id} task={task} />)}</ul> : <Graph />}
         </div>
       </section>
     </div>

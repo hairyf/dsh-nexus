@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
-import type { AgentGraphEdge, AgentGraphNode } from '../../types'
+import type { AgentGraphEdge, AgentGraphNode } from '../../../types'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useRef } from 'react'
-import { AgentIcon, FitViewIcon, ZoomInIcon, ZoomOutIcon } from '../../components/icons'
-import { AGENT_GRAPH, AGENT_GRAPH_EDGE_COLORS } from '../../constants'
-import { useActions, useStore } from '../../hooks/use-store'
-import { useTranslation } from '../../hooks/use-translation'
-import { AgentGraphEdgePath } from './agent-graph-edge-path'
-import { AgentGraphNodeCard } from './agent-graph-node-card'
+import { AgentIcon, FitViewIcon, ZoomInIcon, ZoomOutIcon } from '../../../components/icons'
+import { AGENT_GRAPH, AGENT_GRAPH_EDGE_COLORS } from '../../../constants'
+import { useActions, useStore } from '../../../hooks/use-store'
+import { useTranslation } from '../../../hooks/use-translation'
+import { GraphEdgePath } from './graph-edge-path'
+import { GraphNodeCard } from './graph-node-card'
 
-export function AgentGraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[], edges: readonly AgentGraphEdge[] }): ReactNode {
+export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[], edges: readonly AgentGraphEdge[] }): ReactNode {
   const { t } = useTranslation()
   const { zoomGraph, panGraph, resetGraph, selectAgent, openTicket } = useActions()
   const { zoom, x, y, selectedId } = useStore(state => state.graph)
@@ -89,8 +89,8 @@ export function AgentGraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphN
                 <text x={group.x + 12} y={group.y - 10} fill="var(--dsw-alias-state-business-primary)" fontSize={13}>{t('graphSupervisor')}</text>
               </g>
             )}
-            {edges.map(edge => <AgentGraphEdgePath key={`${edge.source}-${edge.target}-${edge.kind}`} edge={edge} nodes={nodes} selectedId={selectedId} />)}
-            {nodes.map(node => <foreignObject key={node.id} x={node.x} y={node.y} width={AGENT_GRAPH.nodeWidth} height={AGENT_GRAPH.nodeHeight}><AgentGraphNodeCard node={node} selected={selectedId === node.id} onSelect={() => selectAgent(node.id)} /></foreignObject>)}
+            {edges.map(edge => <GraphEdgePath key={`${edge.source}-${edge.target}-${edge.kind}`} edge={edge} nodes={nodes} selectedId={selectedId} />)}
+            {nodes.map(node => <foreignObject key={node.id} x={node.x} y={node.y} width={AGENT_GRAPH.nodeWidth} height={AGENT_GRAPH.nodeHeight}><GraphNodeCard node={node} selected={selectedId === node.id} onSelect={() => selectAgent(node.id)} /></foreignObject>)}
           </svg>
         </div>
         <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-1 shadow-sm">

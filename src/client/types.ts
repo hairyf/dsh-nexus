@@ -14,6 +14,23 @@ export interface OverviewTask {
   action?: 'pr' | 'session'
 }
 
+export interface TicketPullRequest {
+  number: number
+  state: 'open' | 'draft' | 'merged' | 'closed'
+  checks?: 'success' | 'failure' | 'pending'
+  reviewDecision?: 'approved' | 'changes-requested' | 'review-required'
+  mergeability?: 'mergeable' | 'conflicting' | 'unknown'
+}
+
+export interface TicketDetailPreview {
+  repository?: string
+  branch?: string
+  pullRequest?: TicketPullRequest
+  execution?: 'linked' | 'not-created'
+  issues?: readonly { title: DshNexusKey, state: 'open' | 'closed', labels: readonly ('app' | 'bug' | 'linux')[] }[]
+  arrivals?: readonly { message: DshNexusKey, hoursAgo: number }[]
+}
+
 export interface OverviewChannel {
   kind: OverviewChannelKind
   name: string

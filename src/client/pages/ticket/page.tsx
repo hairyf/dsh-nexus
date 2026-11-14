@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { OVERVIEW_TASKS } from '../constants'
-import { useTranslation } from '../hooks/use-translation'
-import { TaskRow } from './components/task-row'
+import { OVERVIEW_TASKS } from '../../constants'
+import { useTranslation } from '../../hooks/use-translation'
+import { Row } from './components/row'
 
 export function Ticket(): ReactNode {
   const { t } = useTranslation()
@@ -12,7 +12,7 @@ export function Ticket(): ReactNode {
         <p className="text-[13px] text-[var(--dsw-alias-label-secondary)] my-1">{t('ticketListDescription')}</p>
         <Tag tone="quiet">{t('overviewDemo')}</Tag>
       </div>
-      <ul className="m-0 pl-0">{OVERVIEW_TASKS.map(task => <TaskRow key={task.id} task={task} />)}</ul>
+      <ul className="m-0 pl-0">{OVERVIEW_TASKS.map(task => <Row key={task.id} task={task} />)}</ul>
     </section>
   )
 }

@@ -30,6 +30,15 @@ describe('task detail navigation', () => {
     expect(instance.getSnapshot().graph.selectedId).toBe('task-106')
   })
 
+  it('keeps the original return page while following related tasks in details', () => {
+    const instance = store.create()
+    instance.actions.openTicket('T-106')
+    instance.actions.openTicket('T-105')
+    expect(instance.getSnapshot().navigation).toEqual({ page: 'ticket/detail', ticketId: 'T-105', returnTo: 'overview' })
+    instance.actions.go(instance.getSnapshot().navigation.returnTo)
+    expect(instance.getSnapshot().navigation.page).toBe('overview')
+  })
+
   it('keeps routing and graph state isolated between mounted stores', () => {
     const first = store.create()
     const second = store.create()

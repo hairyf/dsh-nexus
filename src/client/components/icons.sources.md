@@ -16,7 +16,19 @@ Downloaded on 2026-11-14 from the immutable revisions below. All components live
 | ZoomInIcon | [zoom-in.svg](https://raw.githubusercontent.com/lucide-icons/lucide/55782beff3a0133df79c417eb68f96e8f19e2404/icons/zoom-in.svg) | ISC / MIT |
 | ZoomOutIcon | [zoom-out.svg](https://raw.githubusercontent.com/lucide-icons/lucide/55782beff3a0133df79c417eb68f96e8f19e2404/icons/zoom-out.svg) | ISC / MIT |
 | FitViewIcon | [scan.svg](https://raw.githubusercontent.com/lucide-icons/lucide/55782beff3a0133df79c417eb68f96e8f19e2404/icons/scan.svg) | ISC / MIT |
+| GitBranchIcon | [git-branch.svg](https://raw.githubusercontent.com/lucide-icons/lucide/55782beff3a0133df79c417eb68f96e8f19e2404/icons/git-branch.svg) | ISC / MIT |
 | NexusIcon | [workflow.svg](https://raw.githubusercontent.com/lucide-icons/lucide/55782beff3a0133df79c417eb68f96e8f19e2404/icons/workflow.svg) | ISC / MIT |
+
+Task detail glyphs downloaded on 2026-11-14 from [Primer Octicons](https://github.com/primer/octicons) (MIT), retaining the upstream SVG geometry:
+
+| Component | Original SVG |
+| --- | --- |
+| PullRequestIcon | [git-pull-request-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/git-pull-request-16.svg) |
+| PullRequestDraftIcon | [git-pull-request-draft-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/git-pull-request-draft-16.svg) |
+| PullRequestMergedIcon | [git-merge-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/git-merge-16.svg) |
+| PullRequestClosedIcon | [git-pull-request-closed-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/git-pull-request-closed-16.svg) |
+| IssueOpenIcon | [issue-opened-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/issue-opened-16.svg) |
+| IssueClosedIcon | [issue-closed-16.svg](https://raw.githubusercontent.com/primer/octicons/main/icons/issue-closed-16.svg) |
 
 Full license texts and copyright notices: [icons.licenses.md](./icons.licenses.md).
 

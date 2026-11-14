@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import type { AgentGraphNode } from '../../types'
+import type { AgentGraphNode } from '../../../types'
 import { Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { AgentIcon, ChannelsIcon, NexusIcon, TasksIcon } from '../../components/icons'
-import { OVERVIEW_STATUS, OVERVIEW_TASKS } from '../../constants'
-import { useTranslation } from '../../hooks/use-translation'
+import { AgentIcon, ChannelsIcon, NexusIcon, TasksIcon } from '../../../components/icons'
+import { OVERVIEW_STATUS, OVERVIEW_TASKS } from '../../../constants'
+import { useTranslation } from '../../../hooks/use-translation'
 
-export function AgentGraphNodeCard({ node, selected, onSelect }: { node: AgentGraphNode, selected: boolean, onSelect: () => void }): ReactNode {
+export function GraphNodeCard({ node, selected, onSelect }: { node: AgentGraphNode, selected: boolean, onSelect: () => void }): ReactNode {
   const { t } = useTranslation()
   const Icon = node.kind === 'channel' ? ChannelsIcon : node.kind === 'task' ? TasksIcon : node.kind === 'session' ? AgentIcon : NexusIcon
   const task = node.kind === 'task' ? OVERVIEW_TASKS.find(task => task.id === node.taskId) : undefined

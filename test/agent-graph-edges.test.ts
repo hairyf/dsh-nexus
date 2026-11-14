@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { AgentGraphNode } from '../src/client/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AgentGraphEdgePath } from '../src/client/ui/components/agent-graph-edge-path'
+import { GraphEdgePath } from '../src/client/pages/overview/components/graph-edge-path'
 
 vi.mock('../src/client/hooks/use-translation', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -19,7 +19,7 @@ const nodes: AgentGraphNode[] = [
 
 describe('agent graph edge geometry', () => {
   it('ends a curved dispatch with a horizontal segment sharing the arrow tip and stroke', () => {
-    const element = AgentGraphEdgePath({ edge: { source: 'route', target: 'task', kind: 'flow' }, nodes, selectedId: null }) as EdgeElement
+    const element = GraphEdgePath({ edge: { source: 'route', target: 'task', kind: 'flow' }, nodes, selectedId: null }) as EdgeElement
     const [line, arrow] = element.props.children
     expect(line.props.d).toBe('M 474 194 C 544 194, 544 70, 598 70 H 614')
     expect(arrow.props.d).toBe('M 607 66 L 614 70 L 607 74')
@@ -27,7 +27,7 @@ describe('agent graph edge geometry', () => {
   })
 
   it('draws a dependency directly between task boundaries with a downward arrow on the same centerline', () => {
-    const element = AgentGraphEdgePath({ edge: { source: 'task', target: 'dependent', kind: 'dependency' }, nodes, selectedId: null }) as EdgeElement
+    const element = GraphEdgePath({ edge: { source: 'task', target: 'dependent', kind: 'dependency' }, nodes, selectedId: null }) as EdgeElement
     const [line, arrow] = element.props.children
     expect(line.props.d).toBe('M 704 110 L 704 154')
     expect(arrow.props.d).toBe('M 700 147 L 704 154 L 708 147')
@@ -36,7 +36,7 @@ describe('agent graph edge geometry', () => {
   })
 
   it('draws an association as a dashed connection without arrowheads', () => {
-    const element = AgentGraphEdgePath({ edge: { source: 'task', target: 'dependent', kind: 'association' }, nodes, selectedId: null }) as EdgeElement
+    const element = GraphEdgePath({ edge: { source: 'task', target: 'dependent', kind: 'association' }, nodes, selectedId: null }) as EdgeElement
     const [line, arrow] = element.props.children
     expect(line.props.d).toBe('M 704 110 L 704 154')
     expect(line.props.strokeDasharray).toBe('5 4')
@@ -46,7 +46,7 @@ describe('agent graph edge geometry', () => {
   })
 
   it('omits an edge when either endpoint is absent', () => {
-    expect(AgentGraphEdgePath({ edge: { source: 'route', target: 'missing', kind: 'flow' }, nodes, selectedId: null })).toBeNull()
-    expect(AgentGraphEdgePath({ edge: { source: 'missing', target: 'task', kind: 'flow' }, nodes, selectedId: null })).toBeNull()
+    expect(GraphEdgePath({ edge: { source: 'route', target: 'missing', kind: 'flow' }, nodes, selectedId: null })).toBeNull()
+    expect(GraphEdgePath({ edge: { source: 'missing', target: 'task', kind: 'flow' }, nodes, selectedId: null })).toBeNull()
   })
 })

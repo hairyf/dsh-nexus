@@ -30,7 +30,8 @@ export const store = defineStore({
         draft.navigation.ticketId = null
     },
     openTicket: (draft, id: string) => {
-      draft.navigation.returnTo = draft.navigation.page === 'overview' ? 'overview' : 'ticket'
+      if (draft.navigation.page !== 'ticket/detail')
+        draft.navigation.returnTo = draft.navigation.page === 'overview' ? 'overview' : 'ticket'
       draft.navigation.ticketId = id
       draft.navigation.page = 'ticket/detail'
     },

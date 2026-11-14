@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { OverviewChannel } from '../../types'
-import { CheckIcon, FeishuIcon, GitHubIcon, GitLabIcon } from '../../components/icons'
-import { useTranslation } from '../../hooks/use-translation'
+import type { OverviewChannel } from '../../../types'
+import { CheckIcon, FeishuIcon, GitHubIcon, GitLabIcon } from '../../../components/icons'
+import { useTranslation } from '../../../hooks/use-translation'
 
 export function ChannelTile({ channel }: { channel: OverviewChannel }): ReactNode {
   const { t } = useTranslation()

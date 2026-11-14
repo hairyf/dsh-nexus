@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useId } from 'react'
 import { Area, AreaChart, ResponsiveContainer } from 'recharts'
-import { OVERVIEW_ACTIVITY } from '../../constants'
+import { OVERVIEW_ACTIVITY } from '../../../constants'
 
 export function ActivityChart(): ReactNode {
   const id = useId().replaceAll(':', '')

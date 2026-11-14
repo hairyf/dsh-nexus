@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
-import { OVERVIEW_TASK_SEGMENTS } from '../../constants'
-import { useTranslation } from '../../hooks/use-translation'
+import { OVERVIEW_TASK_SEGMENTS } from '../../../constants'
+import { useTranslation } from '../../../hooks/use-translation'
 
 export function TaskChart(): ReactNode {
   const { t } = useTranslation()
