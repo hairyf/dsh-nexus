@@ -109,6 +109,7 @@ model Message {
   outbox Outbox[]
 }
 model Outbox {
+  supersededAt String?
   id String @id
   messageId String
   ticketId String?

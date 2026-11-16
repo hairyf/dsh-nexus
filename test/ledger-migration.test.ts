@@ -1,4 +1,5 @@
 import type { NexusDatabase } from '../src/database'
+import type { Actor } from '../src/types/ledger'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
@@ -134,6 +135,76 @@ it('distinguishes unavailable storage, relative config, future schema and closed
   database.close()
   expect(() => ledger.list(database, 'ticket')).toThrow('not_initialized')
   await expect(openDatabase(directory)).rejects.toMatchObject({ code: 'migration_failed' })
+})
+
+async function verifiedLegacyExecution(startedAt: string | null) {
+  const old = baseline()
+  old.exec('INSERT INTO channel (id, name, createdAt) VALUES (\'legacy-channel\', \'GitHub\', \'old\'); INSERT INTO project (id, channelId, name, workspaceId, directory, createdAt, updatedAt) VALUES (\'legacy-p\', \'legacy-channel\', \'Repo\', \'legacy-workspace\', \'/legacy/repo\', \'old\', \'old\'); INSERT INTO setting (id, updatedAt) VALUES (\'global\', \'old\')')
+  old.prepare('INSERT INTO ticket (id, projectId, channelId, title, status, createdAt, updatedAt, startedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run('legacy-T', 'legacy-p', 'legacy-channel', 'Historical work', 'running', 'old', 'old', startedAt)
+  old.prepare('INSERT INTO worker (id, ticketId, status, createdAt, startedAt, worktree, branch) VALUES (?, ?, ?, ?, ?, ?, ?)').run('legacy-worker', 'legacy-T', 'running', 'old', startedAt, '/legacy/worktree', 'legacy/branch')
+  old.exec('INSERT INTO inbox (id, seq, type, projectId, origin, kind, message, createdAt, ticketId, workerId) VALUES (\'legacy-question\', 1, \'project\', \'legacy-p\', \'worker\', \'ask\', \'Pending before restart\', \'old\', \'legacy-T\', \'legacy-worker\')')
+  old.close()
+  const database = await open()
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.createProject(database, { id: 'legacy-p', name: 'Repo', workspaceId: 'legacy-workspace', directory: '/legacy/repo', remoteUrl: 'https://github.com/org/legacy', available: true })
+  ledger.updateProject(database, 'legacy-p', true, human)
+  ledger.authorizeTicket(database, 'legacy-T', 'Reconfirmed scope', 'Verified regression passes', 'Human reauthorized historical work', human)
+  ledger.cancelAsk(database, 'legacy-question', 'Historical question resolved by explicit management decision', human)
+  ledger.bindRole(database, { id: 'legacy-project', role: 'project', projectId: 'legacy-p', sessionId: 'legacy-project-session' })
+  const actor: Actor = { kind: 'agent', sessionId: 'legacy-project-session' }
+  return { database, actor, bindingId: 'migrated:worker:legacy-worker' }
+}
+
+it.each([false, true])('reconciles an unknown-start historical execution after verified termination and retries without inventing a start (alreadyClosed=%s)', async (alreadyClosed) => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null)
+  expect(() => ledger.recoverTicket(database, 'legacy-T', bindingId, 'Cannot invent a historical start', actor)).toThrow('execution_not_started')
+  if (alreadyClosed)
+    ledger.updateBinding(database, bindingId, 'closed', 'Old session termination already verified')
+  expect(ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Confirmed old session no longer exists', actor)).toMatchObject({ status: 'waiting', failureBindingId: bindingId })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'closed', startedAt: null })
+  expect(ledger.retryTicket(database, 'legacy-T', 'Authorized clean retry after reconciliation', actor)).toMatchObject({ status: 'queued', authorization: 'Reconfirmed scope' })
+  ledger.bindRole(database, { id: 'fresh-legacy-worker', role: 'worker', sessionId: 'fresh-legacy-session', ticketId: 'legacy-T', projectId: 'legacy-p', repository: 'github.com/org/legacy', branch: 'retry/legacy', worktree: join(directory, 'fresh-worktree'), previousBindingId: bindingId }, actor)
+  expect(ledger.startTicket(database, 'legacy-T', 'fresh-legacy-worker', actor)).toMatchObject({ status: 'running', executionBindingId: 'fresh-legacy-worker' })
+  expect(ledger.load(database, 'role_binding', 'fresh-legacy-worker')).toMatchObject({ startedAt: expect.any(String) })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt: null })
+  expect(ledger.list(database, 'ticket_transition').map(item => item.event)).toEqual(['execution_stopped', 'retry', 'start'])
+})
+
+it('records verified legacy execution metadata and recovers a genuinely started session without replacing its timestamp', async () => {
+  const startedAt = '2026-11-13T00:00:00Z'
+  const { database, actor, bindingId } = await verifiedLegacyExecution(startedAt)
+  expect(() => ledger.recoverTicket(database, 'legacy-T', bindingId, 'Metadata not verified yet', actor)).toThrow('scope_denied')
+  const metadata = { repository: 'github.com/org/legacy', worktree: '/verified/legacy-worktree', branch: 'legacy/branch' }
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.createProject(database, { id: 'foreign-p', name: 'Foreign', workspaceId: 'foreign-workspace', directory: '/foreign', remoteUrl: 'https://github.com/org/foreign', available: true })
+  ledger.updateProject(database, 'foreign-p', true, human)
+  ledger.bindRole(database, { id: 'foreign-project', role: 'project', projectId: 'foreign-p', sessionId: 'foreign-project-session' })
+  const foreign: Actor = { kind: 'agent', sessionId: 'foreign-project-session' }
+  const before = ledger.load(database, 'role_binding', bindingId)
+  expect(() => ledger.verifyExecutionMetadata(database, 'legacy-T', bindingId, metadata, 'Wrong owner', foreign)).toThrow('scope_denied')
+  expect(() => ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Wrong owner', foreign)).toThrow('scope_denied')
+  expect(() => ledger.verifyExecutionMetadata(database, 'legacy-T', bindingId, { ...metadata, repository: 'github.com/org/foreign' }, 'Wrong repository', actor)).toThrow('scope_denied')
+  expect(ledger.load(database, 'role_binding', bindingId)).toEqual(before)
+  expect(ledger.list(database, 'ticket_transition')).toEqual([])
+  expect(ledger.verifyExecutionMetadata(database, 'legacy-T', bindingId, metadata, 'Verified DSH session and repository ownership', actor)).toMatchObject({ ...metadata, startedAt, status: 'unavailable' })
+  expect(ledger.recoverTicket(database, 'legacy-T', bindingId, 'Verified existing session is resumable', actor)).toMatchObject({ status: 'running', executionBindingId: bindingId, startedAt })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'running', startedAt })
+  expect(ledger.list(database, 'ticket_transition').map(item => item.event)).toEqual(['verify_execution', 'recover'])
+})
+
+it('does not publish a no-ticket main ask through an unverified historical topic identity', async () => {
+  const old = baseline()
+  history(old)
+  old.close()
+  const database = await open()
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.createProject(database, { id: 'P1', name: 'Repo', workspaceId: 'W1', directory: '/old/one', remoteUrl: 'https://github.com/org/repo', available: true })
+  ledger.updateProject(database, 'P1', true, human)
+  ledger.bindRole(database, { id: 'main', role: 'main', sessionId: 'verified-main-session' })
+  const main: Actor = { kind: 'agent', sessionId: 'verified-main-session' }
+  ledger.createAsk(database, { id: 'legacy-triage', ticketIds: [], source: 'thread1', content: 'Clarify historical source', decisionType: 'important', withinAuthorization: true, options: ['yes', 'no'] }, main)
+  expect(() => ledger.publishMessage(database, 'ask:legacy-triage', 'thread1', main)).toThrow('repository_identity_unverified')
+  expect(ledger.list(database, 'outbox')).toEqual([])
 })
 
 it('resolves the dataDir option under the supplied DSH home without reading a real user directory', () => {

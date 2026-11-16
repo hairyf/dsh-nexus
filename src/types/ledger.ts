@@ -38,6 +38,11 @@ export interface TicketInput {
   authorization: string
   description?: string
 }
+export interface ExecutionMetadata {
+  repository: string
+  worktree: string
+  branch: string
+}
 export interface BindingInput {
   id: string
   role: Role

@@ -119,6 +119,7 @@ CREATE TABLE "message" (
 );
 
 CREATE TABLE "outbox" (
+    "supersededAt" TEXT,
     "id" TEXT NOT NULL PRIMARY KEY,
     "messageId" TEXT NOT NULL,
     "ticketId" TEXT,

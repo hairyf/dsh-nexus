@@ -1,8 +1,9 @@
 import type { SQLInputValue } from 'node:sqlite'
 import type { NexusDatabase } from '../database'
 import type { DB } from '../database/types'
-import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, IdTable, MergeTarget, PolicySnapshot, ProjectInput, Role, Row, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
+import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, ExecutionMetadata, IdTable, MergeTarget, PolicySnapshot, ProjectInput, Role, Row, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
 import { randomUUID } from 'node:crypto'
+import { isAbsolute } from 'node:path'
 import { LedgerError, requireDatabase, transaction } from '../database'
 import { defineService } from '../utils/service'
 import { policy } from './policy'
@@ -364,6 +365,39 @@ export const ledger = defineService({
       return required(database, 'ticket', ticketId)
     })
   },
+  verifyExecutionMetadata(database: NexusDatabase, ticketId: string, bindingId: string, metadata: ExecutionMetadata, reason: string, actor: Actor): Row<'role_binding'> {
+    return transaction(database, () => {
+      const ticket = required(database, 'ticket', ticketId)
+      ticketManager(database, actor, ticket)
+      const binding = executionBinding(database, ticket, bindingId)
+      if (!reason.trim() || !isAbsolute(metadata.worktree) || !metadata.branch.trim())
+        fail('invalid_config')
+      if (metadata.repository !== activeProject(database, ticket.projectId).repository || (binding.repository && binding.repository !== metadata.repository))
+        fail('scope_denied')
+      if (binding.status === 'running')
+        fail('invalid_transition')
+      const previous = { repository: binding.repository, worktree: binding.worktree, branch: binding.branch }
+      update(database, 'role_binding', bindingId, { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch, recoveryReason: reason, updatedAt: now() })
+      recordTransition(database, ticket, 'verify_execution', ticket.status, actor, JSON.stringify({ reason, previous, verified: { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch } }), bindingId)
+      return required(database, 'role_binding', bindingId)
+    })
+  },
+  confirmExecutionStopped(database: NexusDatabase, ticketId: string, bindingId: string, reason: string, actor: Actor): Row<'ticket'> {
+    return transaction(database, () => {
+      const ticket = required(database, 'ticket', ticketId)
+      projectAuthority(database, actor, ticket)
+      const binding = executionBinding(database, ticket, bindingId)
+      if (!reason.trim())
+        fail('invalid_config')
+      update(database, 'role_binding', bindingId, { status: 'closed', activeKey: null, closedAt: binding.closedAt ?? now(), recoveryReason: reason, updatedAt: now() })
+      const unresolved = ['running', 'queued', 'waiting'].includes(ticket.status)
+      const status = unresolved ? 'waiting' : ticket.status
+      if (unresolved)
+        update(database, 'ticket', ticketId, { status, failureReason: ticket.failureReason ?? reason, failureBindingId: ticket.failureBindingId ?? bindingId, updatedAt: now() })
+      recordTransition(database, ticket, 'execution_stopped', status, actor, reason, bindingId)
+      return required(database, 'ticket', ticketId)
+    })
+  },
   recoverTicket(database: NexusDatabase, ticketId: string, bindingId: string, reason: string, actor: Actor): Row<'ticket'> {
     return transaction(database, () => {
       const ticket = required(database, 'ticket', ticketId)
@@ -527,7 +561,7 @@ export const ledger = defineService({
         if (!allowed.includes(receiver.role) || (sender.role !== 'main' && !ticket))
           fail('scope_denied')
       }
-      return enqueue(database, { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null })
+      return enqueue(database, { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null, source: JSON.stringify({ actor }) })
     })
   },
   updateMessage(database: NexusDatabase, id: string, event: 'delivered' | 'read' | 'handled' | 'failed', error?: string): Row<'message'> {
@@ -650,28 +684,31 @@ export const ledger = defineService({
       const message = required(database, 'message', messageId)
       if (message.supersededAt)
         fail('delivery_superseded')
-      if (!message.ticketId)
-        fail('scope_denied')
-      const ticket = required(database, 'ticket', message.ticketId)
-      const project = activeProject(database, ticket.projectId)
-      if (ticket.paused)
-        fail('human_paused')
       const thread = required(database, 'thread', recipient)
-      verifyThreadRepository(database, thread, ticket.projectId)
-      const subscription = rows(database, 'ticket_thread').some(link => link.ticketId === ticket.id && link.threadId === thread.id)
-      if (thread.projectId !== project.id || !subscription)
-        fail('scope_denied')
-      if (!isHuman(database, actor)) {
-        const caller = agent(database, actor)
-        scope(database, caller, ticket)
-        if (caller.role === 'supervisor')
+      if (message.ticketId) {
+        const ticket = required(database, 'ticket', message.ticketId)
+        const project = activeProject(database, ticket.projectId)
+        if (ticket.paused)
+          fail('human_paused')
+        verifyThreadRepository(database, thread, ticket.projectId)
+        const subscription = rows(database, 'ticket_thread').some(link => link.ticketId === ticket.id && link.threadId === thread.id)
+        if (thread.projectId !== project.id || !subscription)
           fail('scope_denied')
+        if (!isHuman(database, actor)) {
+          const caller = agent(database, actor)
+          scope(database, caller, ticket)
+          if (caller.role === 'supervisor')
+            fail('scope_denied')
+        }
+      }
+      else {
+        verifyMainPublication(database, message, thread, actor)
       }
       const id = `${messageId}:${recipient}`
       const existing = load(database, 'outbox', id)
       if (existing)
         return existing
-      insert(database, 'outbox', { id, messageId, recipient, ticketId: ticket.id, content: message.content, askId: message.askId, seq: nextSeq(database, 'outbox'), createdAt: now() })
+      insert(database, 'outbox', { id, messageId, recipient, ticketId: message.ticketId, content: message.content, askId: message.askId, seq: nextSeq(database, 'outbox'), createdAt: now() })
       return required(database, 'outbox', id)
     })
   },
@@ -681,9 +718,10 @@ export const ledger = defineService({
       fail('already_delivered')
     if (state === 'sent' && !remoteId)
       fail('remote_link_required')
-    if (state === 'sent' && rows(database, 'outbox').some(row => row.ticketId === item.ticketId && row.recipient === item.recipient && row.seq < item.seq && row.state !== 'sent'))
+    if (state === 'sent' && !item.supersededAt && rows(database, 'outbox').some(row => row.ticketId === item.ticketId && row.recipient === item.recipient && row.seq < item.seq && !row.supersededAt && row.state !== 'sent'))
       fail('delivery_order')
-    update(database, 'outbox', id, { state, attempts: item.attempts + 1, error: state === 'sent' ? null : detail, remoteId: remoteId ?? item.remoteId, remoteUrl: remoteUrl ?? item.remoteUrl, sentAt: state === 'sent' ? now() : null })
+    const attempts = item.state === 'unknown' || item.supersededAt ? Math.max(1, item.attempts) : item.attempts + 1
+    update(database, 'outbox', id, { state, attempts, error: state === 'sent' ? null : detail, remoteId: remoteId ?? item.remoteId, remoteUrl: remoteUrl ?? item.remoteUrl, sentAt: state === 'sent' ? now() : null })
     return required(database, 'outbox', id)
   },
   recordAttention(database: NexusDatabase, input: AttentionInput): Row<'attention'> {
@@ -779,13 +817,17 @@ function scope(database: NexusDatabase, binding: Row<'role_binding'>, ticket: Ro
   fail('scope_denied')
 }
 
-function ticketManager(database: NexusDatabase, actor: Actor, ticket: Row<'ticket'>): void {
+function projectAuthority(database: NexusDatabase, actor: Actor, ticket: Row<'ticket'>): void {
   if (!isHuman(database, actor)) {
     const binding = agent(database, actor)
     if (binding.role !== 'project')
       fail('scope_denied')
     scope(database, binding, ticket)
   }
+}
+
+function ticketManager(database: NexusDatabase, actor: Actor, ticket: Row<'ticket'>): void {
+  projectAuthority(database, actor, ticket)
   activeProject(database, ticket.projectId)
 }
 
@@ -810,13 +852,20 @@ function dispatchable(database: NexusDatabase, ticket: Row<'ticket'>): void {
     fail('dependency_unsatisfied')
 }
 
-function requireExecution(database: NexusDatabase, ticket: Row<'ticket'>, bindingId: string | undefined): Row<'role_binding'> {
+function executionBinding(database: NexusDatabase, ticket: Row<'ticket'>, bindingId: string | undefined): Row<'role_binding'> {
   if (!bindingId)
     fail('execution_identity_required')
   if (ticket.executionBindingId !== bindingId)
     fail('stale_execution')
   const binding = required(database, 'role_binding', bindingId)
-  if (binding.role !== 'worker' || binding.ticketId !== ticket.id || !binding.startedAt)
+  if (binding.role !== 'worker' || binding.ticketId !== ticket.id)
+    fail('scope_denied')
+  return binding
+}
+
+function requireExecution(database: NexusDatabase, ticket: Row<'ticket'>, bindingId: string | undefined): Row<'role_binding'> {
+  const binding = executionBinding(database, ticket, bindingId)
+  if (!binding.startedAt)
     fail('execution_not_started')
   return binding
 }
@@ -865,6 +914,7 @@ function route(database: NexusDatabase, initiator: Role, tickets: Row<'ticket'>[
 
 function retireAskRequests(database: NexusDatabase, askId: string): void {
   requireDatabase(database).prepare('UPDATE message SET supersededAt = ?, deliveryState = \'superseded\', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = \'ask\' AND supersededAt IS NULL').run(now(), askId)
+  requireDatabase(database).prepare('UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN (\'pending\', \'failed\') THEN \'superseded\' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = \'ask\') AND supersededAt IS NULL').run(now(), askId)
 }
 
 function rerouteAskDelivery(database: NexusDatabase, ask: Row<'ask'>, recipient: string): void {
@@ -951,7 +1001,7 @@ function nextSeq(database: NexusDatabase, table: 'message' | 'outbox'): number {
   return Number(row.seq)
 }
 
-function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null }): Row<'message'> {
+function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null, source?: string }): Row<'message'> {
   const existing = load(database, 'message', input.id)
   if (existing) {
     if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content)
@@ -971,6 +1021,28 @@ function satisfy(database: NexusDatabase, ticketId: string): void {
     const id = `${link.ticketId}:${ticketId}`
     insert(database, 'wakeup', { id, ticketId: link.ticketId, relatedId: ticketId, reason: 'dependency_delivered', createdAt: now() }, true)
     requireDatabase(database).prepare('UPDATE ticket_link SET satisfiedAt = ?, wakeupId = ? WHERE ticketId = ? AND relatedId = ? AND kind = ?').run(now(), id, link.ticketId, ticketId, 'depends')
+  }
+}
+
+function verifyMainPublication(database: NexusDatabase, message: Row<'message'>, thread: Row<'thread'>, actor: Actor): void {
+  if (!isHuman(database, actor) && agent(database, actor).role !== 'main')
+    fail('scope_denied')
+  if (!thread.projectId)
+    fail('scope_denied')
+  activeProject(database, thread.projectId)
+  verifyThreadRepository(database, thread, thread.projectId)
+  if (message.askId) {
+    const ask = required(database, 'ask', message.askId)
+    const initiator = ask.initiatorBinding ? load(database, 'role_binding', ask.initiatorBinding) : null
+    if (ask.initiatorRole !== 'main' || initiator?.role !== 'main' || ask.source !== thread.id || askTickets(database, ask.id).length)
+      fail('scope_denied')
+  }
+  else {
+    const provenance = message.source ? JSON.parse(message.source) as { actor?: Actor } : null
+    const origin = provenance?.actor
+    const initiator = origin?.kind === 'agent' ? rows(database, 'role_binding').find(binding => binding.sessionId === origin.sessionId) : null
+    if (message.kind !== 'message' || origin?.kind !== 'agent' || initiator?.role !== 'main' || message.sender !== origin.sessionId)
+      fail('scope_denied')
   }
 }
 

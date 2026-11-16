@@ -436,6 +436,21 @@ describe('execution-result and retired-request regressions', () => {
     const metadata = { id: 'metadata-worker', role: 'worker' as const, sessionId: 'metadata-worker-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/metadata', worktree: directory, status: 'running', startedAt: '2026-11-16T00:00:00Z' }
     expect(ledger.bindRole(db, metadata, project)).toMatchObject({ status: 'idle', startedAt: null })
   })
+  it('blocks recovery when another execution uses the current worker limit without changing audit or bindings', () => {
+    startWorker()
+    ledger.updateBinding(db, 'worker', 'unavailable', 'Needs verified recovery')
+    createTicket('T2')
+    ledger.dispatchTicket(db, 'T2', project)
+    ledger.bindRole(db, { id: 'worker-b', role: 'worker', sessionId: 'worker-b-session', ticketId: 'T2', projectId: 'p', repository: target.repository, branch: 'ticket/T2', worktree: directory }, project)
+    ledger.updateSettings(db, { maxWorkers: 1 }, web)
+    ledger.startTicket(db, 'T2', 'worker-b', project)
+    const before = ledger.load(db, 'role_binding', 'worker')
+    const audit = ledger.list(db, 'ticket_transition')
+    expect(() => ledger.recoverTicket(db, 'T1', 'worker', 'Verified existing execution', project)).toThrow('worker_limit')
+    expect(ledger.load(db, 'role_binding', 'worker')).toEqual(before)
+    expect(ledger.load(db, 'role_binding', 'worker-b')).toMatchObject({ status: 'running' })
+    expect(ledger.list(db, 'ticket_transition')).toEqual(audit)
+  })
   it('recovers only an actually started current execution through checked pause and project gates', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-16T00:00:00Z'))

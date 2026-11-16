@@ -236,6 +236,7 @@ export type Message = {
     nextRetryAt: string | null;
 };
 export type Outbox = {
+    supersededAt: string | null;
     id: string;
     messageId: string;
     ticketId: string | null;
