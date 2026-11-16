@@ -1,122 +1,366 @@
 import type { ReactNode } from 'react'
-import type { OverviewTask } from '../../../types'
-import { Button, StateDot, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { useId } from 'react'
-import { ActivityIcon, ArrowLeftIcon, ChannelsIcon, GitBranchIcon, GitHubIcon, NexusIcon } from '../../../components/icons'
-import { AGENT_GRAPH_EDGES, AGENT_GRAPH_NODES, OVERVIEW_CHANNEL_LABELS, OVERVIEW_CHANNELS, OVERVIEW_STATUS, OVERVIEW_TASKS, TICKET_DETAIL_PREVIEWS } from '../../../constants'
+import type { PolicySnapshot } from '../../../../types/ledger'
+import type { TicketDetailModel } from '../../../../types/web'
+import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useAsyncState, useEventListener, useIntervalFn } from '@reause/core'
+import { useState } from 'react'
+import { nexus } from '../../../apis/nexus'
+import { PolicyFields } from '../../../components/policy-fields'
+import { SourceLink } from '../../../components/source-link'
+import { SourceSession } from '../../../components/source-session'
+import { useCommand, usePanel } from '../../../hooks/use-panel'
 import { useActions, useStore } from '../../../hooks/use-store'
-import { useTranslation } from '../../../hooks/use-translation'
-import { Arrivals } from './components/arrivals'
-import { Issues } from './components/issues'
-import { Metric } from './components/metric'
-import { PrStatus } from './components/pr-status'
-import { Relations } from './components/relations'
-import { Section } from './components/section'
+import { AskCard } from '../../inbox/page'
 
 export function TicketDetail(): ReactNode {
-  const { t } = useTranslation()
-  const { go } = useActions()
-  const executionDescriptionId = useId()
-  const { ticketId, returnTo } = useStore(state => state.navigation)
-  const task = OVERVIEW_TASKS.find(task => task.id === ticketId)
-  const back = <Button variant="ghost" size="sm" icon={<ArrowLeftIcon width={16} height={16} />} onClick={() => go(returnTo)}>{t('ticketBack')}</Button>
-  if (!task) {
+  const id = useStore(state => state.navigation.ticketId)
+
+  return id ? <Detail key={id} id={id} /> : <p>未选择工单，请返回工单列表。</p>
+}
+function Detail({ id }: {
+  id: string
+}): ReactNode {
+  const { data } = usePanel()
+
+  const { go, openThread, openTicket } = useActions()
+
+  const returnTo = useStore(state => state.navigation.returnTo)
+
+  const command = useCommand()
+
+  const [reason, setReason] = useState('')
+
+  const [result, setResult] = useState('')
+
+  const [armed, setArmed] = useState(false)
+
+  const current = data.tickets.find(item => item.ticket.id === id)?.ticket
+
+  const [policy, setPolicy] = useState<PolicySnapshot | null>(() => current ? { questionLevel: current.questionLevel as PolicySnapshot['questionLevel'], mergePolicy: current.mergePolicy as PolicySnapshot['mergePolicy'] } : null)
+
+  const resource = useAsyncState<TicketDetailModel | null>(() => nexus.ticket(id), null, { resetOnExecute: false })
+
+  const reload = (): void => {
+    void resource.executeImmediate()
+  }
+
+  useEventListener('focus', reload)
+
+  useEventListener('online', reload)
+
+  useIntervalFn(() => {
+    if (document.visibilityState === 'visible' && !resource.isLoading)
+      reload()
+  }, 15000)
+
+  const detail = resource.state
+
+  if (!current) {
     return (
-      <section className="flex flex-col gap-5 pb-10">
-        <div>{back}</div>
-        <div className="rounded-2xl border border-[var(--dsw-alias-border-l3)] p-6">
-          <h2 className="text-base font-medium">{t('ticketNotFound')}</h2>
-          <p className="mt-2 text-[13px] text-[var(--dsw-alias-label-secondary)]">{t('ticketNotFoundDescription')}</p>
-          <Button variant="outline" size="sm" onClick={() => go('ticket')} className="mt-4">{t('tabTickets')}</Button>
-        </div>
+      <section>
+        <p>工单不存在或已不可读取。</p>
+        <Button size="sm" variant="outline" onClick={() => go('ticket')}>返回工单列表</Button>
       </section>
     )
   }
-  const preview = TICKET_DETAIL_PREVIEWS[task.id]
-  const status = OVERVIEW_STATUS[task.status]
-  const connected = OVERVIEW_CHANNELS.some(channel => channel.kind === task.channel && channel.connected)
-  const node = AGENT_GRAPH_NODES.find(node => node.taskId === task.id)
-  const dependencies = new Set<OverviewTask['id']>()
-  const associations = new Set<OverviewTask['id']>()
-  if (node) {
-    for (const edge of AGENT_GRAPH_EDGES) {
-      if (edge.kind === 'flow' || (edge.source !== node.id && (edge.kind !== 'association' || edge.target !== node.id)))
-        continue
-      const opposite = edge.source === node.id ? edge.target : edge.source
-      const id = AGENT_GRAPH_NODES.find(node => node.id === opposite)?.taskId
-      if (id)
-        (edge.kind === 'dependency' ? dependencies : associations).add(id)
+
+  const asks = [...data.inbox.pending, ...data.inbox.resolved].filter(ask => ask.ticketIds.includes(id))
+
+  const target = current.deliveryTarget
+    ? JSON.parse(current.deliveryTarget) as {
+      base: string
+      head: string
     }
-  }
+    : null
+
   return (
-    <section className="@container flex min-w-0 flex-col gap-5 pb-10" aria-label={t('ticketDetail')}>
-      <div>{back}</div>
-      <header className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
-        <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-center gap-3">
-            <span className="text-xs text-[var(--dsw-alias-label-tertiary)]">{task.id}</span>
-            <Tag tone={status.tone}>{t(status.label)}</Tag>
-            <Tag tone="quiet">{t('overviewDemo')}</Tag>
-          </div>
-          <h2 className="m-0 text-lg leading-7 font-medium [overflow-wrap:anywhere]">{t(task.title)}</h2>
-        </div>
-        {preview && (preview.pullRequest || preview.execution) && (
-          <div className="flex min-w-0 flex-col items-end gap-1.5">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {preview.pullRequest && <PrStatus pullRequest={preview.pullRequest} />}
-              {preview.execution === 'linked' && <Button variant="outline" size="sm" disabled title={t('ticketExecutionUnavailable')} aria-describedby={executionDescriptionId}>{t('overviewOpenSession')}</Button>}
-              {preview.execution === 'not-created' && <Button variant="outline" size="sm" disabled title={t('ticketResendUnavailable')} aria-describedby={executionDescriptionId}>{t('ticketResend')}</Button>}
-            </div>
-            {preview.execution && <p id={executionDescriptionId} className="m-0 max-w-64 text-right text-xs leading-4 text-[var(--dsw-alias-label-secondary)]">{t(preview.execution === 'not-created' ? 'ticketResendUnavailable' : 'ticketExecutionUnavailable')}</p>}
-          </div>
-        )}
+    <section className="flex min-w-0 flex-col gap-4">
+      <div><Button variant="ghost" size="sm" onClick={() => go(returnTo)}>返回</Button></div>
+      <header className="flex flex-wrap items-center gap-3">
+        <h2 className="m-0 text-lg font-medium">{current.title}</h2>
+        <span className="font-mono text-xs">{current.id}</span>
+        <Tag tone={current.paused || current.failureReason ? 'warning' : 'quiet'}>{current.paused ? 'paused' : current.status}</Tag>
       </header>
-      <dl className="m-0 grid min-w-0 gap-3 @min-[460px]:grid-cols-2 @min-[820px]:grid-cols-4">
-        <Metric label={t('ticketProject')} icon={<NexusIcon width={17} height={17} />}>
-          {preview?.repository
-            ? (
-                <span className="inline-flex min-w-0 items-center gap-1.5" title={preview.repository}>
-                  <GitHubIcon width={14} height={14} className="shrink-0" />
-                  <span className="truncate">{preview.repository}</span>
-                </span>
-              )
-            : <span className="font-normal text-[var(--dsw-alias-label-secondary)]">{t('ticketProjectEmpty')}</span>}
-        </Metric>
-        <Metric label={t('ticketChannel')} icon={<ChannelsIcon width={17} height={17} />}>
-          {OVERVIEW_CHANNEL_LABELS[task.channel]}
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-normal text-[var(--dsw-alias-label-secondary)]">
-            <StateDot state={connected ? 'done' : 'idle'} size={6} />
-            {t(connected ? 'ticketChannelConnected' : 'overviewDisconnected')}
-          </span>
-        </Metric>
-        <Metric label={t(task.status === 'waiting' ? 'ticketWaitDuration' : 'ticketExecutionDuration')} icon={<ActivityIcon width={17} height={17} />}>
-          <span className="tabular-nums">{task.duration}</span>
-        </Metric>
-        <Metric label={t('ticketExecutionBranch')} icon={<GitBranchIcon width={17} height={17} />}>
-          {preview?.branch
-            ? <span className="min-w-0 truncate font-mono text-xs" title={preview.branch}>{preview.branch}</span>
-            : <span className="font-normal text-[var(--dsw-alias-label-secondary)]">{t('ticketBranchPending')}</span>}
-        </Metric>
-      </dl>
-      <div className="grid min-w-0 gap-4 @min-[740px]:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Issues issues={preview?.issues ?? []} />
-          <Section title={t('ticketDependencies')}>
-            <Relations tasks={OVERVIEW_TASKS.filter(task => dependencies.has(task.id))} empty={t('ticketDependenciesEmpty')} clear />
-          </Section>
-          <Section title={t('ticketRelatedTasks')}>
-            <Relations tasks={OVERVIEW_TASKS.filter(task => associations.has(task.id))} empty={t('ticketRelatedTasksEmpty')} />
-          </Section>
-        </div>
-        <div className="grid min-w-0 grid-rows-[auto_1fr] gap-4">
-          <Section title={t('graphSupervisor')}>
-            <p className="m-0 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]">{t('ticketSupervisorEmpty')}</p>
-          </Section>
-          <Section title={t('ticketArrivals')}>
-            <Arrivals key={task.id} arrivals={preview?.arrivals ?? []} />
-          </Section>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <article className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+          <h3 className="m-0 text-sm font-medium">目标与授权范围</h3>
+          <p className="whitespace-pre-wrap">{current.description ?? current.title}</p>
+          <p className="mb-0 whitespace-pre-wrap text-xs">{current.authorization}</p>
+        </article>
+        <article className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+          <h3 className="m-0 text-sm font-medium">验收要求</h3>
+          <p className="mb-0 whitespace-pre-wrap">{current.acceptanceCriteria}</p>
+        </article>
       </div>
+      <p className="m-0 text-xs">
+        实际快照：
+        {current.questionLevel}
+        {' '}
+        ·
+        {current.mergePolicy}
+        {' '}
+        · revision
+        {current.policyRevision}
+        。全局默认不追溯修改本票。
+      </p>
+      {(current.pauseReason || current.failureReason || current.executionAttention || current.prepareError) && (
+        <p role="status" className="m-0 rounded-lg border border-[var(--dsw-alias-border-l3)] p-3">
+          暂停/故障：
+          {[current.pauseReason, current.failureReason, current.executionAttention, current.prepareError].filter(Boolean).join(' · ')}
+        </p>
+      )}
+      <article className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+        <h3 className="m-0 text-sm font-medium">当前 PR / CI 事实</h3>
+        <p className="mb-0">
+          <SourceLink href={current.prUrl}>{current.prUrl ?? '未关联 PR'}</SourceLink>
+          {' '}
+          · PR
+          {' '}
+          {current.prState ?? '尚未观测'}
+          {' '}
+          · CI
+          {' '}
+          {current.ciState ?? '尚未观测'}
+        </p>
+        {target && (
+          <p className="mb-0 break-all font-mono text-xs">
+            base
+            {target.base}
+            {' '}
+            · head
+            {target.head}
+          </p>
+        )}
+        <p className="mb-0 text-xs text-[var(--dsw-alias-label-secondary)]">review、PR open、工具受理都不代表完成；成功交付、取消、未合并关闭分别展示。</p>
+      </article>
+      <details>
+        <summary className="cursor-pointer">管理本工单与实际策略</summary>
+        <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+          <p className="m-0 text-xs">
+            作用范围：仅工单
+            {id}
+            。解除人工暂停不自动重试；重试须核实旧执行与外部副作用。
+          </p>
+          <label className="flex flex-col gap-1 text-xs">
+            处置原因
+            <input value={reason} onChange={event => setReason(event.target.value)} className="rounded border border-[var(--dsw-alias-border-l2)] bg-[var(--dsw-alias-bg-layer-1)] p-2" />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(['pause', 'resume', 'retry', 'dispatch'] as const).map(action => (
+              <Button
+                size="sm"
+                variant="outline"
+                key={action}
+                disabled={command.busy || (!reason.trim() && action !== 'dispatch') || (action === 'resume' && !current.paused) || (action === 'pause' && !!current.paused)}
+                onClick={() => void command.run(`工单 ${action}`, async () => {
+                  const result = await nexus.command(id, action, reason)
+                  setResult(JSON.stringify(result))
+                  reload()
+                }, action === 'dispatch' ? '派工已受理，尚不代表 Worker 已启动或工单完成。' : '管理决定已记录，请核对下方实际停止/运行结果。')}
+              >
+                {action}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={command.busy || !reason.trim()}
+              onClick={() => {
+                if (!armed) {
+                  setArmed(true)
+
+                  return
+                }
+                void command.run('取消工单', async () => {
+                  const result = await nexus.command(id, 'cancel', reason)
+                  setResult(JSON.stringify(result))
+                  setArmed(false)
+                  reload()
+                }, '取消决定已记录，请核对旧执行停止结果。')
+              }}
+            >
+              {armed ? '再次点击：取消本工单' : '取消工单'}
+            </Button>
+          </div>
+          <fieldset disabled={command.busy} className="m-0 border-0 p-0"><PolicyFields value={policy!} onChange={setPolicy} /></fieldset>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={command.busy || !reason.trim()}
+            onClick={() => void command.run('修改本票策略', async () => {
+              await nexus.policy(id, policy!, reason)
+              reload()
+            })}
+          >
+            保存本票策略
+          </Button>
+          {command.feedback && <p role="status" className="m-0 text-xs">{command.feedback}</p>}
+          {command.error && <p role="alert" className="m-0 text-xs text-[var(--dsw-alias-state-error-primary)]">{command.error}</p>}
+          {result && <pre className="m-0 whitespace-pre-wrap break-all text-xs">{result}</pre>}
+        </div>
+      </details>
+      {resource.error
+        ? (
+            <div role="alert">
+              读取工单详情失败：
+              {String(resource.error)}
+              。
+              <Button variant="outline" size="sm" onClick={reload}>重读详情</Button>
+            </div>
+          )
+        : !detail && <p role="status">正在读取执行、依赖、产物与历史…</p>}
+      {detail && (
+        <>
+          <section className="flex flex-col gap-3">
+            <h3 className="m-0 text-sm font-medium">执行历史与来源会话</h3>
+            {detail.executions.length
+              ? detail.executions.map(binding => (
+                  <article key={binding.id} className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+                    <p className="mt-0 text-xs">
+                      {binding.role}
+                      {' '}
+                      ·
+                      {' '}
+                      {binding.status}
+                      {' '}
+                      ·
+                      {' '}
+                      {binding.startedAt ?? '尚未核实启动'}
+                      {' '}
+                      ·
+                      {' '}
+                      {binding.closedAt ?? '未关闭'}
+                    </p>
+                    <p className="break-all font-mono text-xs">
+                      {binding.repository}
+                      {' '}
+                      ·
+                      {' '}
+                      {binding.worktree}
+                      {' '}
+                      ·
+                      {' '}
+                      {binding.branch}
+                    </p>
+                    <SourceSession sessionId={binding.sessionId} key={binding.sessionId} />
+                  </article>
+                ))
+              : <p className="m-0 text-xs">尚未创建执行；派工受理不产生虚构会话。</p>}
+          </section>
+          <section>
+            <h3 className="text-sm font-medium">依赖与关联</h3>
+            {detail.dependencies.length
+              ? detail.dependencies.map(link => (
+                  <p className="flex flex-wrap items-center gap-2 text-xs" key={link.ticketId + link.relatedId}>
+                    <Button size="sm" variant="ghost" onClick={() => openTicket(link.ticketId)}>{link.ticketId}</Button>
+                    {link.kind}
+                    <Button size="sm" variant="ghost" onClick={() => openTicket(link.relatedId)}>{link.relatedId}</Button>
+                    {link.satisfiedAt ? `成功依赖已满足 ${link.satisfiedAt}` : '尚无成功依赖事实'}
+                  </p>
+                ))
+              : <p className="text-xs">没有关联依赖。</p>}
+          </section>
+          <section>
+            <h3 className="text-sm font-medium">来源话题与订阅</h3>
+            {detail.topics.length ? detail.topics.map(topic => <Button key={topic.id} size="sm" variant="ghost" onClick={() => openThread(topic.id)}>{topic.title}</Button>) : <p className="text-xs">未关联来源话题。</p>}
+          </section>
+          <section>
+            <h3 className="text-sm font-medium">产物与验收证据</h3>
+            {detail.evidence.map(item => (
+              <article key={item.id} className="mb-2 rounded-lg border border-[var(--dsw-alias-border-l3)] p-3 text-xs">
+                {item.verdict}
+                {' '}
+                ·
+                {' '}
+                {item.scope}
+                {' '}
+                ·
+                {' '}
+                {item.criteria}
+                {' '}
+                ·
+                {' '}
+                {item.basis}
+                <p className="mb-0 whitespace-pre-wrap break-all">{item.evidence}</p>
+                <p className="mb-0">
+                  {item.executionBindingId}
+                  {' '}
+                  ·
+                  {' '}
+                  {item.createdAt}
+                </p>
+              </article>
+            ))}
+            {detail.messages.filter(message => message.facts).map(message => (
+              <p className="break-all text-xs" key={message.id}>
+                {message.facts}
+                {' '}
+                · 来源
+                {' '}
+                {message.sender}
+                {' '}
+                ·
+                {' '}
+                {message.acceptedAt}
+              </p>
+            ))}
+            {!detail.evidence.length && !detail.messages.some(message => message.facts) && <p className="text-xs">尚无已记录产物或验收证据。</p>}
+          </section>
+          <details>
+            <summary>事件与投递历史</summary>
+            {detail.history.map(item => (
+              <p className="break-all text-xs" key={item.id}>
+                {item.at}
+                {' '}
+                ·
+                {' '}
+                {item.event}
+                {' '}
+                ·
+                {' '}
+                {item.fromStatus}
+                {' '}
+                →
+                {' '}
+                {item.toStatus}
+                {' '}
+                ·
+                {' '}
+                {item.reason}
+              </p>
+            ))}
+            {detail.messages.map(message => (
+              <p className="break-all text-xs" key={message.id}>
+                {message.kind}
+                {' '}
+                ·
+                {' '}
+                {message.recipient}
+                {' '}
+                ·
+                {' '}
+                {message.error ? `投递失败：${message.error}` : message.handledAt ? '已处理' : message.readAt ? '已入上下文' : message.deliveredAt ? '已送达，待入上下文' : '待投递'}
+              </p>
+            ))}
+          </details>
+        </>
+      )}
+      <h3 className="m-0 text-sm font-medium">待决问题与生效答案</h3>
+      {asks.map(ask => <AskCard key={ask.id} ask={ask} />)}
+      {detail?.asks.filter(ask => !asks.some(item => item.id === ask.id)).map(ask => (
+        <p key={ask.id} className="text-xs">
+          {ask.content}
+          {' '}
+          ·
+          {' '}
+          {ask.status}
+          {' '}
+          · 当前责任
+          {' '}
+          {ask.handler}
+          （非本人待办）
+        </p>
+      ))}
     </section>
   )
 }

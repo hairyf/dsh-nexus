@@ -84,6 +84,7 @@
     "croner": "catalog:utils",
     "dsh-h3": "catalog:utils",
     "dsh-taiwind": "catalog:utils",
+    "h3": "catalog:utils",
     "kysely": "catalog:database",
     "kysely-model": "catalog:database",
     "react-if-lite": "catalog:react",
