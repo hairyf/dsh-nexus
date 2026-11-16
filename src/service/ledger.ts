@@ -504,6 +504,8 @@ export const ledger = defineService({
         }
         update(database, 'ticket', ticketId, { status: 'done', endedAt: now(), updatedAt: now() })
         satisfy(database, ticketId)
+        for (const item of rows(database, 'attention').filter(item => item.ticketId === ticketId && !item.handledAt))
+          ledger.updateAttention(database, item.id, 'handled', 'ticket_completed')
       }
       else if (event === 'ready' || event === 'session_ended') {
         if (ticket.failureReason && event === 'session_ended') {
@@ -534,6 +536,10 @@ export const ledger = defineService({
     if (!reason.trim())
       fail('invalid_config')
     update(database, 'ticket', ticketId, { paused: Number(paused), pauseReason: reason, pauseActor: JSON.stringify(actor), pausedAt: now(), updatedAt: now() })
+    if (paused) {
+      for (const item of rows(database, 'attention').filter(item => item.ticketId === ticketId && !item.askId && ['execution_in_progress', 'worker_limit'].includes(item.reason) && !item.handledAt))
+        ledger.updateAttention(database, item.id, 'handled', 'human_paused')
+    }
     return required(database, 'ticket', ticketId)
   },
   cancelTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'> {
@@ -542,6 +548,8 @@ export const ledger = defineService({
     if (!reason.trim() || ['done', 'cancelled'].includes(ticket.status))
       fail('invalid_transition')
     update(database, 'ticket', ticketId, { status: 'cancelled', endedAt: now(), pauseReason: reason, pauseActor: JSON.stringify(actor), updatedAt: now() })
+    for (const item of rows(database, 'attention').filter(item => item.ticketId === ticketId && !item.handledAt))
+      ledger.updateAttention(database, item.id, 'handled', 'ticket_cancelled')
     return required(database, 'ticket', ticketId)
   },
   linkTickets(database: NexusDatabase, ticketId: string, relatedId: string, kind: 'depends' | 'relates', actor: Actor): void {
@@ -643,6 +651,18 @@ export const ledger = defineService({
       if (event === 'handled' && !message.readAt)
         fail('not_read')
       update(database, 'message', id, event === 'delivered' ? { deliveredAt: message.deliveredAt ?? now(), deliveryState: 'delivered', error: null, nextRetryAt: null } : event === 'read' ? { readAt: message.readAt ?? now() } : { handledAt: message.handledAt ?? now() })
+    }
+    const ticket = message.ticketId ? load(database, 'ticket', message.ticketId) : null
+    const facts = message.facts ? JSON.parse(message.facts) as MessageFacts : null
+    const report = event === 'delivered' && !message.deliveredAt && facts?.evidence?.some(item => item.trim()) && !rows(database, 'message').some(item => item.id !== message.id && item.ticketId === message.ticketId && item.sender === message.sender && item.facts === message.facts && item.deliveredAt)
+    const continuation = event === 'handled' && !message.handledAt && ['runtime:ticket', 'answer'].includes(message.kind)
+    if (ticket && !ticket.paused && !['done', 'cancelled'].includes(ticket.status) && (report || continuation)) {
+      const sender = rows(database, 'role_binding').find(item => item.sessionId === message.sender)
+      for (const item of rows(database, 'attention').filter(item => item.ticketId === ticket.id && !item.handledAt && !item.id.startsWith('runtime:') && item.reason !== 'human_paused' && (!item.bindingId || item.bindingId === ticket.executionBindingId || item.recipient === sender?.id || (continuation && item.bindingId === message.recipient)) && (!item.askId || item.recipient === sender?.id))) {
+        const progressAt = continuation ? now() : message.acceptedAt
+        if (progressAt > item.progressAt)
+          ledger.refreshAttention(database, item.id, progressAt, item.reason, facts?.summary ?? message.content)
+      }
     }
     return required(database, 'message', id)
   },
@@ -782,7 +802,7 @@ export const ledger = defineService({
     const unresolved = rows(database, 'attention').some(item => !item.handledAt && item.ticketId && tickets.some(ticket => ticket.id === item.ticketId))
     const bindings = rows(database, 'role_binding').filter(binding => binding.supervisorId === id && binding.status !== 'closed')
     const ownsPendingAsk = rows(database, 'ask').some(ask => ask.status === 'pending' && bindings.some(binding => ask.handler === binding.id || ask.responseRecipient === binding.id))
-    const canClose = actor ? !ownsPendingAsk : (tickets.length > 0 && tickets.every(ticket => ticket.status === 'done' && !ticket.failureReason && !ticket.executionAttention) && !pendingAsk && !unresolved)
+    const canClose = actor ? !ownsPendingAsk : (tickets.length > 0 && tickets.every(ticket => ticket.status === 'done' && !ticket.failureReason && !ticket.executionAttention && ledger.resolveTicket(database, ticket.id).dependencySatisfied) && !pendingAsk && !ownsPendingAsk && !unresolved)
     return { supervisor, bindings, canClose }
   },
   closeSupervisor(database: NexusDatabase, id: string, reason: string, actor?: Actor): Row<'supervisor'> {
@@ -815,10 +835,11 @@ export const ledger = defineService({
     })
   },
   refreshAttention(database: NexusDatabase, id: string, progressAt: string, reason: string, waitingFor: string): Row<'attention'> {
-    required(database, 'attention', id)
+    const item = required(database, 'attention', id)
     if (!Number.isFinite(Date.parse(progressAt)) || !reason.trim() || !waitingFor.trim())
       fail('invalid_config')
     const dueAt = new Date(Date.parse(progressAt) + ledger.getSettings(database).reminderIntervalMinutes * 60000).toISOString()
+    retireAttentionReminders(database, item)
     update(database, 'attention', id, { progressAt, reason, waitingFor, dueAt, remindedAt: null, escalatedAt: null, deliveryState: 'pending', deliveryError: null, handledAt: null, resolution: null })
     return required(database, 'attention', id)
   },
@@ -838,6 +859,8 @@ export const ledger = defineService({
     if (!detail.trim())
       fail('invalid_config')
     update(database, 'attention', id, event === 'reminded' ? { remindedAt: now(), deliveryState: 'delivered', deliveryError: null } : event === 'failed' ? { deliveryState: 'failed', deliveryError: detail } : event === 'escalated' ? { escalatedAt: now() } : { handledAt: now(), resolution: detail })
+    if (event === 'handled')
+      retireAttentionReminders(database, attention)
     return { ...attention, ...required(database, 'attention', id) }
   },
 })
@@ -1011,9 +1034,15 @@ function route(database: NexusDatabase, initiator: Role, tickets: Row<'ticket'>[
   return handlers.every(value => value === handlers[0]) ? handlers[0] : 'human'
 }
 
+function retireAttentionReminders(database: NexusDatabase, item: Row<'attention'>): void {
+  requireDatabase(database).prepare('UPDATE message SET supersededAt = ?, deliveryState = ?, error = NULL, nextRetryAt = NULL WHERE kind = ? AND source = ? AND supersededAt IS NULL').run(now(), 'superseded', 'runtime:reminder', `attention:${item.id}:${item.progressAt}`)
+}
+
 function retireAskRequests(database: NexusDatabase, askId: string, settlement?: 'ask_answered' | 'ask_cancelled' | 'target_changed'): void {
-  if (settlement)
-    requireDatabase(database).prepare('UPDATE attention SET handledAt = ?, resolution = ? WHERE askId = ? AND reason = ? AND handledAt IS NULL').run(now(), settlement, askId, 'pending_ask')
+  if (settlement) {
+    for (const item of rows(database, 'attention').filter(item => item.askId === askId && item.reason === 'pending_ask' && !item.handledAt))
+      ledger.updateAttention(database, item.id, 'handled', settlement)
+  }
   requireDatabase(database).prepare('UPDATE message SET supersededAt = ?, deliveryState = \'superseded\', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = \'ask\' AND supersededAt IS NULL').run(now(), askId)
   requireDatabase(database).prepare('UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN (\'pending\', \'failed\') THEN \'superseded\' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = \'ask\') AND supersededAt IS NULL').run(now(), askId)
 }

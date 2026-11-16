@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { openDatabase } from '../src/database'
+import { communication } from '../src/service/communication'
 import { ledger } from '../src/service/ledger'
 import { runtime } from '../src/service/runtime'
 
@@ -131,7 +132,7 @@ it('does not replace an execution after a stop request while it may still write'
   await run.start('P', human)
   const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
   sessions.sessions.set(worker.sessionId, { state: 'running', cwd: worker.worktree! })
-  expect(await run.pause('P', true, 'human pause', human)).toMatchObject({ stopped: false, reason: 'execution_stop_unconfirmed' })
+  expect(await run.pause('P', true, 'human pause', human, async () => 'verified')).toMatchObject({ stopped: false, reason: 'execution_stop_unconfirmed' })
   expect(ledger.load(db, 'role_binding', worker.id)!.status).not.toBe('closed')
   await expect(run.retry('P', 'retry', human, async () => 'verified')).rejects.toMatchObject({ code: 'execution_conflict' })
   expect(sessions.creates).toHaveLength(4)
@@ -175,14 +176,59 @@ it('wakes the responsible project after an owner resumes without replacing execu
   await run.start('P', human)
   const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
   ledger.createAsk(db, { id: 'resume-pending', ticketIds: ['P'], source: 'test:resume', content: 'Await owner', decisionType: 'important', withinAuthorization: true, options: [] }, { kind: 'agent', sessionId: 's-p' })
-  expect((await run.pause('P', true, 'Owner pauses', human)).stopped).toBe(true)
-  const resumed = await run.pause('P', false, 'Owner resumes', human)
+  expect(await run.pause('P', true, 'Owner pauses', human, async () => 'verified')).toMatchObject({ stopped: false, reason: 'human_paused' })
+  expect(ledger.load(db, 'role_binding', worker.id)).toMatchObject({ status: 'running', worktree: worker.worktree, sessionId: worker.sessionId })
+  expect(ledger.load(db, 'ticket', 'P')).toMatchObject({ status: 'running', failureReason: null })
+  const resumed = await run.pause('P', false, 'Owner resumes', human, async () => 'verified')
   expect(resumed.ticket).toMatchObject({ paused: 0, executionBindingId: worker.id })
   expect(ledger.load(db, 'ask', 'resume-pending')).toMatchObject({ status: 'pending', answer: null })
   const notice = ledger.load(db, 'message', sessions.deliveries.at(-1)!)!
   expect(notice).toMatchObject({ recipient: 'manager-p', ticketId: 'P', kind: 'runtime:human' })
   expect(sessions.modes.at(-1)).toBe('wake')
   expect(ledger.list(db, 'role_binding').filter(binding => binding.ticketId === 'P')).toHaveLength(1)
+})
+
+it('resumes the verified original session and preserves its unfinished workspace', async () => {
+  const { run, sessions } = await fixture()
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  await writeFile(join(worker.worktree!, 'unfinished.txt'), 'keep context')
+  await run.pause('P', true, 'hold', human, async () => 'verified')
+  const resumed = await run.pause('P', false, 'continue', human, async () => 'verified')
+  expect(resumed).toMatchObject({ ticket: { status: 'running', paused: 0, failureReason: null, executionBindingId: worker.id } })
+  expect(ledger.load(db, 'role_binding', worker.id)).toMatchObject({ status: 'running', sessionId: worker.sessionId, worktree: worker.worktree })
+  expect(sessions.creates).toHaveLength(4)
+  const continuation = ledger.list(db, 'message').find(item => item.source === 'ticket:P:resume' && item.recipient === worker.id)!
+  expect(continuation).toMatchObject({ deliveredAt: expect.any(String) })
+  expect(await readFile(join(worker.worktree!, 'unfinished.txt'), 'utf8')).toBe('keep context')
+})
+
+it('reports a genuinely dead session on explicit resume instead of creating a replacement', async () => {
+  const { run, sessions } = await fixture()
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  await run.pause('P', true, 'hold', human, async () => 'verified')
+  sessions.sessions.set(worker.sessionId, { state: 'closed' })
+  expect(await run.pause('P', false, 'continue', human, async () => 'verified')).toMatchObject({ stopped: false, reason: 'closed_session' })
+  expect(sessions.creates).toHaveLength(4)
+  expect(ledger.load(db, 'role_binding', worker.id)).toMatchObject({ status: 'unavailable', worktree: worker.worktree })
+})
+
+it('does not wake an unpaused execution until its real external reconciliation succeeds', async () => {
+  const { run, sessions } = await fixture()
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  await run.pause('P', true, 'hold', human, async () => 'verified')
+  const reconcile = vi.fn(async () => 'unknown' as const)
+  expect(await run.pause('P', false, 'continue', human, reconcile)).toMatchObject({ reason: 'unknown_remote_result', stopped: false })
+  expect(reconcile).toHaveBeenCalledOnce()
+  await run.intake({ id: 'still-unverified', source: 'answer:late', recipient: worker.id, ticketId: 'P', kind: 'answer', content: 'answer persisted' })
+  expect(sessions.modes.at(-1)).toBe('queue')
+  expect(ledger.load(db, 'role_binding', worker.id)).toMatchObject({ status: 'unavailable' })
+  expect(sessions.creates).toHaveLength(4)
+  await run.recover(worker.id, async () => 'verified')
+  expect(ledger.load(db, 'role_binding', worker.id)).toMatchObject({ status: 'running', worktree: worker.worktree })
+  expect(ledger.list(db, 'attention').filter(item => item.reason === 'unknown_remote_result')).toMatchObject([{ handledAt: expect.any(String), resolution: 'session and workspace reconciled' }])
 })
 
 it('queues ordinary worker progress without cancellation but interrupts a busy manager', async () => {
@@ -224,8 +270,7 @@ it('requires verified prior side effects and an explicit decision before retryin
   const { run, sessions } = await fixture()
   await run.start('P', human)
   const old = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
-  await run.pause('P', true, 'pause', human)
-  await run.pause('P', false, 'human resume', human)
+  await run.retire('P', 'execution actually ended', undefined, human)
   await expect(run.retry('P', 'retry', human, async () => 'unknown')).rejects.toMatchObject({ code: 'unknown_remote_result' })
   expect(sessions.creates).toHaveLength(4)
   expect(await run.retry('P', 'retry after remote reconciliation', human, async () => 'verified')).toMatchObject({ status: 'queued' })
@@ -241,9 +286,13 @@ it('does not resume a paused execution on answers, reminders or restart', async 
   await run.start('P', human)
   const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
   sessions.sessions.set(worker.sessionId, { state: 'running', cwd: worker.worktree! })
-  await run.pause('P', true, 'wait for human', human)
+  await run.pause('P', true, 'wait for human', human, async () => 'verified')
   await run.intake({ id: 'paused-answer', source: 'answer:known', recipient: worker.id, ticketId: 'P', kind: 'answer', content: 'answer persisted' })
-  expect(sessions.modes.at(-1)).toBe('queue')
+  const target = { repository: 'github.com/org/p', pullRequest: 'https://github.com/org/p/pull/1', base: 'main', head: 'verified-head' }
+  ledger.setDeliveryTarget(db, 'P', target, human)
+  ledger.recordPullRequest(db, 'P', target, 'open', 'passing')
+  await run.intake({ id: 'paused-ci', source: 'ci:verified', recipient: worker.id, ticketId: 'P', kind: 'message', content: 'CI passed' })
+  expect(sessions.modes.slice(-2)).toEqual(['queue', 'queue'])
   await expect(run.recover(worker.id, async () => 'verified')).rejects.toMatchObject({ code: 'human_paused' })
   expect(ledger.load(db, 'ticket', 'P')).toMatchObject({ paused: 1, status: 'running' })
   expect(sessions.creates).toHaveLength(4)
@@ -329,6 +378,145 @@ it('reminds the responsible role before its superior with durable production and
   await run.settleAttention('stalled', 'remote result verified')
   await timers.advance(600000)
   expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toHaveLength(2)
+})
+
+it('re-arms stagnation reminders only for newly delivered evidence-bearing progress, not receipts or empty turns', async () => {
+  const timers = new Timers()
+  const { run } = await fixture(2, timers)
+  const service = communication.create(db, run)
+  ledger.updateSettings(db, { backgroundLimitMinutes: 120 }, human)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  const id = `execution:${worker.id}`
+  for (let step = 1; step <= 5; step++) {
+    await timers.advance(540000)
+    await service.sendMessage(worker.sessionId, `healthy-${step}`, { to: 'binding:manager-p', message: 'verified continuation', facts: { state: 'progress', summary: `completed chunk ${step}`, evidence: [`chunk-${step}: regression passed`] } })
+    expect(ledger.load(db, 'attention', id)).toMatchObject({ progressAt: new Date().toISOString(), waitingFor: `completed chunk ${step}`, escalatedAt: null })
+  }
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toHaveLength(0)
+  const progressAt = ledger.load(db, 'attention', id)!.progressAt
+  await timers.advance(540000)
+  await service.sendMessage(worker.sessionId, 'accepted-only', { to: 'binding:manager-p', message: 'notification accepted' })
+  await run.observe(worker.sessionId, 'empty-turn', 'turn/end')
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe(progressAt)
+  await timers.advance(60000)
+  const reminders = ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')
+  expect(reminders).toMatchObject([{ recipient: 'manager-p' }])
+  expect(JSON.parse(reminders[0].content)).toMatchObject({ waitingFor: 'completed chunk 5', progressAt })
+})
+
+it('does not count an undelivered progress report or its later duplicate as fresh progress', async () => {
+  const timers = new Timers()
+  const { run, sessions } = await fixture(2, timers)
+  const service = communication.create(db, run)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  const entered = Promise.withResolvers<void>()
+  const release = Promise.withResolvers<void>()
+  const deliver = sessions.deliver.bind(sessions)
+  sessions.deliver = async (...args) => {
+    entered.resolve()
+    await release.promise
+    await deliver(...args)
+  }
+  await timers.advance(300000)
+  const pending = service.sendMessage(worker.sessionId, 'gated-progress', { to: 'binding:manager-p', message: 'chunk done', facts: { state: 'progress', summary: 'verified chunk', evidence: ['regression: pass'] } })
+  await entered.promise
+  const id = `execution:${worker.id}`
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:00:00.000Z')
+  release.resolve()
+  const sent = await pending
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:05:00.000Z')
+  await timers.advance(60000)
+  await run.deliver(sent.messageId)
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:05:00.000Z')
+})
+
+it('re-arms an unchanged ask only after its responsible manager records an evidenced continued-wait decision', async () => {
+  const timers = new Timers()
+  const { run } = await fixture(2, timers)
+  const service = communication.create(db, run)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  const ask = await service.ask('s-p', { requestId: 'continued-wait', ticketIds: ['P'], question: 'External decision?' })
+  await timers.advance(600000)
+  const first = ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)
+  expect(first).toMatchObject([{ recipient: 'manager-p' }])
+  await service.sendMessage('s-p', 'wait-disposition', { to: 'binding:main', ticketId: 'P', message: 'Continue waiting for scheduled decision', facts: { state: 'progress', summary: 'Waiting for scheduled owner review', evidence: ['Owner review scheduled at 02:00'] } })
+  expect(ledger.load(db, 'attention', `ask:${ask.askId}`)).toMatchObject({ progressAt: '2026-11-16T01:10:00.000Z', escalatedAt: null, waitingFor: 'Waiting for scheduled owner review' })
+  await timers.advance(540000)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)).toHaveLength(1)
+  await timers.advance(60000)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId).map(item => item.recipient)).toEqual(['manager-p', 'manager-p'])
+  await service.answer({ askId: ask.askId, answer: 'decided', policyBasis: ask.policyBasis }, human)
+  await timers.advance(1200000)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)).toHaveLength(2)
+})
+
+it.each(['progress', 'answer'] as const)('retires undelivered stale ask reminders after %s', async (disposition) => {
+  const timers = new Timers()
+  const { run, sessions } = await fixture(2, timers)
+  const service = communication.create(db, run)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  const ask = await service.ask('s-p', { requestId: 'stale-reminder', ticketIds: ['P'], question: 'Owner decision?' })
+  const manager = sessions.sessions.get('s-p')!
+  sessions.sessions.set('s-p', { state: 'closed' })
+  await expect(timers.advance(600000)).rejects.toMatchObject({ code: 'closed_session' })
+  const reminder = ledger.list(db, 'message').find(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)!
+  sessions.sessions.set('s-p', manager)
+  if (disposition === 'progress') {
+    await service.sendMessage('s-p', 'reconciled-wait', { to: 'binding:main', ticketId: 'P', message: 'Owner review scheduled', facts: { state: 'progress', summary: 'Scheduled review confirmed', evidence: ['Review confirmed for 02:00'] } })
+  }
+  else {
+    await service.answer({ askId: ask.askId, answer: 'decided', policyBasis: ask.policyBasis }, human)
+  }
+  expect(ledger.load(db, 'message', reminder.id)).toMatchObject({ supersededAt: expect.any(String), deliveryState: 'superseded' })
+  vi.setSystemTime(Date.now() + 2000)
+  await run.deliver(reminder.id)
+  expect(sessions.deliveries).not.toContain(reminder.id)
+})
+
+it('skips a reminder retired by an earlier progress report in the same durable mailbox batch', async () => {
+  const { run, sessions } = await fixture()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  vi.setSystemTime(new Date('2026-11-16T01:09:00Z'))
+  const report = ledger.sendMessage(db, 'offline-progress', 'manager-p', 'P', 'verified chunk completed', { kind: 'agent', sessionId: worker.sessionId }, { state: 'progress', summary: 'Chunk regression verified', evidence: ['regression passed'] })
+  const manager = sessions.sessions.get('s-p')!
+  sessions.sessions.set('s-p', { state: 'closed' })
+  vi.setSystemTime(new Date('2026-11-16T01:10:00Z'))
+  await expect(run.remind(`execution:${worker.id}`)).rejects.toMatchObject({ code: 'closed_session' })
+  const reminder = ledger.list(db, 'message').find(item => item.kind === 'runtime:reminder')!
+  sessions.sessions.set('s-p', manager)
+  vi.setSystemTime(Date.now() + 2000)
+  await expect(run.deliver(report.id)).resolves.toMatchObject({ deliveryState: 'delivered' })
+  expect(sessions.deliveries).not.toContain(reminder.id)
+  expect(ledger.load(db, 'message', reminder.id)).toMatchObject({ deliveryState: 'superseded' })
+})
+
+it('settles answered asks and completed execution attention before any stale reminder can fire', async () => {
+  const timers = new Timers()
+  const { run } = await fixture(2, timers)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  ledger.advanceTicket(db, 'P', 'ready', human, 'ready', worker.id)
+  ledger.recordAcceptance(db, { id: 'terminal-accept', ticketId: 'P', executionBindingId: worker.id, scope: 'fix', evidence: ['tests passed'], basis: 'criteria verified', verdict: 'accepted' }, human)
+  const ask = ledger.createAsk(db, { id: 'terminal-delivery', ticketIds: ['P'], source: 'test', decisionType: 'delivery', withinAuthorization: true, content: 'accept?', options: ['accept_delivery', 'reject_delivery'] }, { kind: 'agent', sessionId: worker.sessionId })
+  await run.suspend(worker.sessionId, ask.id)
+  ledger.answerAsk(db, { askId: ask.id, policyBasis: ask.policyBasis, answer: 'accept_delivery' }, human)
+  ledger.advanceTicket(db, 'P', 'complete', human)
+  await timers.advance(1200000)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toHaveLength(0)
+  expect(ledger.load(db, 'attention', `execution:${worker.id}`)).toMatchObject({ handledAt: expect.any(String) })
 })
 
 it('preserves a failed first reminder before escalating and reconstructs deadlines across restart', async () => {
@@ -436,6 +624,68 @@ it('closes a temporary supervisor only after successful delivery with no unresol
   expect(await run.closeSupervisor('coordination', 'idempotent close')).toMatchObject({ status: 'closed' })
 })
 
+it('delivers durable dependency wakeups once across flush and boot, then auto-closes successful coordination', async () => {
+  const { run, sessions } = await fixture()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.bind({ id: 'coordinator', role: 'supervisor', sessionId: 's-coordinator', supervisorId: 'coordination', ticketIds: ['P', 'Q'] }, human)
+  ledger.linkTickets(db, 'Q', 'P', 'depends', human)
+  await expect(run.start('Q', human)).rejects.toMatchObject({ code: 'dependency_unsatisfied' })
+  for (const ticketId of ['P', 'Q']) {
+    await run.start(ticketId, human)
+    const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === ticketId)!
+    ledger.advanceTicket(db, ticketId, 'ready', human, 'ready for acceptance', worker.id)
+    ledger.recordAcceptance(db, { id: `wake-accept-${ticketId}`, ticketId, executionBindingId: worker.id, scope: 'isolated fix', evidence: ['regression passed'], basis: 'regression passes', verdict: 'accepted' }, human)
+    const ask = ledger.createAsk(db, { id: `wake-delivery-${ticketId}`, ticketIds: [ticketId], source: 'test:delivery', decisionType: 'delivery', withinAuthorization: true, content: 'accept delivery?', options: ['accept_delivery', 'reject_delivery'] }, { kind: 'agent', sessionId: worker.sessionId })
+    ledger.answerAsk(db, { askId: ask.id, policyBasis: ask.policyBasis, answer: 'accept_delivery', verified: true }, human)
+    ledger.advanceTicket(db, ticketId, 'complete', human)
+    await run.retire(ticketId, 'delivery complete', undefined, human)
+    if (ticketId === 'P') {
+      const coordinator = sessions.sessions.get('s-coordinator')!
+      sessions.sessions.set('s-coordinator', { state: 'closed' })
+      expect(await run.flush()).toContainEqual({ id: 'Q:P', reason: 'closed_session' })
+      expect(ledger.load(db, 'wakeup', 'Q:P')).toMatchObject({ handledAt: null })
+      sessions.sessions.set('s-coordinator', coordinator)
+      vi.setSystemTime(Date.now() + 2000)
+      await run.boot(async () => 'verified')
+    }
+    await run.flush()
+    if (ticketId === 'P') {
+      expect(ledger.resolveTicket(db, 'Q').dependencySatisfied).toBe(true)
+      expect(ledger.load(db, 'supervisor', 'coordination')).toMatchObject({ status: 'active' })
+      expect(ledger.load(db, 'wakeup', 'Q:P')).toMatchObject({ handledAt: expect.any(String) })
+      expect(ledger.list(db, 'message').filter(item => item.source === 'wakeup:Q:P')).toMatchObject([
+        { recipient: 'manager-q', ticketId: 'Q', deliveredAt: expect.any(String) },
+        { recipient: 'coordinator', ticketId: 'Q', deliveredAt: expect.any(String) },
+      ])
+      const before = sessions.deliveries.length
+      await run.flush()
+      await run.boot(async () => 'verified')
+      expect(sessions.deliveries).toHaveLength(before)
+    }
+  }
+  expect(ledger.load(db, 'supervisor', 'coordination')).toMatchObject({ status: 'closed' })
+  expect(ledger.load(db, 'role_binding', 'coordinator')).toMatchObject({ status: 'closed' })
+})
+
+it.each(['cancelled', 'failed'] as const)('never wakes a dependency or auto-closes a %s link as success', async (outcome) => {
+  const { run } = await fixture()
+  await run.bind({ id: 'coordinator', role: 'supervisor', sessionId: 's-coordinator', supervisorId: 'coordination', ticketIds: ['P', 'Q'] }, human)
+  ledger.linkTickets(db, 'Q', 'P', 'depends', human)
+  if (outcome === 'cancelled') {
+    await run.cancel('P', 'human cancellation', human)
+  }
+  else {
+    await run.start('P', human)
+    const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+    ledger.advanceTicket(db, 'P', 'failed', human, 'verified failure', worker.id)
+  }
+  await run.flush()
+  expect(ledger.list(db, 'wakeup')).toHaveLength(0)
+  expect(ledger.resolveTicket(db, 'Q').dependencySatisfied).toBe(false)
+  expect(ledger.load(db, 'supervisor', 'coordination')).toMatchObject({ status: 'active' })
+})
+
 it('does not auto-close a coordinator when a linked ticket is cancelled', async () => {
   const { run, sessions } = await fixture()
   await run.bind({ id: 'coordinator', role: 'supervisor', sessionId: 's-coordinator', supervisorId: 'coordination', ticketIds: ['P', 'Q'] }, human)
@@ -525,7 +775,7 @@ it('does not produce false execution stagnation reminders after a verified human
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
   await run.start('P', human)
-  await run.pause('P', true, 'planned human pause', human)
+  await run.pause('P', true, 'planned human pause', human, async () => 'verified')
   await timers.advance(1200000)
   expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toHaveLength(0)
   expect(ledger.load(db, 'ticket', 'P')).toMatchObject({ paused: 1 })
@@ -538,7 +788,7 @@ it('reminds around the original human ask without creating approvals or resuming
   vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
   ledger.createAsk(db, { id: 'human-wait', ticketIds: ['P'], source: 'verified:question', content: 'human choice required', decisionType: 'important', withinAuthorization: true, options: ['yes', 'no'] }, { kind: 'agent', sessionId: 's-p' })
   await run.suspend('s-p', 'human-wait')
-  await run.pause('P', true, 'human pause', human)
+  await run.pause('P', true, 'human pause', human, async () => 'verified')
   await timers.advance(600000)
   await timers.advance(600000)
   expect(ledger.list(db, 'ask')).toMatchObject([{ id: 'human-wait', status: 'pending', handler: 'human', answer: null }])

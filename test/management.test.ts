@@ -60,6 +60,7 @@ afterEach(async () => {
   db.close()
   await rm(directory, { recursive: true, force: true })
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 async function call(role: string, name: string, args: Record<string, unknown> = {}, sessionId = `s-${role}`, signal = new AbortController().signal): Promise<any> {
@@ -205,6 +206,26 @@ async function execution() {
   await git('git', ['remote', 'add', 'origin', 'https://github.com/org/p'], { cwd: root })
   return call('p', 'create_worker', { ticketId: 'P' })
 }
+
+it('records verified management progress but never refreshes attention on repeated reads', async () => {
+  const started = await execution()
+  const id = `execution:${started.binding.id}`
+  const original = ledger.load(db, 'attention', id)!.progressAt
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(Date.parse(original) + 300000)
+  await call('p', 'list_ticket')
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe(original)
+  await call('p', 'advance_ticket', { ticketId: 'P', executionBindingId: started.binding.id, event: 'ready', reason: 'Verified tests and review evidence ready' })
+  expect(ledger.load(db, 'attention', id)).toMatchObject({ progressAt: new Date().toISOString(), waitingFor: 'Verified tests and review evidence ready', escalatedAt: null })
+  vi.setSystemTime(Date.now() + 300000)
+  const args = { requestId: 'progress-acceptance', ticketId: 'P', executionBindingId: started.binding.id, scope: 'fix', evidence: ['tests passed'], basis: 'Regression verified', verdict: 'accepted' }
+  await call('p', 'record_acceptance', args)
+  const acceptedAt = new Date().toISOString()
+  expect(ledger.load(db, 'attention', id)).toMatchObject({ progressAt: acceptedAt, waitingFor: 'Regression verified' })
+  vi.setSystemTime(Date.now() + 300000)
+  await call('p', 'record_acceptance', args)
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe(acceptedAt)
+})
 
 it.each([true, false])('requires formal delivery before done and reports actual writer retirement (verified=%s)', async (verified) => {
   writersStopped = verified
