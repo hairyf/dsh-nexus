@@ -39,11 +39,13 @@ export interface TicketInput {
   description?: string
 }
 export interface ExecutionMetadata {
+  baseCommit?: string
   repository: string
   worktree: string
   branch: string
 }
 export interface BindingInput {
+  baseCommit?: string
   id: string
   role: Role
   sessionId: string
@@ -104,6 +106,16 @@ export interface TriggerInput {
   url?: string
   ref?: string
 }
+export interface RuntimeEventInput {
+  id: string
+  source: string
+  recipient: string
+  ticketId?: string
+  askId?: string
+  kind: 'message' | 'answer' | 'ask' | 'session' | 'ticket' | 'human' | 'reminder'
+  content: string
+}
+
 export interface AttentionInput {
   id: string
   ticketId?: string

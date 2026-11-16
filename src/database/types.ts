@@ -278,6 +278,7 @@ export type Project = {
     updatedAt: string;
 };
 export type RoleBinding = {
+    baseCommit: string | null;
     startedAt: string | null;
     id: string;
     role: string;

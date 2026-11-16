@@ -51,6 +51,7 @@ model PolicyChange {
   ticket Ticket @relation(fields: [ticketId], references: [id])
 }
 model RoleBinding {
+  baseCommit String?
   startedAt String?
   executions Ticket[] @relation("TicketExecution")
   failures Ticket[] @relation("TicketFailure")
