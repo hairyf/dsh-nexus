@@ -95,7 +95,7 @@ it.each([false, true])('upgrades the real immutable baseline preserving history 
   const reopened = await open()
   expect(ledger.list(reopened, 'ticket')).toHaveLength(3)
   expect(ledger.list(reopened, 'ask')).toHaveLength(2)
-  expect(reopened.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 2 })
+  expect(reopened.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 3 })
 })
 
 it('produces the same actual schema from empty installation and old baseline upgrade', async () => {

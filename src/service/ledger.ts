@@ -1,7 +1,7 @@
 import type { SQLInputValue } from 'node:sqlite'
 import type { NexusDatabase } from '../database'
 import type { DB } from '../database/types'
-import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, ExecutionMetadata, IdTable, MergeTarget, PolicySnapshot, ProjectInput, Role, Row, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
+import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, ExecutionMetadata, IdTable, MergeTarget, PolicySnapshot, ProjectInput, Role, Row, RuntimeEventInput, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { LedgerError, requireDatabase, transaction } from '../database'
@@ -161,9 +161,18 @@ export const ledger = defineService({
         for (const ticketId of input.ticketIds)
           insert(database, 'supervisor_ticket', { supervisorId: scope, ticketId, createdAt: now() }, true)
       }
+      if (input.previousBindingId) {
+        const previous = required(database, 'role_binding', input.previousBindingId)
+        if (previous.status !== 'closed' || previous.role !== input.role || previous.scope !== scope)
+          fail('binding_conflict')
+        if (actor && input.role === 'main')
+          human(database, actor)
+        else if (actor && input.role !== 'worker')
+          manager(database, actor, ['main'])
+      }
       if (rows(database, 'role_binding').some(binding => binding.activeKey === `${input.role}:${scope}`))
         fail('binding_conflict')
-      insert(database, 'role_binding', { id: input.id, role: input.role, sessionId: input.sessionId, projectId: input.projectId, ticketId: input.ticketId, supervisorId: input.supervisorId, worktree: input.worktree, branch: input.branch, repository: input.repository, previousBindingId: input.previousBindingId, recoveryReason: input.recoveryReason, scope, status: 'idle', startedAt: null, activeKey: `${input.role}:${scope}`, createdAt: now(), updatedAt: now() })
+      insert(database, 'role_binding', { id: input.id, role: input.role, sessionId: input.sessionId, projectId: input.projectId, ticketId: input.ticketId, supervisorId: input.supervisorId, worktree: input.worktree, branch: input.branch, repository: input.repository, baseCommit: input.baseCommit, previousBindingId: input.previousBindingId, recoveryReason: input.recoveryReason, scope, status: 'idle', startedAt: null, activeKey: `${input.role}:${scope}`, createdAt: now(), updatedAt: now() })
       return required(database, 'role_binding', input.id)
     })
   },
@@ -391,12 +400,12 @@ export const ledger = defineService({
         fail('invalid_config')
       if (metadata.repository !== required(database, 'project', ticket.projectId).repository)
         fail('scope_denied')
-      const previous = { repository: binding.repository, worktree: binding.worktree, branch: binding.branch, executionBindingId: ticket.executionBindingId, executionAttention: ticket.executionAttention }
-      update(database, 'role_binding', bindingId, { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch, recoveryReason: reason, updatedAt: now() })
+      const previous = { baseCommit: binding.baseCommit, repository: binding.repository, worktree: binding.worktree, branch: binding.branch, executionBindingId: ticket.executionBindingId, executionAttention: ticket.executionAttention }
+      update(database, 'role_binding', bindingId, { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch, baseCommit: metadata.baseCommit ?? binding.baseCommit, recoveryReason: reason, updatedAt: now() })
       const status = ticket.executionAttention && ticket.prState === 'merged' ? 'review' : ticket.status
       if (!ticket.executionBindingId || ticket.executionAttention)
         update(database, 'ticket', ticketId, { executionBindingId: bindingId, executionAttention: null, status, updatedAt: now() })
-      recordTransition(database, ticket, 'verify_execution', status, actor, JSON.stringify({ reason, previous, verified: { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch } }), bindingId)
+      recordTransition(database, ticket, 'verify_execution', status, actor, JSON.stringify({ reason, previous, verified: { baseCommit: metadata.baseCommit ?? binding.baseCommit, repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch } }), bindingId)
       return required(database, 'role_binding', bindingId)
     })
   },
@@ -404,7 +413,9 @@ export const ledger = defineService({
     return transaction(database, () => {
       const ticket = required(database, 'ticket', ticketId)
       projectAuthority(database, actor, ticket)
-      const binding = executionBinding(database, ticket, bindingId)
+      const binding = required(database, 'role_binding', bindingId)
+      if (binding.role !== 'worker' || binding.ticketId !== ticketId || (ticket.executionBindingId !== bindingId && (ticket.executionBindingId || binding.startedAt)))
+        fail('stale_execution')
       if (!reason.trim())
         fail('invalid_config')
       update(database, 'role_binding', bindingId, { status: 'closed', activeKey: null, closedAt: binding.closedAt ?? now(), recoveryReason: reason, updatedAt: now() })
@@ -632,6 +643,7 @@ export const ledger = defineService({
         update(database, 'ask', ask.id, { handler: bindingId })
       }
       requireDatabase(database).prepare('UPDATE message SET recipient = ?, deliveredAt = NULL, deliveryState = ?, error = NULL, nextRetryAt = NULL WHERE recipient = ? AND readAt IS NULL AND supersededAt IS NULL').run(bindingId, 'pending', previousBindingId)
+      requireDatabase(database).prepare('UPDATE attention SET recipient = ? WHERE recipient = ? AND handledAt IS NULL').run(bindingId, previousBindingId)
       requireDatabase(database).prepare('UPDATE ask SET responseRecipient = ? WHERE COALESCE(responseRecipient, initiatorBinding) = ? AND status = \'pending\'').run(bindingId, previousBindingId)
     })
   },
@@ -747,6 +759,55 @@ export const ledger = defineService({
     update(database, 'outbox', id, { state, attempts, error: state === 'sent' ? null : detail, remoteId: remoteId ?? item.remoteId, remoteUrl: remoteUrl ?? item.remoteUrl, sentAt: state === 'sent' ? now() : null })
     return required(database, 'outbox', id)
   },
+  resolveSupervisor(database: NexusDatabase, id: string, actor?: Actor): { supervisor: Row<'supervisor'>, bindings: Row<'role_binding'>[], canClose: boolean } {
+    const supervisor = required(database, 'supervisor', id)
+    if (actor)
+      manager(database, actor, ['main'])
+    const tickets = rows(database, 'supervisor_ticket').filter(link => link.supervisorId === id).map(link => required(database, 'ticket', link.ticketId))
+    const pendingAsk = rows(database, 'ask').some(ask => ask.status === 'pending' && askTickets(database, ask.id).some(ticket => tickets.some(item => item.id === ticket.id)))
+    const unresolved = rows(database, 'attention').some(item => !item.handledAt && item.ticketId && tickets.some(ticket => ticket.id === item.ticketId))
+    const bindings = rows(database, 'role_binding').filter(binding => binding.supervisorId === id && binding.status !== 'closed')
+    const ownsPendingAsk = rows(database, 'ask').some(ask => ask.status === 'pending' && bindings.some(binding => ask.handler === binding.id || ask.responseRecipient === binding.id))
+    const canClose = actor ? !ownsPendingAsk : (tickets.length > 0 && tickets.every(ticket => ticket.status === 'done' && !ticket.failureReason && !ticket.executionAttention) && !pendingAsk && !unresolved)
+    return { supervisor, bindings, canClose }
+  },
+  closeSupervisor(database: NexusDatabase, id: string, reason: string, actor?: Actor): Row<'supervisor'> {
+    return transaction(database, () => {
+      const { supervisor, bindings, canClose } = ledger.resolveSupervisor(database, id, actor)
+      if (supervisor.status === 'closed')
+        return supervisor
+      if (!canClose || !reason.trim())
+        fail('coordination_unresolved')
+      update(database, 'supervisor', id, { status: 'closed', closedAt: now(), reason })
+      for (const binding of bindings)
+        update(database, 'role_binding', binding.id, { status: 'closed', activeKey: null, closedAt: now(), recoveryReason: reason, updatedAt: now() })
+      return required(database, 'supervisor', id)
+    })
+  },
+  recordRuntimeEvent(database: NexusDatabase, input: RuntimeEventInput): Row<'message'> {
+    return transaction(database, () => {
+      if (!input.id || !input.source.trim() || !input.content.trim())
+        fail('invalid_config')
+      if (input.recipient !== 'human')
+        required(database, 'role_binding', input.recipient)
+      if (input.ticketId)
+        required(database, 'ticket', input.ticketId)
+      if (input.askId)
+        required(database, 'ask', input.askId)
+      const existing = load(database, 'message', input.id)
+      if (existing && (existing.source !== input.source || existing.kind !== `runtime:${input.kind}` || existing.askId !== (input.askId ?? null)))
+        fail('identity_conflict')
+      return enqueue(database, { id: input.id, recipient: input.recipient, ticketId: input.ticketId ?? null, askId: input.askId ?? null, sender: 'host', kind: `runtime:${input.kind}`, source: input.source, content: input.content })
+    })
+  },
+  refreshAttention(database: NexusDatabase, id: string, progressAt: string, reason: string, waitingFor: string): Row<'attention'> {
+    required(database, 'attention', id)
+    if (!Number.isFinite(Date.parse(progressAt)) || !reason.trim() || !waitingFor.trim())
+      fail('invalid_config')
+    const dueAt = new Date(Date.parse(progressAt) + ledger.getSettings(database).reminderIntervalMinutes * 60000).toISOString()
+    update(database, 'attention', id, { progressAt, reason, waitingFor, dueAt, remindedAt: null, escalatedAt: null, deliveryState: 'pending', deliveryError: null, handledAt: null, resolution: null })
+    return required(database, 'attention', id)
+  },
   recordAttention(database: NexusDatabase, input: AttentionInput): Row<'attention'> {
     if (input.ticketId)
       required(database, 'ticket', input.ticketId)
@@ -762,7 +823,7 @@ export const ledger = defineService({
     const attention = required(database, 'attention', id)
     if (!detail.trim())
       fail('invalid_config')
-    update(database, 'attention', id, event === 'reminded' ? { remindedAt: now(), deliveryState: 'delivered' } : event === 'failed' ? { deliveryState: 'failed', deliveryError: detail } : event === 'escalated' ? { escalatedAt: now() } : { handledAt: now(), resolution: detail })
+    update(database, 'attention', id, event === 'reminded' ? { remindedAt: now(), deliveryState: 'delivered', deliveryError: null } : event === 'failed' ? { deliveryState: 'failed', deliveryError: detail } : event === 'escalated' ? { escalatedAt: now() } : { handledAt: now(), resolution: detail })
     return { ...attention, ...required(database, 'attention', id) }
   },
 })
