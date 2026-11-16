@@ -137,11 +137,20 @@ it('distinguishes unavailable storage, relative config, future schema and closed
   await expect(openDatabase(directory)).rejects.toMatchObject({ code: 'migration_failed' })
 })
 
-async function verifiedLegacyExecution(startedAt: string | null) {
+async function verifiedLegacyExecution(startedAt: string | null, options: { ended?: boolean, merged?: boolean, ambiguous?: boolean, conflicting?: boolean } = {}) {
   const old = baseline()
   old.exec('INSERT INTO channel (id, name, createdAt) VALUES (\'legacy-channel\', \'GitHub\', \'old\'); INSERT INTO project (id, channelId, name, workspaceId, directory, createdAt, updatedAt) VALUES (\'legacy-p\', \'legacy-channel\', \'Repo\', \'legacy-workspace\', \'/legacy/repo\', \'old\', \'old\'); INSERT INTO setting (id, updatedAt) VALUES (\'global\', \'old\')')
   old.prepare('INSERT INTO ticket (id, projectId, channelId, title, status, createdAt, updatedAt, startedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run('legacy-T', 'legacy-p', 'legacy-channel', 'Historical work', 'running', 'old', 'old', startedAt)
   old.prepare('INSERT INTO worker (id, ticketId, status, createdAt, startedAt, worktree, branch) VALUES (?, ?, ?, ?, ?, ?, ?)').run('legacy-worker', 'legacy-T', 'running', 'old', startedAt, '/legacy/worktree', 'legacy/branch')
+  if (options.ended || options.merged || options.ambiguous)
+    old.exec('UPDATE worker SET status = \'ended\', endedAt = \'2026-11-13T00:30:00Z\' WHERE id = \'legacy-worker\'')
+  if (options.merged)
+    old.exec('UPDATE ticket SET status = \'review\', prState = \'merged\', prUrl = \'https://github.com/org/legacy/pull/1\' WHERE id = \'legacy-T\'')
+  if (options.conflicting)
+    old.exec('UPDATE ticket SET status = \'running\' WHERE id = \'legacy-T\'')
+  if (options.ambiguous) {
+    old.exec('INSERT INTO worker (id, ticketId, status, createdAt, endedAt) VALUES (\'other-ended-worker\', \'legacy-T\', \'ended\', \'old\', \'2026-11-13T00:20:00Z\'); INSERT INTO ticket (id, projectId, channelId, title, status, createdAt, updatedAt) VALUES (\'unrelated-T\', \'legacy-p\', \'legacy-channel\', \'Other work\', \'review\', \'old\', \'old\'); INSERT INTO worker (id, ticketId, status, createdAt, endedAt) VALUES (\'unrelated-worker\', \'unrelated-T\', \'ended\', \'old\', \'2026-11-13T00:10:00Z\')')
+  }
   old.exec('INSERT INTO inbox (id, seq, type, projectId, origin, kind, message, createdAt, ticketId, workerId) VALUES (\'legacy-question\', 1, \'project\', \'legacy-p\', \'worker\', \'ask\', \'Pending before restart\', \'old\', \'legacy-T\', \'legacy-worker\')')
   old.close()
   const database = await open()
@@ -190,6 +199,76 @@ it('records verified legacy execution metadata and recovers a genuinely started 
   expect(ledger.recoverTicket(database, 'legacy-T', bindingId, 'Verified existing session is resumable', actor)).toMatchObject({ status: 'running', executionBindingId: bindingId, startedAt })
   expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'running', startedAt })
   expect(ledger.list(database, 'ticket_transition').map(item => item.event)).toEqual(['verify_execution', 'recover'])
+})
+
+it.each([null, '2026-11-13T00:00:00Z'])('preserves the sole already-ended historical binding and retries it without inventing its start (%s)', async (startedAt) => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(startedAt, { ended: true })
+  expect(ledger.load(database, 'ticket', 'legacy-T')).toMatchObject({ status: 'running', executionBindingId: bindingId })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'closed', startedAt })
+  expect(ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Verified historical session ended', actor)).toMatchObject({ status: 'waiting', executionAttention: null })
+  ledger.retryTicket(database, 'legacy-T', 'Authorized retry of unfinished legacy work', actor)
+  ledger.bindRole(database, { id: 'new-ended-retry', role: 'worker', sessionId: 'new-ended-retry-session', ticketId: 'legacy-T', projectId: 'legacy-p', repository: 'github.com/org/legacy', worktree: join(directory, 'retry'), branch: 'retry/ended', previousBindingId: bindingId }, actor)
+  expect(ledger.startTicket(database, 'legacy-T', 'new-ended-retry', actor)).toMatchObject({ status: 'running', executionBindingId: 'new-ended-retry' })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt })
+})
+
+it.each([null, '2026-11-13T00:00:00Z'])('verifies an already-merged review ticket with a closed historical binding without inventing a start or replaying a merge (%s)', async (startedAt) => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(startedAt, { ended: true, merged: true })
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  const target = { repository: 'github.com/org/legacy', pullRequest: 'https://github.com/org/legacy/pull/1', base: 'main', head: 'verified-merged-head' }
+  expect(ledger.load(database, 'ticket', 'legacy-T')).toMatchObject({ executionBindingId: bindingId, status: 'review', prState: 'merged' })
+  ledger.verifyExecutionMetadata(database, 'legacy-T', bindingId, { repository: target.repository, worktree: '/verified/legacy', branch: 'legacy/branch' }, 'Verified historical repository', actor)
+  expect(ledger.setDeliveryTarget(database, 'legacy-T', target, actor)).toMatchObject({ prState: 'merged' })
+  ledger.recordPullRequest(database, 'legacy-T', target, 'merged')
+  ledger.recordAcceptance(database, { id: 'legacy-acceptance', ticketId: 'legacy-T', executionBindingId: bindingId, scope: 'Existing merged delivery', basis: 'Provider head and acceptance criteria verified now', evidence: ['Verified merged head and passing regression'], verdict: 'accepted' }, actor)
+  const question = ledger.createAsk(database, { id: 'legacy-delivery', ticketIds: ['legacy-T'], source: 'verified-provider-merged', content: 'Confirm already merged delivery', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('delivery_decision_required')
+  ledger.answerAsk(database, { askId: question.id, policyBasis: question.policyBasis, answer: 'allow_merge', target, verified: true }, human)
+  expect(ledger.resolveMerge(database, question.id, target, true)).toBe(false)
+  expect(ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toMatchObject({ status: 'done', prState: 'merged' })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'closed', startedAt })
+  expect(ledger.list(database, 'ticket_transition').some(item => item.event === 'start' || item.event === 'recover')).toBe(false)
+})
+
+it('keeps multiple ended candidates manual and reconciles only a matching historical closed binding', async () => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null, { ended: true, ambiguous: true })
+  const metadata = { repository: 'github.com/org/legacy', worktree: '/verified/legacy', branch: 'legacy/branch' }
+  expect(ledger.resolveTicket(database, 'legacy-T')).toMatchObject({ ticket: { executionBindingId: null, executionAttention: 'legacy_execution_ambiguous' }, reasons: ['legacy_execution_ambiguous'] })
+  const before = ledger.list(database, 'ticket_transition')
+  expect(() => ledger.reconcileLegacyExecution(database, 'legacy-T', 'migrated:worker:unrelated-worker', metadata, 'Wrong ticket candidate', actor)).toThrow('scope_denied')
+  expect(() => ledger.reconcileLegacyExecution(database, 'legacy-T', bindingId, { ...metadata, repository: 'github.com/foreign/repo' }, 'Wrong repository', actor)).toThrow('scope_denied')
+  expect(ledger.list(database, 'ticket_transition')).toEqual(before)
+  expect(ledger.load(database, 'ticket', 'legacy-T')).toMatchObject({ executionBindingId: null, executionAttention: 'legacy_execution_ambiguous' })
+  expect(ledger.reconcileLegacyExecution(database, 'legacy-T', bindingId, metadata, 'Verified this historical candidate belongs to the current work', actor)).toMatchObject({ executionBindingId: bindingId, executionAttention: null })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt: null, status: 'closed', repository: metadata.repository })
+  ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Confirmed selected historical execution stopped', actor)
+  ledger.retryTicket(database, 'legacy-T', 'Authorized retry after manual reconciliation', actor)
+  ledger.bindRole(database, { id: 'reconciled-new', role: 'worker', sessionId: 'reconciled-new-session', ticketId: 'legacy-T', projectId: 'legacy-p', repository: metadata.repository, worktree: join(directory, 'reconciled'), branch: 'retry/reconciled' }, actor)
+  expect(ledger.startTicket(database, 'legacy-T', 'reconciled-new', actor)).toMatchObject({ status: 'running' })
+  expect(ledger.list(database, 'ticket_transition').filter(item => item.event === 'reconcile_execution')).toMatchObject([{ bindingId }])
+})
+
+it('keeps a conflicting historical running-and-merged state manual until audited reconciliation', async () => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null, { ended: true, merged: true, conflicting: true })
+  expect(ledger.load(database, 'ticket', 'legacy-T')).toMatchObject({ status: 'running', prState: 'merged', executionBindingId: bindingId, executionAttention: 'legacy_delivery_requires_reconciliation' })
+  expect(() => ledger.dispatchTicket(database, 'legacy-T', actor)).toThrow('execution_reconciliation_required')
+  const metadata = { repository: 'github.com/org/legacy', worktree: '/verified/legacy', branch: 'legacy/branch' }
+  expect(ledger.reconcileLegacyExecution(database, 'legacy-T', bindingId, metadata, 'Verified historical merge needs current delivery judgment', actor)).toMatchObject({ status: 'review', prState: 'merged', executionAttention: null })
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('acceptance_evidence_required')
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'closed', startedAt: null })
+})
+
+it('does not turn a preserved historical ended pointer into permission to add acceptance to a terminal ticket', async () => {
+  const old = baseline()
+  history(old)
+  old.close()
+  const database = await open()
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.createProject(database, { id: 'P2', name: 'Repo 2', workspaceId: 'W2', directory: '/old/two', remoteUrl: 'https://github.com/org/repo-2', available: true })
+  ledger.updateProject(database, 'P2', true, human)
+  expect(ledger.load(database, 'ticket', 'T2')).toMatchObject({ status: 'done', executionBindingId: 'migrated:worker:ended-worker' })
+  expect(() => ledger.recordAcceptance(database, { id: 'not-a-new-delivery', ticketId: 'T2', executionBindingId: 'migrated:worker:ended-worker', scope: 'Historical completion', evidence: ['A new claim about old history'], basis: 'Must not create a new-flow acceptance', verdict: 'accepted' }, human)).toThrow('ticket_closed')
+  expect(ledger.list(database, 'acceptance')).toEqual([])
 })
 
 it('does not publish a no-ticket main ask through an unverified historical topic identity', async () => {

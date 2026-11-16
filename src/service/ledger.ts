@@ -294,7 +294,7 @@ export const ledger = defineService({
           retireAskRequests(database, ask.id)
         }
       }
-      update(database, 'ticket', ticketId, { deliveryTarget: encoded, prUrl: target.pullRequest, prState: 'open', updatedAt: now() })
+      update(database, 'ticket', ticketId, { deliveryTarget: encoded, prUrl: target.pullRequest, prState: ticket.prUrl === target.pullRequest && ticket.prState ? ticket.prState : 'open', updatedAt: now() })
       return required(database, 'ticket', ticketId)
     })
   },
@@ -317,7 +317,14 @@ export const ledger = defineService({
   recordAcceptance(database: NexusDatabase, input: AcceptanceInput, actor: Actor): Row<'acceptance'> {
     const ticket = required(database, 'ticket', input.ticketId)
     ticketManager(database, actor, ticket)
-    requireExecution(database, ticket, input.executionBindingId)
+    if (['done', 'cancelled'].includes(ticket.status))
+      fail('ticket_closed')
+    const binding = executionBinding(database, ticket, input.executionBindingId)
+    const historicalMerged = ticket.status === 'review' && ticket.prState === 'merged' && !!ticket.deliveryTarget && binding.status === 'closed' && binding.repository === required(database, 'project', ticket.projectId).repository && load(database, 'worker', binding.sessionId)?.ticketId === ticket.id
+    if (!binding.startedAt && !historicalMerged)
+      fail('execution_not_started')
+    if (ticket.executionAttention)
+      fail('execution_reconciliation_required')
     if (input.verdict === 'accepted' && ticket.failureReason && ticket.failureBindingId === input.executionBindingId)
       fail('execution_failed')
     if (!input.scope.trim() || !input.basis.trim() || !input.evidence.length || input.evidence.some(item => !item.trim()))
@@ -327,7 +334,7 @@ export const ledger = defineService({
   },
   resolveMerge(database: NexusDatabase, askId: string, target: MergeTarget, repositoryVerified: boolean): boolean {
     const ask = required(database, 'ask', askId)
-    return repositoryVerified && validDecision(database, ask, target)
+    return repositoryVerified && !askTickets(database, ask.id).some(ticket => ticket.prState === 'merged') && validDecision(database, ask, target)
   },
   dispatchTicket(database: NexusDatabase, ticketId: string, actor: Actor): Row<'ticket'> {
     return transaction(database, () => {
@@ -370,16 +377,27 @@ export const ledger = defineService({
       const ticket = required(database, 'ticket', ticketId)
       ticketManager(database, actor, ticket)
       const binding = executionBinding(database, ticket, bindingId)
-      if (!reason.trim() || !isAbsolute(metadata.worktree) || !metadata.branch.trim())
-        fail('invalid_config')
-      if (metadata.repository !== activeProject(database, ticket.projectId).repository || (binding.repository && binding.repository !== metadata.repository))
+      return writeVerifiedExecutionMetadata(database, ticket, binding, metadata, reason, actor)
+    })
+  },
+  reconcileLegacyExecution(database: NexusDatabase, ticketId: string, bindingId: string, metadata: ExecutionMetadata, reason: string, actor: Actor): Row<'ticket'> {
+    return transaction(database, () => {
+      const ticket = required(database, 'ticket', ticketId)
+      ticketManager(database, actor, ticket)
+      const binding = required(database, 'role_binding', bindingId)
+      if (binding.role !== 'worker' || binding.ticketId !== ticketId || binding.projectId !== ticket.projectId)
         fail('scope_denied')
-      if (binding.status === 'running')
-        fail('invalid_transition')
-      const previous = { repository: binding.repository, worktree: binding.worktree, branch: binding.branch }
-      update(database, 'role_binding', bindingId, { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch, recoveryReason: reason, updatedAt: now() })
-      recordTransition(database, ticket, 'verify_execution', ticket.status, actor, JSON.stringify({ reason, previous, verified: { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch } }), bindingId)
-      return required(database, 'role_binding', bindingId)
+      if (!ticket.executionAttention || ['done', 'cancelled'].includes(ticket.status))
+        fail('reconciliation_not_required')
+      if (load(database, 'worker', binding.sessionId)?.ticketId !== ticketId)
+        fail('legacy_execution_required')
+      if (binding.status !== 'closed' || rows(database, 'role_binding').some(item => item.role === 'worker' && item.ticketId === ticketId && item.status !== 'closed'))
+        fail('binding_conflict')
+      writeVerifiedExecutionMetadata(database, ticket, binding, metadata, reason, actor)
+      const status = ticket.prState === 'merged' ? 'review' : ticket.status
+      update(database, 'ticket', ticketId, { executionBindingId: bindingId, executionAttention: null, status, updatedAt: now() })
+      recordTransition(database, ticket, 'reconcile_execution', status, actor, JSON.stringify({ reason, previousBindingId: ticket.executionBindingId, attention: ticket.executionAttention, selectedBindingId: bindingId }), bindingId)
+      return required(database, 'ticket', ticketId)
     })
   },
   confirmExecutionStopped(database: NexusDatabase, ticketId: string, bindingId: string, reason: string, actor: Actor): Row<'ticket'> {
@@ -393,7 +411,7 @@ export const ledger = defineService({
       const unresolved = ['running', 'queued', 'waiting'].includes(ticket.status)
       const status = unresolved ? 'waiting' : ticket.status
       if (unresolved)
-        update(database, 'ticket', ticketId, { status, failureReason: ticket.failureReason ?? reason, failureBindingId: ticket.failureBindingId ?? bindingId, updatedAt: now() })
+        update(database, 'ticket', ticketId, { status, executionAttention: null, failureReason: ticket.failureReason ?? reason, failureBindingId: ticket.failureBindingId ?? bindingId, updatedAt: now() })
       recordTransition(database, ticket, 'execution_stopped', status, actor, reason, bindingId)
       return required(database, 'ticket', ticketId)
     })
@@ -525,6 +543,8 @@ export const ledger = defineService({
       reasons.push('human_paused')
     if (ticket.failureReason)
       reasons.push('execution_failed')
+    if (ticket.executionAttention)
+      reasons.push(ticket.executionAttention)
     if (rows(database, 'ask').some(ask => ask.status === 'pending' && askTickets(database, ask.id).some(item => item.id === ticketId)))
       reasons.push('pending_ask')
     if (rows(database, 'message').some(message => message.ticketId === ticketId && message.error))
@@ -553,7 +573,7 @@ export const ledger = defineService({
             fail('scope_denied')
           verifyEnabledTopic(database, thread)
         }
-        return enqueue(database, input)
+        return enqueue(database, { ...input, destinationThreadId: thread.id })
       }
       if (receiver && ['closed', 'unavailable'].includes(receiver.status))
         fail('target_unavailable')
@@ -697,6 +717,8 @@ export const ledger = defineService({
       const message = required(database, 'message', messageId)
       if (message.supersededAt)
         fail('delivery_superseded')
+      if (message.destinationThreadId && message.destinationThreadId !== recipient)
+        fail('address_conflict')
       const thread = required(database, 'thread', recipient)
       if (message.ticketId) {
         verifyTicketPublication(database, required(database, 'ticket', message.ticketId), thread, actor)
@@ -841,6 +863,8 @@ function activeProject(database: NexusDatabase, projectId: string): Row<'project
 }
 
 function dispatchable(database: NexusDatabase, ticket: Row<'ticket'>): void {
+  if (ticket.executionAttention)
+    fail('execution_reconciliation_required')
   activeProject(database, ticket.projectId)
   if (ticket.paused)
     fail('human_paused')
@@ -850,6 +874,19 @@ function dispatchable(database: NexusDatabase, ticket: Row<'ticket'>): void {
     fail('ticket_closed')
   if (rows(database, 'ticket_link').some(link => link.ticketId === ticket.id && link.kind === 'depends' && !link.satisfiedAt))
     fail('dependency_unsatisfied')
+}
+
+function writeVerifiedExecutionMetadata(database: NexusDatabase, ticket: Row<'ticket'>, binding: Row<'role_binding'>, metadata: ExecutionMetadata, reason: string, actor: Actor): Row<'role_binding'> {
+  if (!reason.trim() || !isAbsolute(metadata.worktree) || !metadata.branch.trim())
+    fail('invalid_config')
+  if (metadata.repository !== required(database, 'project', ticket.projectId).repository || (binding.repository && binding.repository !== metadata.repository))
+    fail('scope_denied')
+  if (binding.status === 'running')
+    fail('invalid_transition')
+  const previous = { repository: binding.repository, worktree: binding.worktree, branch: binding.branch }
+  update(database, 'role_binding', binding.id, { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch, recoveryReason: reason, updatedAt: now() })
+  recordTransition(database, ticket, 'verify_execution', ticket.status, actor, JSON.stringify({ reason, previous, verified: { repository: metadata.repository, worktree: metadata.worktree, branch: metadata.branch } }), binding.id)
+  return required(database, 'role_binding', binding.id)
 }
 
 function executionBinding(database: NexusDatabase, ticket: Row<'ticket'>, bindingId: string | undefined): Row<'role_binding'> {
@@ -989,7 +1026,7 @@ function validDecision(database: NexusDatabase, ask: Row<'ask'>, target: MergeTa
   const ticket = tickets[0]
   const project = required(database, 'project', ticket.projectId)
   const acceptance = latestAcceptance(database, ticket)
-  if (!project.enabled || !project.available || ticket.paused || ticket.failureReason || !ticket.executionBindingId || ['done', 'cancelled'].includes(ticket.status) || acceptance?.verdict !== 'accepted')
+  if (!project.enabled || !project.available || ticket.paused || ticket.failureReason || ticket.executionAttention || !ticket.executionBindingId || ['done', 'cancelled'].includes(ticket.status) || acceptance?.verdict !== 'accepted')
     return false
   return ask.decisionType === 'merge' && ask.status === 'answered' && ask.answer === 'allow_merge' && !!ask.verified
     && sameTarget(target, parseTarget(ask.target)) && tickets.length === 1 && sameTarget(target, parseTarget(tickets[0].deliveryTarget))
@@ -1001,10 +1038,10 @@ function nextSeq(database: NexusDatabase, table: 'message' | 'outbox'): number {
   return Number(row.seq)
 }
 
-function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null, source?: string }): Row<'message'> {
+function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null, source?: string, destinationThreadId?: string }): Row<'message'> {
   const existing = load(database, 'message', input.id)
   if (existing) {
-    if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content)
+    if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content || existing.destinationThreadId !== (input.destinationThreadId ?? null))
       fail('identity_conflict')
     return existing
   }

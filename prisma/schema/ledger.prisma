@@ -79,13 +79,15 @@ model RoleBinding {
   attention Attention[]
 }
 model Message {
+  destinationThreadId String?
+  destination Thread? @relation("MessageDestination", fields: [destinationThreadId], references: [id], onDelete: Restrict)
   triggerId String?
   threadId String?
   title String?
   source String?
   supersededAt String?
   trigger Trigger? @relation(fields: [triggerId], references: [id], onDelete: SetNull)
-  thread Thread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  thread Thread? @relation("MessageSource", fields: [threadId], references: [id], onDelete: SetNull)
   id String @id
   seq Int @unique
   ticketId String?

@@ -146,6 +146,35 @@ describe('main no-ticket publications', () => {
     expect(ledger.load(db, 'message', 'foreign-topic')).toBeNull()
     expect(ledger.load(db, 'message', 'supervisor-topic')).toBeNull()
   })
+  it.each([false, true])('binds an explicit topic address against replay to another otherwise authorized destination (ticketed=%s)', (ticketed) => {
+    const a = topic('address-a')
+    let b = topic('address-b')
+    if (ticketed) {
+      createTicket()
+      ledger.subscribeThread(db, 'T1', a.id, project)
+      ledger.subscribeThread(db, 'T1', b.id, project)
+    }
+    else {
+      ledger.createProject(db, { id: 'other-p', name: 'Other', workspaceId: 'other-workspace', directory, remoteUrl: 'https://github.com/other/repo', available: true })
+      ledger.updateProject(db, 'other-p', true, human)
+      b = ledger.recordThread(db, { channelId: 'github', repository: 'github.com/other/repo', kind: 'issue', resourceId: '1', title: 'Other enabled project', projectId: 'other-p' })
+    }
+    const ticketId = ticketed ? 'T1' : null
+    ledger.sendMessage(db, 'bound-message', a.id, ticketId, 'Addressed only to A', main)
+    expect(ledger.publishMessage(db, 'bound-message', a.id, main)).toMatchObject({ recipient: a.id })
+    expect(() => ledger.publishMessage(db, 'bound-message', b.id, main)).toThrow('address_conflict')
+    expect(() => ledger.publishMessage(db, 'bound-message', 'unknown-thread', main)).toThrow('address_conflict')
+    ledger.updateProject(db, 'p', false, human)
+    expect(() => ledger.publishMessage(db, 'bound-message', a.id, main)).toThrow('project_disabled')
+    expect(ledger.list(db, 'outbox')).toHaveLength(1)
+  })
+  it('keeps intentional publication of an internally addressed main message available', () => {
+    ledger.createProject(db, { id: 'other-p', name: 'Other', workspaceId: 'other-workspace', directory, remoteUrl: 'https://github.com/other/repo', available: true })
+    ledger.updateProject(db, 'other-p', true, human)
+    const other = ledger.recordThread(db, { channelId: 'github', repository: 'github.com/other/repo', kind: 'issue', resourceId: '1', title: 'Other enabled topic', projectId: 'other-p' })
+    ledger.sendMessage(db, 'internal-main', 'project', null, 'Intentional external fanout', main)
+    expect(ledger.publishMessage(db, 'internal-main', other.id, main)).toMatchObject({ recipient: other.id })
+  })
   it('publishes the formal answer to a no-ticket main ask on the same source without reviving its retired request', () => {
     const thread = topic()
     const request = ledger.createAsk(db, { id: 'triage-answer', ticketIds: [], source: thread.id, content: 'Clarify', decisionType: 'important', withinAuthorization: true, options: ['yes', 'no'] }, main)

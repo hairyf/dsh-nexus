@@ -213,6 +213,7 @@ export type CiWatch = {
     updatedAt: string;
 };
 export type Message = {
+    destinationThreadId: string | null;
     triggerId: string | null;
     threadId: string | null;
     title: string | null;
@@ -364,6 +365,7 @@ export type Ticket = {
     failureReason: string | null;
     failureBindingId: string | null;
     executionBindingId: string | null;
+    executionAttention: string | null;
     deliveryTarget: string | null;
     startedAt: string | null;
     endedAt: string | null;

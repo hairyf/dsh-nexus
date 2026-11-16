@@ -91,6 +91,7 @@ CREATE TABLE "role_binding" (
 );
 
 CREATE TABLE "message" (
+    "destinationThreadId" TEXT,
     "triggerId" TEXT,
     "threadId" TEXT,
     "title" TEXT,
@@ -114,6 +115,7 @@ CREATE TABLE "message" (
     "nextRetryAt" TEXT,
     CONSTRAINT "message_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "ticket" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "message_triggerId_fkey" FOREIGN KEY ("triggerId") REFERENCES "trigger" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "message_destinationThreadId_fkey" FOREIGN KEY ("destinationThreadId") REFERENCES "thread" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "message_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "thread" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "message_askId_fkey" FOREIGN KEY ("askId") REFERENCES "ask" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -245,6 +247,7 @@ CREATE TABLE "new_ticket" (
     "failureReason" TEXT,
     "failureBindingId" TEXT,
     "executionBindingId" TEXT,
+    "executionAttention" TEXT,
     "deliveryTarget" TEXT,
     "startedAt" TEXT,
     "endedAt" TEXT,
@@ -316,6 +319,15 @@ INSERT INTO role_binding (id, role, scope, sessionId, projectId, ticketId, statu
 SELECT 'migrated:worker:' || w.id, 'worker', w.ticketId, w.id, t.projectId, w.ticketId, CASE WHEN w.status = 'ended' THEN 'closed' ELSE 'unavailable' END, CASE WHEN w.status != 'ended' AND (SELECT COUNT(*) FROM worker active WHERE active.ticketId = w.ticketId AND active.status != 'ended') = 1 THEN 'worker:' || w.ticketId ELSE NULL END, w.worktree, w.branch, 'migration_requires_session_verification', w.createdAt, COALESCE(w.endedAt, w.startedAt, w.createdAt), w.endedAt, w.startedAt FROM worker w JOIN ticket t ON t.id = w.ticketId;
 UPDATE ask SET initiatorBinding = (SELECT 'migrated:worker:' || worker.id FROM worker WHERE worker.id = json_extract(ask.source, '$.workerId')) WHERE initiatorRole = 'worker';
 UPDATE ask SET responseRecipient = initiatorBinding;
-UPDATE ticket SET executionBindingId = (SELECT id FROM role_binding WHERE role = 'worker' AND activeKey = 'worker:' || ticket.id);
+UPDATE ticket SET executionBindingId = CASE
+  WHEN (SELECT COUNT(*) FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id AND status != 'closed') = 1 THEN (SELECT id FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id AND status != 'closed')
+  WHEN (SELECT COUNT(*) FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id) = 1 THEN (SELECT id FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id)
+  ELSE NULL END;
+UPDATE ticket SET executionAttention = CASE
+  WHEN executionBindingId IS NULL AND EXISTS (SELECT 1 FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id) THEN 'legacy_execution_ambiguous'
+  WHEN executionBindingId IS NULL AND status IN ('running', 'review') THEN 'legacy_execution_missing'
+  WHEN prState = 'merged' AND status != 'review' THEN 'legacy_delivery_requires_reconciliation'
+  WHEN status IN ('running', 'queued') AND (SELECT status FROM role_binding WHERE id = ticket.executionBindingId) = 'closed' THEN 'legacy_execution_closed'
+  ELSE NULL END WHERE status NOT IN ('done', 'cancelled');
 UPDATE ask SET policyBasis = (SELECT json_group_array(json_object('id', ticket.id, 'questionLevel', ticket.questionLevel, 'mergePolicy', ticket.mergePolicy, 'revision', ticket.policyRevision, 'executionBindingId', ticket.executionBindingId)) FROM ask_ticket JOIN ticket ON ticket.id = ask_ticket.ticketId WHERE ask_ticket.askId = ask.id);
 UPDATE message SET supersededAt = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), deliveryState = 'superseded', error = NULL, nextRetryAt = NULL WHERE kind = 'ask' AND askId IN (SELECT id FROM ask WHERE status != 'pending');
