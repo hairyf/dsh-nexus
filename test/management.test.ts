@@ -227,6 +227,45 @@ it('records verified management progress but never refreshes attention on repeat
   expect(ledger.load(db, 'attention', id)!.progressAt).toBe(acceptedAt)
 })
 
+it('returns the existing review state for duplicate ready without postponing its reminder', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  const started = await execution()
+  const id = `execution:${started.binding.id}`
+  vi.setSystemTime(new Date('2026-11-16T01:10:00Z'))
+  const args = { ticketId: 'P', executionBindingId: started.binding.id, event: 'ready', reason: 'Verified regression ready' }
+  const first = await call('p', 'advance_ticket', args)
+  const attention = ledger.load(db, 'attention', id)!
+  const transitions = ledger.list(db, 'ticket_transition')
+  expect(attention).toMatchObject({ progressAt: '2026-11-16T01:10:00.000Z', dueAt: '2026-11-16T01:20:00.000Z' })
+  vi.setSystemTime(new Date('2026-11-16T01:19:00Z'))
+  expect(await call('p', 'advance_ticket', args)).toEqual(first)
+  expect(ledger.list(db, 'ticket_transition')).toEqual(transitions)
+  expect(ledger.load(db, 'attention', id)).toEqual(attention)
+  vi.setSystemTime(new Date('2026-11-16T01:20:00Z'))
+  await run.remind(id)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toMatchObject([{ recipient: 'p', acceptedAt: '2026-11-16T01:20:00.000Z' }])
+})
+
+it('refreshes review attention for genuinely new acceptance evidence, not repeated ready wording', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  const started = await execution()
+  const id = `execution:${started.binding.id}`
+  vi.setSystemTime(new Date('2026-11-16T01:10:00Z'))
+  const ready = { ticketId: 'P', executionBindingId: started.binding.id, event: 'ready', reason: 'Ready for review' }
+  await call('p', 'advance_ticket', ready)
+  const acceptance = { requestId: 'first-evidence', ticketId: 'P', executionBindingId: started.binding.id, scope: 'fix', evidence: ['regression passed'], basis: 'Regression verified', verdict: 'accepted' }
+  await call('p', 'record_acceptance', acceptance)
+  vi.setSystemTime(new Date('2026-11-16T01:19:00Z'))
+  await call('p', 'record_acceptance', { ...acceptance, requestId: 'new-evidence', evidence: ['regression passed', 'integration passed'], basis: 'Integration verified' })
+  const attention = ledger.load(db, 'attention', id)!
+  expect(attention).toMatchObject({ progressAt: '2026-11-16T01:19:00.000Z', dueAt: '2026-11-16T01:29:00.000Z', waitingFor: 'Integration verified' })
+  vi.setSystemTime(new Date('2026-11-16T01:20:00Z'))
+  await call('p', 'advance_ticket', { ...ready, reason: 'Different wording is not new evidence' })
+  expect(ledger.load(db, 'attention', id)).toEqual(attention)
+})
+
 it.each([true, false])('requires formal delivery before done and reports actual writer retirement (verified=%s)', async (verified) => {
   writersStopped = verified
   const started = await execution()
