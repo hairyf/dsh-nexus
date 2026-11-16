@@ -1,56 +1,103 @@
-/* eslint-disable antfu/no-top-level-await */
-import type { DB } from './types'
+import { mkdir } from 'node:fs/promises'
+import { isAbsolute, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import { NodeSqliteDialect } from '@fileshed/kysely-node-sqlite'
-import { Kysely } from 'kysely'
-import { Migrator } from 'kysely/migration'
 import { migrations } from './migrations'
-import { Channel } from './models/channel'
-import { ChannelAccount } from './models/channel-account'
-import { CiWatch } from './models/ci-watch'
-import { Inbox } from './models/inbox'
-import { Project } from './models/project'
-import { Setting } from './models/setting'
-import { SourceState } from './models/source-state'
-import { Supervisor } from './models/supervisor'
-import { SupervisorTicket } from './models/supervisor-ticket'
-import { Thread } from './models/thread'
-import { Ticket } from './models/ticket'
-import { TicketLink } from './models/ticket-link'
-import { TicketThread } from './models/ticket-thread'
-import { Trigger } from './models/trigger'
-import { Worker } from './models/worker'
-import { MigrationProvider } from './utils/migration'
 
-const database = new DatabaseSync('data.db')
+export class LedgerError extends Error {
+  constructor(public readonly code: string, message = code, options?: ErrorOptions) {
+    super(message, options)
+  }
+}
 
-const connection = new Kysely<DB>({
-  dialect: new NodeSqliteDialect({ database }),
-})
+export interface NexusDatabase {
+  readonly connection: DatabaseSync
+  readonly stateDirectory: string
+  readonly initialized: boolean
+  close: () => void
+}
 
-/** Kysely 连接 + 每张表一个模型；模型方法都在 `./models/*` 里。 */
-export const db = Object.assign(connection, {
-  channel: new Channel(connection),
-  channelAccount: new ChannelAccount(connection),
-  ciWatch: new CiWatch(connection),
-  inbox: new Inbox(connection),
-  project: new Project(connection),
-  setting: new Setting(connection),
-  sourceState: new SourceState(connection),
-  supervisor: new Supervisor(connection),
-  supervisorTicket: new SupervisorTicket(connection),
-  thread: new Thread(connection),
-  ticket: new Ticket(connection),
-  ticketLink: new TicketLink(connection),
-  ticketThread: new TicketThread(connection),
-  trigger: new Trigger(connection),
-  worker: new Worker(connection),
-})
+export async function openDatabase(stateDirectory: string): Promise<NexusDatabase> {
+  if (!isAbsolute(stateDirectory))
+    throw new LedgerError('invalid_config', 'stateDirectory must be absolute')
+  let connection: DatabaseSync
+  try {
+    await mkdir(stateDirectory, { recursive: true })
+    connection = new DatabaseSync(join(stateDirectory, 'data.db'))
+  }
+  catch (cause) {
+    throw new LedgerError('unavailable', 'Cannot open Nexus database', { cause })
+  }
+  try {
+    connection.exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE')
+    connection.exec('CREATE TABLE IF NOT EXISTS kysely_migration (name TEXT PRIMARY KEY NOT NULL, timestamp TEXT NOT NULL)')
+    const applied = connection.prepare('SELECT name FROM kysely_migration').all().map(row => row.name)
+    if (!applied.length && connection.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = \'project\'').get()) {
+      const baseline = new DatabaseSync(':memory:')
+      try {
+        baseline.exec(migrations['20261113135519'])
+        const tables = baseline.prepare('SELECT name FROM sqlite_master WHERE type = \'table\'').all()
+        for (const table of tables) {
+          const name = String(table.name)
+          const expected = baseline.prepare(`PRAGMA table_info("${name}")`).all()
+          const actual = connection.prepare(`PRAGMA table_info("${name}")`).all()
+          if (JSON.stringify(actual) !== JSON.stringify(expected))
+            throw new LedgerError('migration_failed', `Unrecognized baseline structure: ${name}`)
+        }
+        connection.prepare('INSERT INTO kysely_migration VALUES (?, ?)').run('20261113135519', new Date().toISOString())
+        applied.push('20261113135519')
+      }
+      finally {
+        baseline.close()
+      }
+    }
+    for (const name of applied) {
+      if (!(String(name) in migrations))
+        throw new LedgerError('migration_failed', 'Unknown migration version')
+    }
+    for (const [name, sql] of Object.entries(migrations).sort(([a], [b]) => a.localeCompare(b))) {
+      if (!applied.includes(name)) {
+        connection.exec(sql)
+        connection.prepare('INSERT INTO kysely_migration VALUES (?, ?)').run(name, new Date().toISOString())
+      }
+    }
+    if (connection.prepare('PRAGMA foreign_key_check').all().length)
+      throw new LedgerError('migration_failed', 'Foreign key check failed')
+    connection.exec('COMMIT; PRAGMA foreign_keys=ON')
+  }
+  catch (cause) {
+    if (connection.isTransaction)
+      connection.exec('ROLLBACK')
+    connection.close()
+    throw new LedgerError('migration_failed', 'Nexus database remains uninitialized', { cause })
+  }
+  let initialized = true
+  return {
+    connection,
+    stateDirectory,
+    get initialized() { return initialized },
+    close() {
+      connection.close()
+      initialized = false
+    },
+  }
+}
 
-const migrator = new Migrator({
-  db,
-  provider: new MigrationProvider(database, migrations),
-})
-const { error } = await migrator.migrateToLatest()
-if (error)
-  throw error
+export function requireDatabase(database: NexusDatabase | undefined): DatabaseSync {
+  if (!database?.initialized)
+    throw new LedgerError('not_initialized')
+  return database.connection
+}
+
+export function transaction<T>(database: NexusDatabase, operation: () => T): T {
+  const connection = requireDatabase(database)
+  connection.exec('BEGIN IMMEDIATE')
+  try {
+    const result = operation()
+    connection.exec('COMMIT')
+    return result
+  }
+  catch (error) {
+    connection.exec('ROLLBACK')
+    throw error
+  }
+}

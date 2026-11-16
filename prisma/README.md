@@ -1,120 +1,88 @@
-# Nexus 数据模型
+# Nexus 账本与策略
 
-SQLite + Prisma。这份映射参考官方的 dsh-superagent（`prisma_ref_to_prototype/schema.prisma`）重写，
-只保留我们自己真正需要的东西。
+Spec 01 的领域写入口是 `src/service/ledger.ts`，纯策略入口是 `src/service/policy.ts`。它们均使用单一 `defineService` 导出；下游不得直接改工单状态、复制路由策略或把模型正文当作身份。领域类型在 `src/types/ledger.ts`，生成的 Kysely 读类型在 `src/database/types.ts`。
 
-## 文件划分
+## 初始化与隔离
 
-模型按领域拆成多个文件，放在 `schema/` 里，Prisma 会把它们合成一份 schema：
+只在宿主显式激活时调用 `await openDatabase(resolveDataDirectory(options, dshHome, profileDirectory))`，退出时调用返回句柄的 `close()`。导入数据库模块不打开文件、不迁移。`options.dataDir` 必须是绝对路径，显式配置优先；无显式配置时，可由宿主传入 `profileContext.dir`，默认存于其 `storages/nexus` 子目录；无 profile 上下文则以 `DSH_HOME`（缺省用户 DSH home）为根。这个模块不读取真实用户目录，也不自行查找 profile；Spec 06 负责传入可信宿主值。
 
-| 文件 | 模型 | 说明 |
-| --- | --- | --- |
-| `schema/.conf.prisma` | — | 数据源与生成器（datasource / generator） |
-| `schema/channel.prisma` | `Channel`、`ChannelAccount` | 渠道与账号（含渠道提示词） |
-| `schema/project.prisma` | `Project` | 项目（git 仓库 + DSH 工作区） |
-| `schema/thread.prisma` | `Thread`、`Trigger` | 话题与触发 |
-| `schema/ticket.prisma` | `Ticket`、`TicketThread`、`TicketLink` | 任务 |
-| `schema/worker.prisma` | `Worker` | 执行会话 |
-| `schema/inbox.prisma` | `Inbox` | 收件箱 |
-| `schema/supervisor.prisma` | `Supervisor`、`SupervisorTicket` | 临时跨项目协调者 |
+初始化失败抛 `LedgerError`，错误码区分 `invalid_config`、`unavailable` 和 `migration_failed`。关闭/缺失句柄抛 `not_initialized`。迁移与版本记录、外键核验在同一 SQLite 事务中完成，任一失败关闭句柄并回滚；调用方不得启动派工或外部写操作。已知旧 Kysely 版本记录直接延续；没有版本记录的原始旧库只有在所有基线表的实际列结构吻合后才被接纳。不会删除或重建用户库。
 
-拆分只影响阅读顺序，不改变生成的表结构 —— 外键可以跨文件互相引用。
+## 权威迁移与生成链
 
-## 项目发现与启用范围
+- `prisma/migrations/20261113135519/migration.sql` 是不可修改的旧基线。
+- `prisma/migrations/20261116000100_ledger_policy/migration.sql` 是本次前向迁移。
+- `pnpm run prisma:migrate` 只把已有 SQL 链搬运成 `src/database/migrations.ts`，不再删除开发数据库，也不隐式创建迁移。
+- `pnpm run prisma:generate` 从 `prisma/schema/` 生成 `src/database/types.ts`。
+- 新增结构时先用 Prisma migrate diff 产生 SQL，再补数据迁移规则；提交 schema、SQL 和两个生成物。Prisma CLI 的开发 datasource 仅用于开发核验，不是运行时状态目录。
 
-当前设置页仅为 UI 示例。以下描述的是目标模型与后续接入约定；真实启动扫描、工作区读取、数据库更新和后台范围限制尚未接入，页面操作不代表这些能力已经生效。本轮不包含 Host、迁移或生成数据库类型。
+旧项目不按显示名或 channel 猜仓库，全部保留原 ID、工作区、会话与历史引用，记录原 channel 身份证据，禁用并标记 `repository_identity_unverified`；人工确认仓库后才能启用。旧工单固定补 `important + human_required`；旧全局设置无论 autoMerge 原值为何都转 `human_required`。新安装默认 `important + follow_question_level`、4 个 Worker、10 分钟提醒。已结束工单不补验收或批准。
 
-设置界面左侧按「项目范围」「执行与合并」「消息投递」分组导航，右侧展示当前分组内容。项目列表采用紧凑行，不展示 remote 地址。Worker 并发默认值为 10；各参数分组独立维护草稿，保存或撤销只影响当前分组，不清除其他分组的未保存修改。项目勾选和参数保存目前只演示面板内交互，不写入数据库。
+旧 Inbox 被迁成同 ID 的 Message；其中问题另迁成同 ID 的唯一 Ask，保留来源、问题、历史答案和回答角色快照。历史 `user` 不转成已核验的人，无法核实的旧收件地址显式标记待恢复；旧 Inbox 表删除，不保留第二份答案。历史顺序按旧 seq、时间、ID 稳定归一，不让旧的重复 seq 导致丢消息。只有新流程的显式决定、当前验收证据与真实 merged 事实能完成新的交付。
 
-`prisma/schema/` 表达目标结构；现有数据库、生成类型与历史迁移本轮不改动，须在未来接入 Host 时通过迁移及类型同步后才能供后台使用，不能将 schema 的变化视为现存数据库已完成升级。
+## 信任边界与下游须知
 
-项目身份是 DSH 的 Git 工作区 `workspaceId`，不是渠道加仓库名。`Project.name` 保存工作区显示名，允许同名；`directory` 必填，`remoteUrl` 为兼容历史记录仍可为空。仓库托管平台与仓库路径从 remote 识别，不在 Project 上重复保存渠道字段，也不要求先配置渠道。自动发现仅将目录存在、属于有效 Git 工作区且配置了 remote 的工作区纳入项目候选；无 remote、不可用或非 Git 工作区默认排除。
+`Actor` 只能由认证后的 Web 入口、已验证的提供方事件或已登记 DSH 会话构造，不能从工具参数、模型正文或 preset 名称构造。GitHub 身份保存 provider ID 与 login 快照；白名单每次重新检查，机器人、出站回流和代理均不能冒充人。非白名单正文仍可入上下文，但 `recordTrigger` 的 `authorized=false`；重复来源事件返回 `accepted=false`，不能重新处理成新授权。
 
-后续接入时，插件启动及设置页手动刷新应读取符合条件的 Git 工作区，以 `workspaceId` 幂等同步名称、目录、remote 和更新时间。新项目 `enabled=true`；同步不得覆盖既有项目的 `enabled`、编排会话或创建时间，也不删除本次未发现或已失联的项目。失联及不再符合候选条件的历史项目保留，但设置列表默认不展示。取消勾选只改变编排范围，不删除项目、任务、触发或历史。
+`bindRole`、`recordPullRequest`、`updateMessage`、`updateOutbox`、提醒写入是可信宿主/适配器事实入口，不是可直接暴露给模型的工具。main/project 的初始责任绑定可由宿主启动建立；worker 必须传入本项目 project 的可信 Actor（或已认证人工），supervisor 必须传 main/人工。同票主 Worker、main 和项目责任由数据库唯一键约束，未核实关闭的旧执行仍占责任。新 worker 还受全局并发、人的暂停、项目可用性、既有授权和成功依赖约束；这里不启动任何会话。
 
-`Thread.channelId` / `Ticket.channelId` 记录消息来源，与项目的 Git 身份分开。`Thread.projectId` / `Thread.project` 和 `Project.threads` 保留话题分诊关系：未分诊话题可以不属于项目，飞书话题也可以由 `triage_thread` 分诊到 GitHub 仓库所在项目。`TicketThread` 则决定哪些任务订阅话题，不能用来替代分诊归属。
+`recordPullRequest` 只记录适配器核实的远端事实，不执行合并，也不产生批准。外部 merged 缺决定会保留 merged 并显示待核验。执行外部合并前调用 `resolveMerge`，第四参必须是本次核实的仓库要求结果；旧的 answered 状态、任意肯定文字、过期 head 或后来收紧的策略都不是许可。完成工单必须显式调用 `advanceTicket(..., 'complete', ...)`，ready/会话结束只转 review。
 
-后台接入后，自动分诊、建票、派工、建 Worker、投递及出口入口都应检查 `Project.enabled`。已禁用项目保留现有归属与订阅，但不产生新的执行动作；在途回合不因取消勾选被强杀，结束后不再自动续跑。仅取消渠道监听与禁用项目是不同的开关。
+正式答案必须回传当前 `policyBasis`，一次事务内结清 Ask 并写入回送消息。升级沿用原 askId；实质目标变化会取消旧 pending Ask，已答旧决定保留但不能用于新目标。已读和处理完通知均不回答 Ask。答复落账后不要求人在恢复时重答。
 
-## 三层架构
+Message 的 acceptedAt、deliveredAt、readAt、handledAt 是不同事实。同票同收件责任按 seq 保序，不同票互不阻塞。失败保留次数、原因、重试时间；角色替换只能显式移交相同责任的未读消息和 pending Ask。Outbox 的 unknown 必须由适配器先核对远端关联，不能盲目重发；sent 需要远端 ID，已知成功不能再次发送。
 
-```
-主编排（main）            全局唯一，不直接改代码，只做分诊与派活
-  └─ 项目编排（project）   每个工作区一个，管本项目的任务
-       └─ Worker（执行会话）    真正干活的地方；一个任务可以先后换好几个
-```
+只在成功新交付时写 dependency satisfaction 与 durable wakeup，历史 done、failed、cancelled 不冒充成功。Attention 保存等待依据、有效进展时间、提醒目标/时间、失败、升级与处置；它不负责定时器，不改变 Ask、暂停或授权。
 
-官方是「主 Session → 执行器」两层；我们多一层，所以 `Inbox.type` 要区分投给谁。
+## 导出的共享判断与账本签名
 
-## 数据怎么流动
+以下方法均为同步账本操作，数据库打开为异步。`Row<T>` 是生成的 Kysely Selectable 类型；输入类型取自 `src/types/ledger.ts`。
 
-```
-渠道（Channel）产生触发（Trigger）→ 落在话题（Thread）上
-  话题还没分诊  → 冒到主编排的收件箱，主编排决定这事归谁（可能顺手开任务）
-  话题已分诊    → 冒到对应项目编排的收件箱，项目编排决定这是不是已有任务的新消息
-任务派下去 → 项目编排建 Worker → 执行结果再冒回收件箱
-```
-
-收件箱就是「代理的未读消息」：代理随时能列（`inbox_list`），看完就删（`inbox_kill`），
-会话结束时会话框架数一下 pending 的条数提示「你有 N 条消息未处理」。
-
-官方的 `TicketInput` + `UndeliveredInput` + `Outbox` + `DispositionFanout` 那一大坨，
-在我们这里合起来就是一张 `Inbox`。
-
-## 收件箱是双向的，人类也是收件人
-
-`Inbox.type` 记「此刻轮到谁」，取 `user` / `main` / `project` / `supervisor`。
-把人类也算成一个收件人，是为了让「问人类」和「问上级」变成同一件事的不同取值，
-而不是两套流程：
-
-```
-Worker ask(askTo='user')      ─▶ Inbox(type=user)       锚定一条触发，往渠道发问题
-Worker ask(askTo='project')   ─▶ Inbox(type=project)    只在代理之间流转，渠道无感
-超时 +「代理选择」开启         ─▶ Inbox(type=main)       就地改 type，escalations += 1
-```
-
-**升级就地改 `type`，不新建记录。** 一个问题从头到尾只有一条记录、一个身份，
-任何时刻都只有一个处理者，永远不会出现两条 pending 抢同一件事。
-
-渠道收尾只有一条规则：**只有从 `user` 升级出去的那一次，要回渠道补一句话**。
-因为只有 `type = user` 意味着问题已经问出口了；没问出口的直接在代理间流转，不必打扰人。
-
-超时检查不靠后台定时器，和「你有 N 条未处理」共用同一次会话钩子。
-
-## 相对官方删掉的概念
-
-不是我漏了，是故意不要：
-
-| 删掉 | 为什么 |
-| --- | --- |
-| `Policy` / `Eval` / `Gate` / `Decision` / `Mandate` | 主编排自己判断，判断过程不进数据库；机器人账号本身就是被授权的身份，不再层层授权 |
-| `TriggerThread` / `ThreadCorrelation` | 一条触发只属于一个话题，不做关联图 |
-| `TriggerDisposition` / `Handback` / `Ack` | 去向就看 `Inbox.status`，不做单独台账 |
-| `Subscription` / `Fanout` | 订阅关系就是 `TicketThread`（任务关联的话题） |
-| `TicketInput` / `UndeliveredInput` / `Outbox` | 全部由 `Inbox` 一张表承担 |
-| `Attention`（待人工决定） | 就是一条 `kind = ask` 的 `Inbox`，带截止时间 |
-| `Effect` / `KeyValue` / `*Version*` / `SourceState` | 运行时队列与配置版本，暂时不进库 |
-
-### 没有「需介入（attention）」状态
-
-一张工单可以一边 `running` 一边等人 —— 把 `status` 覆盖掉会丢掉它本来跑到哪一步。
-所以「需介入」是派生出来的：**存在指向它的 pending ask 就是需介入**。
-面板和 `list_ticket` 用一次子查询就能得到。
-
-## 三条书写约定
-
-1. 时间戳一律用 ISO 8601 字符串（`String`）。SQLite 里可以按字典序比较，排序不踩时区。
-2. 列表一律是子表 —— SQLite 没有数组。
-3. 所有跨表引用都是真实外键 + 具名 `@relation`，`prisma migrate` 会生成约束。
-
-## 常用命令
-
-```bash
-pnpm run prisma:generate    # 重新生成 src/database 的 Kysely 类型
-pnpm run prisma:migrate     # 建迁移
-npx prisma validate         # 校验
-npx prisma format           # 格式化
+```text
+openDatabase(stateDirectory: string): Promise<NexusDatabase>
+resolveDataDirectory(options?: { dataDir?: string }, dshHome?: string, profileDirectory?: string): string
+policy.resolve(snapshot: PolicySnapshot, initiator: Role, decision: DecisionType, withinAuthorization: boolean, hasSupervisor?: boolean): 'human' | 'main' | 'project' | 'supervisor'
+policy.peek(actor: Actor, whitelist: readonly string[]): boolean
+load<T extends keyof DB>(database: NexusDatabase, table: T, id: string): Row<T> | null
+list<T extends keyof DB>(database: NexusDatabase, table: T): Row<T>[]
+getSettings(database: NexusDatabase): Row<'setting'>
+updateSettings(database: NexusDatabase, patch: SettingsPatch, actor: Actor): Row<'setting'>
+createProject(database: NexusDatabase, input: ProjectInput): Row<'project'>
+updateProject(database: NexusDatabase, id: string, enabled: boolean, actor: Actor): Row<'project'>
+createTicket(database: NexusDatabase, input: TicketInput, actor: Actor): Row<'ticket'>
+authorizeTicket(database: NexusDatabase, ticketId: string, authorization: string, acceptanceCriteria: string, reason: string, actor: Actor): Row<'ticket'>
+setPolicy(database: NexusDatabase, ticketId: string, snapshot: PolicySnapshot, reason: string, actor: Actor): Row<'ticket'>
+bindRole(database: NexusDatabase, input: BindingInput, actor?: Actor): Row<'role_binding'>
+updateBinding(database: NexusDatabase, id: string, status: 'idle' | 'running' | 'unavailable' | 'closed', reason: string): Row<'role_binding'>
+createAsk(database: NexusDatabase, input: AskInput, actor: Actor): Row<'ask'>
+escalateAsk(database: NexusDatabase, askId: string, actor: Actor): Row<'ask'>
+answerAsk(database: NexusDatabase, input: AnswerInput, actor: Actor): Row<'ask'>
+cancelAsk(database: NexusDatabase, askId: string, reason: string, actor: Actor): Row<'ask'>
+setDeliveryTarget(database: NexusDatabase, ticketId: string, target: MergeTarget, actor: Actor): Row<'ticket'>
+recordPullRequest(database: NexusDatabase, ticketId: string, target: MergeTarget, state: 'open' | 'merged' | 'closed', ciState?: Row<'ticket'>['ciState']): Row<'ticket'>
+recordAcceptance(database: NexusDatabase, input: AcceptanceInput, actor: Actor): Row<'acceptance'>
+resolveMerge(database: NexusDatabase, askId: string, target: MergeTarget, repositoryVerified: boolean): boolean
+advanceTicket(database: NexusDatabase, ticketId: string, event: 'ready' | 'session_ended' | 'failed' | 'complete', actor: Actor, reason = ''): Row<'ticket'>
+pauseTicket(database: NexusDatabase, ticketId: string, paused: boolean, reason: string, actor: Actor): Row<'ticket'>
+cancelTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'>
+linkTickets(database: NexusDatabase, ticketId: string, relatedId: string, kind: 'depends' | 'relates', actor: Actor): void
+resolveTicket(database: NexusDatabase, ticketId: string): { ticket: Row<'ticket'>, reasons: string[], dependencySatisfied: boolean }
+sendMessage(database: NexusDatabase, id: string, recipient: string, ticketId: string | null, content: string, actor: Actor): Row<'message'>
+updateMessage(database: NexusDatabase, id: string, event: 'delivered' | 'read' | 'handled' | 'failed', error?: string): Row<'message'>
+transferMessages(database: NexusDatabase, previousBindingId: string, bindingId: string): void
+saveChannel(database: NexusDatabase, id: string, name: string, enabled: boolean): Row<'channel'>
+triageThread(database: NexusDatabase, threadId: string, projectId: string | null, disposition: 'claimed' | 'pending' | 'ignored', actor: Actor): Row<'thread'>
+recordThread(database: NexusDatabase, input: ThreadInput): Row<'thread'>
+recordTrigger(database: NexusDatabase, input: TriggerInput, actor: Actor): { trigger: Row<'trigger'>, authorized: boolean, accepted: boolean }
+subscribeThread(database: NexusDatabase, ticketId: string, threadId: string, actor: Actor, subscribed = true): void
+saveSourceState(database: NexusDatabase, channelId: string, name: string, value: string): void
+handleWakeup(database: NexusDatabase, id: string): Row<'wakeup'>
+publishMessage(database: NexusDatabase, messageId: string, recipient: string, actor: Actor): Row<'outbox'>
+updateOutbox(database: NexusDatabase, id: string, state: 'sent' | 'failed' | 'unknown', detail: string, remoteId?: string, remoteUrl?: string): Row<'outbox'>
+recordAttention(database: NexusDatabase, input: AttentionInput): Row<'attention'>
+updateAttention(database: NexusDatabase, id: string, event: 'reminded' | 'failed' | 'escalated' | 'handled', detail: string): Row<'attention'>
 ```
 
-`prisma-kysely` 把模型编译成 `src/database/types.ts`，`src/database/index.ts` 用它建 Kysely 实例。
-枚举会生成 `export const Xxx = {...} as const` + 联合类型，可以直接当运行时常量用。
+## 验证边界
+
+单测仅使用工作树 `.temp` 下的真实临时 SQLite。通过只证明持久化和策略，不代表 DSH 会话、GitHub 网络或浏览器集成通过。所有时间相关用例可在 Vitest fake timers 下运行；无后台服务、网络调用或插件构建。
