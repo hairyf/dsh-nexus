@@ -197,6 +197,10 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
       if (!result.ok)
         logger.warn('Nexus delivery failed: %s', result.reason)
     }
+    for (const result of await run.flush(signal)) {
+      if (result.reason)
+        report(new LedgerError(result.reason))
+    }
     await run.startQueued(signal)
   }
 

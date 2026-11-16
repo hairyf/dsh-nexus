@@ -369,6 +369,9 @@ export function createManagementTools(database: NexusDatabase, run: ReturnType<t
         if (!args.reason.trim())
           throw new LedgerError('invalid_config')
         const advanced = ledger.advanceTicket(database, ticket.id, args.event, actor, args.reason, args.executionBindingId)
+        const attention = ledger.load(database, 'attention', `execution:${args.executionBindingId}`)
+        if (attention && !attention.handledAt && args.event !== 'complete')
+          await run.progress(attention.id, advanced.updatedAt, attention.reason, args.reason, exec.signal)
         return { ticket: advanced, ...(args.event === 'complete' ? { retirement: await run.retire(ticket.id, `delivery_complete: ${args.reason}`, exec.signal, actor) } : {}) }
       },
     }), defineTool({
@@ -398,7 +401,11 @@ export function createManagementTools(database: NexusDatabase, run: ReturnType<t
             throw new LedgerError('identity_conflict')
           return { acceptance: existing }
         }
-        return { acceptance: ledger.recordAcceptance(database, { id, ticketId: ticket.id, executionBindingId: args.executionBindingId, scope: args.scope, evidence: args.evidence, basis: args.basis, verdict: args.verdict }, actor) }
+        const acceptance = ledger.recordAcceptance(database, { id, ticketId: ticket.id, executionBindingId: args.executionBindingId, scope: args.scope, evidence: args.evidence, basis: args.basis, verdict: args.verdict }, actor)
+        const attention = ledger.load(database, 'attention', `execution:${args.executionBindingId}`)
+        if (attention && !attention.handledAt)
+          await run.progress(attention.id, acceptance.createdAt, attention.reason, acceptance.basis, exec.signal)
+        return { acceptance }
       },
     }))
   }

@@ -1252,6 +1252,7 @@ const ledger = defineService({
 					updatedAt: now$1()
 				});
 				satisfy(database, ticketId);
+				for (const item of rows(database, "attention").filter((item) => item.ticketId === ticketId && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", "ticket_completed");
 			} else if (event === "ready" || event === "session_ended") {
 				if (ticket.failureReason && event === "session_ended") {
 					const status = ticket.status === "running" ? "review" : ticket.status;
@@ -1297,6 +1298,7 @@ const ledger = defineService({
 			pausedAt: now$1(),
 			updatedAt: now$1()
 		});
+		if (paused) for (const item of rows(database, "attention").filter((item) => item.ticketId === ticketId && !item.askId && ["execution_in_progress", "worker_limit"].includes(item.reason) && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", "human_paused");
 		return required(database, "ticket", ticketId);
 	},
 	cancelTicket(database, ticketId, reason, actor) {
@@ -1310,6 +1312,7 @@ const ledger = defineService({
 			pauseActor: JSON.stringify(actor),
 			updatedAt: now$1()
 		});
+		for (const item of rows(database, "attention").filter((item) => item.ticketId === ticketId && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", "ticket_cancelled");
 		return required(database, "ticket", ticketId);
 	},
 	linkTickets(database, ticketId, relatedId, kind, actor) {
@@ -1421,6 +1424,17 @@ const ledger = defineService({
 				error: null,
 				nextRetryAt: null
 			} : event === "read" ? { readAt: message.readAt ?? now$1() } : { handledAt: message.handledAt ?? now$1() });
+		}
+		const ticket = message.ticketId ? load(database, "ticket", message.ticketId) : null;
+		const facts = message.facts ? JSON.parse(message.facts) : null;
+		const report = event === "delivered" && !message.deliveredAt && facts?.evidence?.some((item) => item.trim()) && !rows(database, "message").some((item) => item.id !== message.id && item.ticketId === message.ticketId && item.sender === message.sender && item.facts === message.facts && item.deliveredAt);
+		const continuation = event === "handled" && !message.handledAt && ["runtime:ticket", "answer"].includes(message.kind);
+		if (ticket && !ticket.paused && !["done", "cancelled"].includes(ticket.status) && (report || continuation)) {
+			const sender = rows(database, "role_binding").find((item) => item.sessionId === message.sender);
+			for (const item of rows(database, "attention").filter((item) => item.ticketId === ticket.id && !item.handledAt && !item.id.startsWith("runtime:") && item.reason !== "human_paused" && (!item.bindingId || item.bindingId === ticket.executionBindingId || item.recipient === sender?.id || continuation && item.bindingId === message.recipient) && (!item.askId || item.recipient === sender?.id))) {
+				const progressAt = continuation ? now$1() : message.acceptedAt;
+				if (progressAt > item.progressAt) ledger.refreshAttention(database, item.id, progressAt, item.reason, facts?.summary ?? message.content);
+			}
 		}
 		return required(database, "message", id);
 	},
@@ -1596,7 +1610,7 @@ const ledger = defineService({
 		return {
 			supervisor,
 			bindings,
-			canClose: actor ? !ownsPendingAsk : tickets.length > 0 && tickets.every((ticket) => ticket.status === "done" && !ticket.failureReason && !ticket.executionAttention) && !pendingAsk && !unresolved
+			canClose: actor ? !ownsPendingAsk : tickets.length > 0 && tickets.every((ticket) => ticket.status === "done" && !ticket.failureReason && !ticket.executionAttention && ledger.resolveTicket(database, ticket.id).dependencySatisfied) && !pendingAsk && !ownsPendingAsk && !unresolved
 		};
 	},
 	closeSupervisor(database, id, reason, actor) {
@@ -1640,13 +1654,15 @@ const ledger = defineService({
 		});
 	},
 	refreshAttention(database, id, progressAt, reason, waitingFor) {
-		required(database, "attention", id);
+		const item = required(database, "attention", id);
 		if (!Number.isFinite(Date.parse(progressAt)) || !reason.trim() || !waitingFor.trim()) fail("invalid_config");
+		const dueAt = new Date(Date.parse(progressAt) + ledger.getSettings(database).reminderIntervalMinutes * 6e4).toISOString();
+		retireAttentionReminders(database, item);
 		update(database, "attention", id, {
 			progressAt,
 			reason,
 			waitingFor,
-			dueAt: new Date(Date.parse(progressAt) + ledger.getSettings(database).reminderIntervalMinutes * 6e4).toISOString(),
+			dueAt,
 			remindedAt: null,
 			escalatedAt: null,
 			deliveryState: "pending",
@@ -1681,6 +1697,7 @@ const ledger = defineService({
 			handledAt: now$1(),
 			resolution: detail
 		});
+		if (event === "handled") retireAttentionReminders(database, attention);
 		return {
 			...attention,
 			...required(database, "attention", id)
@@ -1819,8 +1836,11 @@ function route(database, initiator, tickets, decision, withinAuthorization) {
 	});
 	return handlers.every((value) => value === handlers[0]) ? handlers[0] : "human";
 }
+function retireAttentionReminders(database, item) {
+	requireDatabase(database).prepare("UPDATE message SET supersededAt = ?, deliveryState = ?, error = NULL, nextRetryAt = NULL WHERE kind = ? AND source = ? AND supersededAt IS NULL").run(now$1(), "superseded", "runtime:reminder", `attention:${item.id}:${item.progressAt}`);
+}
 function retireAskRequests(database, askId, settlement) {
-	if (settlement) requireDatabase(database).prepare("UPDATE attention SET handledAt = ?, resolution = ? WHERE askId = ? AND reason = ? AND handledAt IS NULL").run(now$1(), settlement, askId, "pending_ask");
+	if (settlement) for (const item of rows(database, "attention").filter((item) => item.askId === askId && item.reason === "pending_ask" && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", settlement);
 	requireDatabase(database).prepare("UPDATE message SET supersededAt = ?, deliveryState = 'superseded', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = 'ask' AND supersededAt IS NULL").run(now$1(), askId);
 	requireDatabase(database).prepare("UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN ('pending', 'failed') THEN 'superseded' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = 'ask') AND supersededAt IS NULL").run(now$1(), askId);
 }
@@ -4178,8 +4198,11 @@ function createManagementTools(database, run, github, binding) {
 			const ticket = ticketInScope(args.ticketId);
 			if (ticket.executionBindingId !== args.executionBindingId) throw new LedgerError("stale_execution");
 			if (!args.reason.trim()) throw new LedgerError("invalid_config");
+			const advanced = ledger.advanceTicket(database, ticket.id, args.event, actor, args.reason, args.executionBindingId);
+			const attention = ledger.load(database, "attention", `execution:${args.executionBindingId}`);
+			if (attention && !attention.handledAt && args.event !== "complete") await run.progress(attention.id, advanced.updatedAt, attention.reason, args.reason, exec.signal);
 			return {
-				ticket: ledger.advanceTicket(database, ticket.id, args.event, actor, args.reason, args.executionBindingId),
+				ticket: advanced,
 				...args.event === "complete" ? { retirement: await run.retire(ticket.id, `delivery_complete: ${args.reason}`, exec.signal, actor) } : {}
 			};
 		}
@@ -4235,7 +4258,7 @@ function createManagementTools(database, run, github, binding) {
 				if (existing.scope !== args.scope || existing.basis !== args.basis || existing.verdict !== args.verdict || existing.evidence !== JSON.stringify(args.evidence) || existing.criteria !== ticket.acceptanceCriteria || existing.target !== ticket.deliveryTarget) throw new LedgerError("identity_conflict");
 				return { acceptance: existing };
 			}
-			return { acceptance: ledger.recordAcceptance(database, {
+			const acceptance = ledger.recordAcceptance(database, {
 				id,
 				ticketId: ticket.id,
 				executionBindingId: args.executionBindingId,
@@ -4243,7 +4266,10 @@ function createManagementTools(database, run, github, binding) {
 				evidence: args.evidence,
 				basis: args.basis,
 				verdict: args.verdict
-			}, actor) };
+			}, actor);
+			const attention = ledger.load(database, "attention", `execution:${args.executionBindingId}`);
+			if (attention && !attention.handledAt) await run.progress(attention.id, acceptance.createdAt, attention.reason, acceptance.basis, exec.signal);
+			return { acceptance };
 		}
 	}));
 	return tools;
@@ -4737,6 +4763,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		supervisor: "supervisor",
 		worker: "worker"
 	};
+	const cancellations = /* @__PURE__ */ new Map();
 	function exclusive(key, operation) {
 		key = `${database.stateDirectory}:${key}`;
 		const current = operations.get(key);
@@ -4959,26 +4986,62 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 			return { stopped: true };
 		});
 	}
-	async function pause(ticketId, paused, reason, actor, signal) {
+	async function pause(ticketId, paused, reason, actor, reconcileExternal, signal) {
 		checkInterrupt(signal);
 		const ticket = ledger.pauseTicket(database, ticketId, paused, reason, actor);
-		if (!paused) await intake({
+		const binding = ticket.executionBindingId ? bindingById(ticket.executionBindingId) : void 0;
+		if (paused) {
+			if (binding) {
+				cancellations.get(`budget:${binding.id}`)?.();
+				await interruptible(() => gateway.cancel(binding.sessionId, reason, signal), signal);
+			}
+			for (const item of ledger.list(database, "attention").filter((item) => item.ticketId === ticketId)) armAttention(item);
+			return {
+				ticket,
+				stopped: false,
+				reason: binding && (await gateway.inspect(binding.sessionId, signal)).state === "running" ? "execution_stop_unconfirmed" : "human_paused"
+			};
+		}
+		let reconciliation;
+		let failure;
+		if (binding) try {
+			reconciliation = await recover(binding.id, reconcileExternal, signal);
+		} catch (error) {
+			if (!(error instanceof LedgerError) || error.code === "interrupted_tool") throw error;
+			failure = error.code;
+		}
+		const content = JSON.stringify({
+			ticketId,
+			paused: false,
+			reason,
+			actor,
+			reconciliation: failure ?? reconciliation?.state,
+			instruction: "Read existing answers and delivery facts; continue only authorized unfinished work without replacing the execution or inventing approval."
+		});
+		if (binding && reconciliation?.state === "recovered") {
+			const item = ledger.load(database, "attention", `execution:${binding.id}`);
+			if (item) await progress(item.id, (/* @__PURE__ */ new Date()).toISOString(), "execution_in_progress", binding.id, signal);
+			await intake({
+				id: `resume:${ticket.id}:${ticket.updatedAt}:worker`,
+				source: `ticket:${ticket.id}:resume`,
+				recipient: binding.id,
+				ticketId,
+				kind: "ticket",
+				content
+			}, signal);
+		}
+		await intake({
 			id: `resume:${ticket.id}:${ticket.updatedAt}`,
 			source: `ticket:${ticket.id}:resume`,
 			recipient: projectBinding(ticket.projectId).id,
 			ticketId,
-			kind: actor.kind === "agent" ? "message" : "human",
-			content: JSON.stringify({
-				ticketId,
-				paused: false,
-				reason,
-				actor,
-				instruction: "Read existing answers and delivery facts; continue only authorized unfinished work without replacing the execution or inventing approval."
-			})
+			kind: "human",
+			content
 		}, signal);
 		return {
-			ticket,
-			...paused ? await stop(ticketId, reason, signal, actor) : { stopped: false }
+			ticket: ledger.load(database, "ticket", ticketId),
+			stopped: false,
+			...failure ? { reason: failure } : {}
 		};
 	}
 	async function cancel(ticketId, reason, actor, signal) {
@@ -5020,6 +5083,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 			const messages = ledger.list(database, "message").filter((item) => item.recipient === requested.recipient && item.ticketId === requested.ticketId && !item.readAt && !item.supersededAt).sort((a, b) => a.seq - b.seq);
 			for (const message of messages) {
 				checkInterrupt(signal);
+				if (ledger.load(database, "message", message.id).supersededAt) continue;
 				try {
 					const { binding, session } = await resolve(messageRecipient(message), signal);
 					if (!["idle", "running"].includes(session.state)) throw new LedgerError(session.state === "closed" ? "closed_session" : "session_requires_recovery");
@@ -5033,7 +5097,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 						if (binding.role === "worker" && message.kind === "runtime:human" && session.state === "running") mode = "interrupt";
 						if (binding.role === "worker" && binding.ticketId) {
 							const { ticket, reasons } = ledger.resolveTicket(database, binding.ticketId);
-							if (ticket.status !== "running" || reasons.some((reason) => [
+							if (binding.status !== "running" || ticket.status !== "running" || reasons.some((reason) => [
 								"human_paused",
 								"project_disabled",
 								"project_unavailable",
@@ -5059,6 +5123,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 					checkInterrupt(signal);
 					if (!message.deliveredAt) ledger.updateMessage(database, message.id, "delivered");
 					if (receipt === "read") ledger.updateMessage(database, message.id, "read");
+					for (const item of ledger.list(database, "attention").filter((item) => item.ticketId === message.ticketId)) armAttention(item);
 				} catch (error) {
 					if (error instanceof LedgerError && ["delivery_pending", "delivery_failed"].includes(error.code)) throw error;
 					ledger.updateMessage(database, message.id, "failed", errorCode(error));
@@ -5090,7 +5155,9 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		const { binding } = await resolve(sessionId, signal);
 		const message = ledger.load(database, "message", messageId);
 		if (!message || message.recipient !== binding.id) throw new LedgerError("scope_denied");
-		return ledger.updateMessage(database, messageId, "handled");
+		const handled = ledger.updateMessage(database, messageId, "handled");
+		for (const item of ledger.list(database, "attention").filter((item) => item.ticketId === message.ticketId)) armAttention(item);
+		return handled;
 	}
 	async function suspend(sessionId, askId, signal) {
 		const { binding } = await resolve(sessionId, signal);
@@ -5121,14 +5188,13 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 			askId
 		};
 	}
-	const cancellations = /* @__PURE__ */ new Map();
 	function armBudget(binding) {
 		if (!binding.startedAt) return;
 		cancellations.get(`budget:${binding.id}`)?.();
 		const due = Date.parse(binding.startedAt) + ledger.getSettings(database).backgroundLimitMinutes * 6e4;
 		cancellations.set(`budget:${binding.id}`, timers.timeout(async () => {
 			const current = bindingById(binding.id);
-			if (current.status === "closed") return;
+			if (current.status === "closed" || current.ticketId && ledger.load(database, "ticket", current.ticketId).paused) return;
 			attention(current, "background_budget_expired");
 			await gateway.cancel(current.sessionId, "background_budget_expired");
 		}, Math.max(0, due - Date.now())));
@@ -5176,13 +5242,20 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 						content: "Session, workspace and external results reconciled. Read current ticket facts and existing delivery before continuing only the authorized unfinished work."
 					}, signal);
 				}
+				for (const item of ledger.list(database, "attention").filter((item) => item.bindingId === binding.id && item.id.startsWith(`runtime:${binding.id}:`) && !item.handledAt)) await settleAttention(item.id, "session and workspace reconciled", signal);
+				if (session.state === "resumable" || binding.status === "unavailable") {
+					const item = ledger.load(database, "attention", `execution:${binding.id}`);
+					if (item && !item.handledAt) await progress(item.id, (/* @__PURE__ */ new Date()).toISOString(), "execution_in_progress", "session and workspace reconciled", signal);
+				}
 				return {
 					binding: bindingById(bindingId),
 					state: "recovered"
 				};
 			} catch (error) {
-				if (binding.status !== "closed") ledger.updateBinding(database, binding.id, "unavailable", errorCode(error));
-				attention(binding, errorCode(error));
+				if (!(error instanceof LedgerError && error.code === "human_paused")) {
+					if (binding.status !== "closed") ledger.updateBinding(database, binding.id, "unavailable", errorCode(error));
+					attention(binding, errorCode(error));
+				}
 				throw error;
 			}
 		});
@@ -5368,6 +5441,50 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 			}
 		}));
 	}
+	async function flush(signal) {
+		checkInterrupt(signal);
+		const wakeups = await Promise.all(ledger.list(database, "wakeup").filter((item) => !item.handledAt).map(async (wakeup) => {
+			try {
+				const ticket = ledger.load(database, "ticket", wakeup.ticketId);
+				const scopes = ledger.list(database, "supervisor_ticket").filter((link) => link.ticketId === ticket.id);
+				const recipients = [projectBinding(ticket.projectId), ...ledger.list(database, "role_binding").filter((binding) => binding.role === "supervisor" && binding.status !== "closed" && scopes.some((scope) => scope.supervisorId === binding.supervisorId))];
+				for (const recipient of recipients) await intake({
+					id: `wakeup:${wakeup.id}:${recipient.id}`,
+					source: `wakeup:${wakeup.id}`,
+					recipient: recipient.id,
+					ticketId: ticket.id,
+					kind: "ticket",
+					content: JSON.stringify({
+						wakeupId: wakeup.id,
+						ticketId: ticket.id,
+						relatedId: wakeup.relatedId,
+						reason: wakeup.reason
+					})
+				}, signal);
+				ledger.handleWakeup(database, wakeup.id);
+				return { id: wakeup.id };
+			} catch (error) {
+				checkInterrupt(signal);
+				return {
+					id: wakeup.id,
+					reason: errorCode(error)
+				};
+			}
+		}));
+		const supervisors = await Promise.all(ledger.list(database, "supervisor").filter((item) => item.status === "active").map(async (supervisor) => {
+			try {
+				if (ledger.resolveSupervisor(database, supervisor.id).canClose) await closeSupervisor(supervisor.id, "all coordinated tickets successfully delivered", void 0, signal);
+				return { id: supervisor.id };
+			} catch (error) {
+				checkInterrupt(signal);
+				return {
+					id: supervisor.id,
+					reason: errorCode(error)
+				};
+			}
+		}));
+		return [...wakeups, ...supervisors];
+	}
 	async function boot(reconcileExternal, signal) {
 		checkInterrupt(signal);
 		const bindings = ledger.list(database, "role_binding").filter((binding) => binding.status !== "closed");
@@ -5391,7 +5508,12 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		}));
 		for (const item of ledger.list(database, "attention")) armAttention(item);
 		await startQueued(signal);
-		for (const supervisor of ledger.list(database, "supervisor").filter((item) => item.status === "active")) if (ledger.resolveSupervisor(database, supervisor.id).canClose) await closeSupervisor(supervisor.id, "all coordinated tickets successfully delivered", void 0, signal);
+		const flushed = await flush(signal);
+		for (const result of flushed) if (result.reason) results.push({
+			bindingId: result.id,
+			state: "requires_attention",
+			reason: result.reason
+		});
 		return results;
 	}
 	async function dispose() {
@@ -5414,6 +5536,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		suspend,
 		recover,
 		boot,
+		flush,
 		startQueued,
 		closeSupervisor,
 		observe,
@@ -5683,7 +5806,7 @@ const webPanel = defineService({ create(database, ports) {
 	async function command(id, action, reason, actor) {
 		if (action === "dispatch") return ports.runtime.dispatch(id, actor);
 		if (!reason.trim()) throw new LedgerError("reason_required");
-		if (action === "pause" || action === "resume") return ports.runtime.pause(id, action === "pause", reason, actor);
+		if (action === "pause" || action === "resume") return ports.runtime.pause(id, action === "pause", reason, actor, (signal) => ports.reconcileExternal(id, signal));
 		if (action === "cancel") return ports.runtime.cancel(id, reason, actor);
 		return ports.runtime.retry(id, reason, actor, (signal) => ports.reconcileExternal(id, signal));
 	}
@@ -5972,6 +6095,7 @@ async function activate(ctx, options) {
 			const result = await github.publish(item.id, signal);
 			if (!result.ok) logger.warn("Nexus delivery failed: %s", result.reason);
 		}
+		for (const result of await run.flush(signal)) if (result.reason) report(new LedgerError(result.reason));
 		await run.startQueued(signal);
 	}
 	function flush() {

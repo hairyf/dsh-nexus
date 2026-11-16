@@ -169,7 +169,7 @@ export const webPanel = defineService({
       if (!reason.trim())
         throw new LedgerError('reason_required')
       if (action === 'pause' || action === 'resume')
-        return ports.runtime.pause(id, action === 'pause', reason, actor)
+        return ports.runtime.pause(id, action === 'pause', reason, actor, signal => ports.reconcileExternal(id, signal))
       if (action === 'cancel')
         return ports.runtime.cancel(id, reason, actor)
       return ports.runtime.retry(id, reason, actor, signal => ports.reconcileExternal(id, signal))
