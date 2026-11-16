@@ -1,7 +1,7 @@
 import type { SQLInputValue } from 'node:sqlite'
 import type { NexusDatabase } from '../database'
 import type { DB } from '../database/types'
-import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, ExecutionMetadata, IdTable, MergeTarget, PolicySnapshot, ProjectInput, Role, Row, RuntimeEventInput, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
+import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, BindingInput, ExecutionMetadata, IdTable, MergeTarget, MessageFacts, PolicySnapshot, ProjectInput, Role, Row, RuntimeEventInput, SettingsPatch, ThreadInput, TicketInput, TriggerInput } from '../types/ledger'
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { LedgerError, requireDatabase, transaction } from '../database'
@@ -202,6 +202,17 @@ export const ledger = defineService({
         scope(database, initiator, ticket)
         activeProject(database, ticket.projectId)
       }
+      const existing = load(database, 'ask', input.id)
+      if (existing) {
+        if ((existing.initiatorBinding !== initiator.id && existing.responseRecipient !== initiator.id) || existing.content !== input.content || existing.source !== input.source
+          || existing.options !== JSON.stringify(input.options) || existing.presentation !== (input.presentation ? JSON.stringify(input.presentation) : null)
+          || existing.decisionType !== input.decisionType || !!existing.withinAuthorization !== input.withinAuthorization
+          || existing.target !== (input.target ? JSON.stringify(input.target) : null)
+          || JSON.stringify(askTickets(database, existing.id).map(ticket => ticket.id).sort()) !== JSON.stringify(tickets.map(ticket => ticket.id).sort())) {
+          fail('identity_conflict')
+        }
+        return existing
+      }
       if (input.decisionType === 'merge') {
         if (tickets.length !== 1 || !input.target || !input.options.includes('allow_merge') || !input.options.includes('deny_merge'))
           fail('invalid_merge_target')
@@ -211,16 +222,10 @@ export const ledger = defineService({
       }
       if (input.decisionType === 'delivery' && (!input.options.includes('accept_delivery') || !input.options.includes('reject_delivery')))
         fail('invalid_config')
-      const existing = load(database, 'ask', input.id)
-      if (existing) {
-        if (existing.initiatorBinding !== initiator.id || existing.content !== input.content || existing.source !== input.source)
-          fail('identity_conflict')
-        return existing
-      }
       if (input.supersedesId)
         required(database, 'ask', input.supersedesId)
       const handler = route(database, initiator.role as Role, tickets, input.decisionType, input.withinAuthorization)
-      insert(database, 'ask', { id: input.id, source: input.source, initiatorRole: initiator.role, initiatorBinding: initiator.id, responseRecipient: initiator.id, handler, decisionType: input.decisionType, withinAuthorization: Number(input.withinAuthorization), policyBasis: basis(tickets), content: input.content, options: JSON.stringify(input.options), target: input.target ? JSON.stringify(input.target) : null, supersedesId: input.supersedesId ?? null, createdAt: now() })
+      insert(database, 'ask', { id: input.id, source: input.source, initiatorRole: initiator.role, initiatorBinding: initiator.id, responseRecipient: initiator.id, handler, decisionType: input.decisionType, withinAuthorization: Number(input.withinAuthorization), policyBasis: basis(tickets), content: input.content, options: JSON.stringify(input.options), presentation: input.presentation ? JSON.stringify(input.presentation) : null, target: input.target ? JSON.stringify(input.target) : null, supersedesId: input.supersedesId ?? null, createdAt: now() })
       for (const ticket of tickets)
         insert(database, 'ask_ticket', { askId: input.id, ticketId: ticket.id })
       enqueue(database, { id: `ask:${input.id}`, ticketId: tickets[0]?.id ?? null, recipient: handler, sender: initiator.id, content: input.content, kind: 'ask', askId: input.id })
@@ -262,10 +267,10 @@ export const ledger = defineService({
           fail('verification_required')
         accepted(database, tickets[0])
       }
-      const result = requireDatabase(database).prepare('UPDATE ask SET status = \'answered\', answer = ?, answerActor = ?, answerSource = ?, answeredAt = ?, answerPolicy = ?, verified = ? WHERE id = ? AND status = \'pending\'').run(input.answer, JSON.stringify(actor), actor.kind, now(), basis(tickets), Number(!!input.verified), ask.id)
+      const result = requireDatabase(database).prepare('UPDATE ask SET status = \'answered\', answer = ?, selections = ?, answerActor = ?, answerSource = ?, answeredAt = ?, answerPolicy = ?, verified = ? WHERE id = ? AND status = \'pending\'').run(input.answer, input.selections ? JSON.stringify(input.selections) : null, JSON.stringify(actor), actor.kind, now(), basis(tickets), Number(!!input.verified), ask.id)
       if (result.changes !== 1)
         fail('ask_settled')
-      retireAskRequests(database, ask.id)
+      retireAskRequests(database, ask.id, 'ask_answered')
       const recipient = ask.responseRecipient ?? ask.initiatorBinding ?? 'human'
       const message = enqueue(database, { id: `answer:${ask.id}`, ticketId: tickets[0]?.id ?? null, recipient, sender: actorKey(actor), content: input.answer, kind: 'answer', askId: ask.id })
       const receiver = recipient === 'human' ? null : load(database, 'role_binding', recipient)
@@ -285,7 +290,7 @@ export const ledger = defineService({
           fail('scope_denied')
       }
       update(database, 'ask', askId, { status: 'cancelled', cancelledAt: now(), cancelReason: `${reason} [${actorKey(actor)}]` })
-      retireAskRequests(database, askId)
+      retireAskRequests(database, askId, 'ask_cancelled')
       return required(database, 'ask', askId)
     })
   },
@@ -300,7 +305,7 @@ export const ledger = defineService({
       if (!sameTarget(target, parseTarget(ticket.deliveryTarget))) {
         for (const ask of rows(database, 'ask').filter(ask => ask.status === 'pending' && ask.target && askTickets(database, ask.id).some(ticket => ticket.id === ticketId))) {
           update(database, 'ask', ask.id, { status: 'cancelled', cancelledAt: now(), cancelReason: 'delivery_target_changed' })
-          retireAskRequests(database, ask.id)
+          retireAskRequests(database, ask.id, 'target_changed')
         }
       }
       update(database, 'ticket', ticketId, { deliveryTarget: encoded, prUrl: target.pullRequest, prState: ticket.prUrl === target.pullRequest && ticket.prState ? ticket.prState : 'open', updatedAt: now() })
@@ -316,7 +321,7 @@ export const ledger = defineService({
       if (!sameTarget(target, previous)) {
         for (const ask of rows(database, 'ask').filter(ask => ask.status === 'pending' && ask.target && askTickets(database, ask.id).some(ticket => ticket.id === ticketId))) {
           update(database, 'ask', ask.id, { status: 'cancelled', cancelledAt: now(), cancelReason: 'delivery_target_changed' })
-          retireAskRequests(database, ask.id)
+          retireAskRequests(database, ask.id, 'target_changed')
         }
       }
       update(database, 'ticket', ticketId, { deliveryTarget: JSON.stringify(target), prState: state, ciState: ciState ?? ticket.ciState, updatedAt: now() })
@@ -569,11 +574,11 @@ export const ledger = defineService({
       reasons.push('merged_awaiting_verification')
     return { ticket, reasons, dependencySatisfied }
   },
-  sendMessage(database: NexusDatabase, id: string, recipient: string, ticketId: string | null, content: string, actor: Actor): Row<'message'> {
+  sendMessage(database: NexusDatabase, id: string, recipient: string, ticketId: string | null, content: string, actor: Actor, facts?: MessageFacts): Row<'message'> {
     return transaction(database, () => {
-      if (!content.trim())
+      if (!content.trim() || (facts && (!['progress', 'ready', 'failed', 'dropped'].includes(facts.state) || !facts.summary.trim())))
         fail('invalid_config')
-      const input = { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null, source: JSON.stringify({ actor }) }
+      const input = { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null, source: JSON.stringify({ actor }), facts: facts ? JSON.stringify(facts) : null }
       const receiver = recipient === 'human' ? null : load(database, 'role_binding', recipient)
       if (!receiver && recipient !== 'human') {
         const thread = required(database, 'thread', recipient)
@@ -997,7 +1002,9 @@ function route(database: NexusDatabase, initiator: Role, tickets: Row<'ticket'>[
   return handlers.every(value => value === handlers[0]) ? handlers[0] : 'human'
 }
 
-function retireAskRequests(database: NexusDatabase, askId: string): void {
+function retireAskRequests(database: NexusDatabase, askId: string, settlement?: 'ask_answered' | 'ask_cancelled' | 'target_changed'): void {
+  if (settlement)
+    requireDatabase(database).prepare('UPDATE attention SET handledAt = ?, resolution = ? WHERE askId = ? AND reason = ? AND handledAt IS NULL').run(now(), settlement, askId, 'pending_ask')
   requireDatabase(database).prepare('UPDATE message SET supersededAt = ?, deliveryState = \'superseded\', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = \'ask\' AND supersededAt IS NULL').run(now(), askId)
   requireDatabase(database).prepare('UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN (\'pending\', \'failed\') THEN \'superseded\' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = \'ask\') AND supersededAt IS NULL').run(now(), askId)
 }
@@ -1095,10 +1102,10 @@ function nextSeq(database: NexusDatabase, table: 'message' | 'outbox'): number {
   return Number(row.seq)
 }
 
-function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null, source?: string }): Row<'message'> {
+function enqueue(database: NexusDatabase, input: { id: string, ticketId: string | null, recipient: string, sender: string, content: string, kind: string, askId: string | null, source?: string, facts?: string | null }): Row<'message'> {
   const existing = load(database, 'message', input.id)
   if (existing) {
-    if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content)
+    if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content || existing.sender !== input.sender || existing.kind !== input.kind || existing.facts !== (input.facts ?? null))
       fail('identity_conflict')
     return existing
   }

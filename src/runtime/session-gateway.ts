@@ -68,7 +68,30 @@ export function createSessionGateway(ctx: Context, retireWriters: (sessionId: st
         throw new LedgerError('closed_session')
       if (retiring.has(sessionId))
         throw new LedgerError('execution_stop_pending')
-      const message = createUserMessage({ content: [{ type: 'text', text: item.content }], source: { kind: 'nexus', messageId: item.id, source: item.source } })
+      const content = [{ type: 'text' as const, text: item.content }]
+      if (item.askId || item.ticketId || item.facts) {
+        const question = item.question
+        content.unshift({ type: 'text', text: JSON.stringify({
+          kind: 'nexus_context',
+          messageId: item.id,
+          askId: item.askId ?? null,
+          ticketId: item.ticketId ?? null,
+          facts: item.facts ? JSON.parse(item.facts) : null,
+          question: question
+            ? {
+                question: question.content,
+                ticketIds: question.ticketIds,
+                options: JSON.parse(question.options),
+                ...(question.presentation ? JSON.parse(question.presentation) : {}),
+                policyBasis: question.policyBasis,
+                state: question.status,
+                target: question.target ? JSON.parse(question.target) : null,
+                selections: question.selections ? JSON.parse(question.selections) : null,
+              }
+            : null,
+        }) })
+      }
+      const message = createUserMessage({ content, source: { kind: 'nexus', messageId: item.id, source: item.source } })
       if (mode === 'interrupt') {
         agent.cancel({ kind: 'hook', reason: 'nexus_event' }, { keepInbox: true })
         agent.followup(message)

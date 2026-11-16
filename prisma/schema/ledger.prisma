@@ -10,8 +10,10 @@ model Ask {
   policyBasis String
   content String
   options String
+  presentation String?
   status String @default("pending")
   answer String?
+  selections String?
   answerActor String?
   answerSource String?
   answeredAt String?
@@ -80,6 +82,7 @@ model RoleBinding {
   attention Attention[]
 }
 model Message {
+  facts String?
   triggerId String?
   threadId String?
   title String?

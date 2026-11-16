@@ -11,14 +11,9 @@ export const manager = definePreset({
   order: 5,
   tools: [
     sharedTools.channel.read_channel,
-    sharedTools.channel.reply_channel,
 
     sharedTools.inbox.inbox_list,
     sharedTools.inbox.inbox_kill,
-
-    tools.communicate.report,
-    tools.communicate.ask,
-    tools.communicate.escalate,
 
     tools.supervisor.supervisor_list,
 
@@ -28,7 +23,6 @@ export const manager = definePreset({
     tools.ticket.retry_ticket,
 
     tools.worker.create_worker,
-    tools.worker.send,
     tools.worker.view,
     tools.worker.cancel,
     tools.worker.rename,

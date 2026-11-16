@@ -1,5 +1,4 @@
 import * as channel from './channel'
-import * as communicate from './communicate'
 import * as inbox from './inbox'
 import * as ticket from './ticket'
 
@@ -12,4 +11,4 @@ import * as ticket from './ticket'
  * 一旦某个角色的参数或返回和别人不同（例如 `list_ticket` 主编排能按 projectId 查、
  * 项目编排只能看自己），就**不要放这里**，在各自 `tools/` 下各写一份。
  */
-export { channel, communicate, inbox, ticket }
+export { channel, inbox, ticket }

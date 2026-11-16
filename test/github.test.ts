@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GitHubChannel } from '../src/channel/github/channel'
 import { GhError } from '../src/channel/github/runner'
 import { openDatabase } from '../src/database'
+import { communication } from '../src/service/communication'
 import { ledger } from '../src/service/ledger'
 
 const human = { kind: 'web', authenticated: true, userId: 'host' } as const
@@ -648,4 +649,41 @@ describe('gitHub text answers', () => {
     comments(thread.id, [comment(25, '回答 ask-one: yes')])
     expect(await channel.collectTopic('p', thread.id)).toMatchObject({ answers: [{ result: 'ask_cancelled' }] })
   })
+})
+
+it('converts explicit multi-select text to the shared formal-answer contract without losing its question form', async () => {
+  await select()
+  const thread = topicThread()
+  const ask = ledger.createAsk(db, { id: 'multi-channel', ticketIds: [], source: thread.id, content: 'Which runtimes?', decisionType: 'important', withinAuthorization: true, options: ['node', 'bun'], presentation: { title: 'Targets', detail: 'Keep both compatible', multiSelect: true } }, main)
+  const publication = ledger.publishMessage(db, `ask:${ask.id}`, thread.id, main)
+  ledger.updateOutbox(db, publication.id, 'sent', 'verified receipt', '55')
+  comments(thread.id, [comment(21, '回答 multi-channel: default')])
+  expect(await channel.collectTopic('p', thread.id)).toMatchObject({ answers: [{ result: 'invalid_answer' }] })
+  expect(ledger.load(db, 'ask', ask.id)).toMatchObject({ status: 'pending', answer: null })
+  comments(thread.id, [comment(22, '回答 multi-channel: ["node","bun"]')])
+  expect(await channel.collectTopic('p', thread.id)).toMatchObject({ answers: [{ result: 'answered' }] })
+  expect(ledger.load(db, 'ask', ask.id)).toMatchObject({ answer: '["node","bun"]', selections: '["node","bun"]', presentation: JSON.stringify({ title: 'Targets', detail: 'Keep both compatible', multiSelect: true }), answerSource: 'github' })
+})
+
+it('reports the existing Web answer when GitHub loses a race during remote verification', async () => {
+  await select()
+  const thread = delivery()
+  const ask = ledger.createAsk(db, { id: 'racing-merge', ticketIds: ['T1'], source: thread.id, content: 'Merge?', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, workerActor)
+  const outbox = ledger.publishMessage(db, `ask:${ask.id}`, thread.id, projectActor)
+  ledger.updateOutbox(db, outbox.id, 'sent', '', 'managed')
+  facts()
+  preflight()
+  comments(thread.id, [comment(77, '回答 racing-merge: allow_merge')])
+  gh.reply('repos/org/repo/pulls/7/comments?per_page=100&page=1', [])
+  gh.reply('repos/org/repo/pulls/7/reviews?per_page=100&page=1', [])
+  const request = gh.request.bind(gh)
+  vi.spyOn(gh, 'request').mockImplementation(async (input) => {
+    const response = await request(input)
+    if (input.path === 'graphql')
+      communication.answer(db, { askId: ask.id, policyBasis: ask.policyBasis, answer: 'deny_merge', target }, human)
+    return response
+  })
+  expect(await channel.collectTopic('p', thread.id)).toMatchObject({ answers: [{ askId: ask.id, result: 'ask_answered' }] })
+  expect(ledger.load(db, 'ask', ask.id)).toMatchObject({ answer: 'deny_merge', answerSource: 'web' })
+  expect(ledger.list(db, 'message').filter(message => message.askId === ask.id && message.kind === 'answer')).toHaveLength(1)
 })

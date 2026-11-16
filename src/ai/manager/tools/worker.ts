@@ -26,41 +26,9 @@ export const create_worker = defineTool({
   },
 })
 
-export const send = defineTool({
-  name: 'send',
-  description: '往 Worker 会话里塞话。默认 queue；只有确定它正在做错、需要立刻止损才用 interrupt。',
-  parameters: {
-    workerId: {
-      type: 'string',
-      required: true,
-      description: '目标 Worker。',
-    },
-    text: {
-      type: 'string',
-      required: true,
-      description: '要说的话。',
-    },
-    mode: {
-      type: 'string',
-      enum: ['queue', 'interrupt', 'reply'],
-      required: true,
-      description: 'queue 排队一轮；interrupt 立刻打断并 steer；reply 回答它的 ask。',
-    },
-  },
-  output: {
-    schema: { type: 'string', description: '投递结果。' },
-    render: (_args, value) => [{ type: 'text', text: value }],
-  },
-  execute: async () => {
-    // TODO: queue 排到下一轮；interrupt 中止当前回合并注入；reply 对应一条 pending ask
-    // TODO: Worker 已结束时报错，不要静默丢弃
-    throw new Error('send 尚未实现')
-  },
-})
-
 export const view = defineTool({
   name: 'view',
-  description: '读 Worker 会话正文，分片返回。这不是 report —— report 是结构化状态通道。',
+  description: '读 Worker 会话正文，分片返回。这不代替 send_message 的结构化进度与交付证据。',
   parameters: {
     workerId: {
       type: 'string',

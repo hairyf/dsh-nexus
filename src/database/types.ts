@@ -150,8 +150,10 @@ export type Ask = {
     policyBasis: string;
     content: string;
     options: string;
+    presentation: string | null;
     status: Generated<string>;
     answer: string | null;
+    selections: string | null;
     answerActor: string | null;
     answerSource: string | null;
     answeredAt: string | null;
@@ -213,6 +215,7 @@ export type CiWatch = {
     updatedAt: string;
 };
 export type Message = {
+    facts: string | null;
     triggerId: string | null;
     threadId: string | null;
     title: string | null;

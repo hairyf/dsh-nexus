@@ -67,13 +67,21 @@ export interface AskInput {
   decisionType: DecisionType
   withinAuthorization: boolean
   options: string[]
+  presentation?: { title?: string, detail?: string, multiSelect?: boolean }
   target?: MergeTarget
   supersedesId?: string
+}
+export interface MessageFacts {
+  state: 'progress' | 'ready' | 'failed' | 'dropped'
+  summary: string
+  evidence?: string[]
+  acceptanceCriteria?: string
 }
 export interface AnswerInput {
   askId: string
   policyBasis: string
   answer: string
+  selections?: string[]
   target?: MergeTarget
   verified?: boolean
 }
