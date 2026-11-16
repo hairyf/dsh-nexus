@@ -3,6 +3,7 @@ import type { Actor, MergeTarget, Row } from '../../types/ledger'
 import type { AnswerResult, EnvironmentSelection, EnvironmentStatus, GhRunner, Intake, PullRequestFact } from './types'
 import { createHash } from 'node:crypto'
 import { LedgerError } from '../../database'
+import { communication } from '../../service/communication'
 import { ledger } from '../../service/ledger'
 import { policy } from '../../service/policy'
 import { GhError } from './runner'
@@ -743,8 +744,22 @@ export class GitHubChannel {
               throw new GhError('repository_requirements_unsatisfied')
           }
         }
-        ledger.answerAsk(this.database, { askId, answer: [...values][0]!, policyBasis: ask.policyBasis, target, verified }, actor)
-        result = 'answered'
+        const answer = [...values][0]!
+        let selections: string[] | undefined
+        if (ask.presentation && (JSON.parse(ask.presentation) as { multiSelect?: boolean }).multiSelect) {
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(answer)
+          }
+          catch {
+            throw new GhError('invalid_answer')
+          }
+          if (!Array.isArray(parsed) || parsed.some(value => typeof value !== 'string'))
+            throw new GhError('invalid_answer')
+          selections = parsed
+        }
+        const settlement = communication.answer(this.database, { askId, answer, selections, policyBasis: ask.policyBasis, target, verified }, actor)
+        result = settlement.accepted ? 'answered' : 'ask_answered'
       }
       catch (error) {
         if (!(error instanceof LedgerError) && (!(error instanceof GhError) || ['transport_unknown', 'interrupted', 'rate_limited', 'invalid_response', 'forbidden', 'not_found', 'not_logged_in', 'gh_missing', 'ci_unavailable', 'requirements_unavailable'].includes(error.code)))

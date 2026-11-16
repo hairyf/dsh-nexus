@@ -314,12 +314,17 @@ export const runtime = defineService({
       return ledger.updateMessage(database, messageId, 'handled')
     }
 
-    async function suspend(sessionId: string, askId: string, signal?: AbortSignal): Promise<{ status: 'pending', askId: string }> {
+    async function suspend(sessionId: string, askId: string, signal?: AbortSignal): Promise<{ status: string, askId: string }> {
       const { binding } = await resolve(sessionId, signal)
       const ask = ledger.load(database, 'ask', askId)
-      if (!ask || ask.status !== 'pending' || ask.initiatorBinding !== binding.id)
+      if (!ask || (ask.responseRecipient ?? ask.initiatorBinding) !== binding.id)
         throw new LedgerError('pending_ask_required')
+      if (ask.status !== 'pending')
+        return { status: ask.status, askId }
       await watch({ id: `ask:${askId}`, askId, ticketId: binding.ticketId ?? ledger.list(database, 'ask_ticket').find(link => link.askId === askId)?.ticketId, bindingId: binding.id, recipient: ask.handler === 'human' ? binding.role === 'worker' ? projectBinding(binding.projectId!).id : binding.id : ask.handler, reason: 'pending_ask', waitingFor: askId, progressAt: ask.createdAt }, signal)
+      const current = ledger.load(database, 'ask', askId)!
+      if (current.status !== 'pending')
+        return { status: current.status, askId }
       await interruptible(() => gateway.cancel(sessionId, `workline_suspended:${askId}`, signal), signal)
       return { status: 'pending' as const, askId }
     }

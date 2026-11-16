@@ -29,30 +29,3 @@ export const read_channel = defineTool({
     throw new Error('read_channel 尚未实现')
   },
 })
-
-export const reply_channel = defineTool({
-  name: 'reply_channel',
-  description: '按触发在对应渠道发言。锚点是 triggerId，不用猜发到哪。排队成功不等于送达。',
-  parameters: {
-    triggerId: {
-      type: 'string',
-      required: true,
-      description: '要回复的那条触发 id；回复发到这条触发所在的渠道地址。',
-    },
-    text: {
-      type: 'string',
-      required: true,
-      description: '发言正文，像人话。渠道的上限由对应 skill 说明。',
-    },
-  },
-  output: {
-    schema: { type: 'string', description: '入队结果，例如 queued 或具体状态。' },
-    render: (_args, value) => [{ type: 'text', text: value }],
-  },
-  execute: async () => {
-    // TODO: 由 triggerId 解析渠道地址，写 Outbox / 投递队列，返回排队状态
-    // TODO: 触发没有回复地址（ThreadKind=ci）时必须明确报错，不能猜一个地方发
-    // TODO: 同一票对同一地址按 seq 保序：前一条没发出去，后一条等着
-    throw new Error('reply_channel 尚未实现')
-  },
-})

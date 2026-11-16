@@ -12,8 +12,6 @@ export const supervisor = definePreset({
   tools: [
     sharedTools.channel.read_channel,
 
-    sharedTools.communicate.answer,
-
     sharedTools.inbox.inbox_list,
     sharedTools.inbox.inbox_kill,
 
@@ -21,9 +19,6 @@ export const supervisor = definePreset({
     sharedTools.ticket.note_ticket,
 
     tools.list_ticket,
-
-    tools.report,
-    tools.ask,
 
     tools.link_dependency,
   ],

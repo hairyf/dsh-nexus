@@ -11,14 +11,9 @@ export const orchestrator = definePreset({
   order: 4,
   tools: [
     sharedTools.channel.read_channel,
-    sharedTools.channel.reply_channel,
-
-    sharedTools.communicate.answer,
 
     sharedTools.inbox.inbox_list,
     sharedTools.inbox.inbox_kill,
-
-    tools.communicate.ask_user,
 
     tools.supervisor.supervisor_list,
     tools.supervisor.create_supervisor,

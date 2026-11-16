@@ -87,7 +87,6 @@ export const stop_ticket = defineTool({
   execute: async () => {
     // TODO: 校验 triggerId 存在且 human=true，否则报错
     // TODO: 写 status=cancelled + endedAt；中止在跑的 Worker 回合；残留的 pending 消息退回
-    // TODO: 工单在某个 Supervisor 下时，必须顺带 report 一次带 supervisorId
     throw new Error('stop_ticket 尚未实现')
   },
 })
