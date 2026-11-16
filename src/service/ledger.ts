@@ -539,13 +539,26 @@ export const ledger = defineService({
   },
   sendMessage(database: NexusDatabase, id: string, recipient: string, ticketId: string | null, content: string, actor: Actor): Row<'message'> {
     return transaction(database, () => {
-      const receiver = recipient === 'human' ? null : required(database, 'role_binding', recipient)
+      if (!content.trim())
+        fail('invalid_config')
+      const input = { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null, source: JSON.stringify({ actor }) }
+      const receiver = recipient === 'human' ? null : load(database, 'role_binding', recipient)
+      if (!receiver && recipient !== 'human') {
+        const thread = required(database, 'thread', recipient)
+        if (ticketId) {
+          verifyTicketPublication(database, required(database, 'ticket', ticketId), thread, actor)
+        }
+        else {
+          if (actor.kind !== 'agent' || agent(database, actor).role !== 'main')
+            fail('scope_denied')
+          verifyEnabledTopic(database, thread)
+        }
+        return enqueue(database, input)
+      }
       if (receiver && ['closed', 'unavailable'].includes(receiver.status))
         fail('target_unavailable')
       if (receiver?.projectId)
         activeProject(database, receiver.projectId)
-      if (!content.trim())
-        fail('invalid_config')
       const ticket = ticketId ? required(database, 'ticket', ticketId) : null
       if (ticket)
         activeProject(database, ticket.projectId)
@@ -561,7 +574,7 @@ export const ledger = defineService({
         if (!allowed.includes(receiver.role) || (sender.role !== 'main' && !ticket))
           fail('scope_denied')
       }
-      return enqueue(database, { id, recipient, ticketId, content, sender: actorKey(actor), kind: 'message', askId: null, source: JSON.stringify({ actor }) })
+      return enqueue(database, input)
     })
   },
   updateMessage(database: NexusDatabase, id: string, event: 'delivered' | 'read' | 'handled' | 'failed', error?: string): Row<'message'> {
@@ -686,20 +699,7 @@ export const ledger = defineService({
         fail('delivery_superseded')
       const thread = required(database, 'thread', recipient)
       if (message.ticketId) {
-        const ticket = required(database, 'ticket', message.ticketId)
-        const project = activeProject(database, ticket.projectId)
-        if (ticket.paused)
-          fail('human_paused')
-        verifyThreadRepository(database, thread, ticket.projectId)
-        const subscription = rows(database, 'ticket_thread').some(link => link.ticketId === ticket.id && link.threadId === thread.id)
-        if (thread.projectId !== project.id || !subscription)
-          fail('scope_denied')
-        if (!isHuman(database, actor)) {
-          const caller = agent(database, actor)
-          scope(database, caller, ticket)
-          if (caller.role === 'supervisor')
-            fail('scope_denied')
-        }
+        verifyTicketPublication(database, required(database, 'ticket', message.ticketId), thread, actor)
       }
       else {
         verifyMainPublication(database, message, thread, actor)
@@ -1024,13 +1024,33 @@ function satisfy(database: NexusDatabase, ticketId: string): void {
   }
 }
 
-function verifyMainPublication(database: NexusDatabase, message: Row<'message'>, thread: Row<'thread'>, actor: Actor): void {
-  if (!isHuman(database, actor) && agent(database, actor).role !== 'main')
+function verifyTicketPublication(database: NexusDatabase, ticket: Row<'ticket'>, thread: Row<'thread'>, actor: Actor): void {
+  const project = activeProject(database, ticket.projectId)
+  if (ticket.paused)
+    fail('human_paused')
+  verifyThreadRepository(database, thread, ticket.projectId)
+  const subscription = rows(database, 'ticket_thread').some(link => link.ticketId === ticket.id && link.threadId === thread.id)
+  if (thread.projectId !== project.id || !subscription)
     fail('scope_denied')
+  if (!isHuman(database, actor)) {
+    const caller = agent(database, actor)
+    scope(database, caller, ticket)
+    if (caller.role === 'supervisor')
+      fail('scope_denied')
+  }
+}
+
+function verifyEnabledTopic(database: NexusDatabase, thread: Row<'thread'>): void {
   if (!thread.projectId)
     fail('scope_denied')
   activeProject(database, thread.projectId)
   verifyThreadRepository(database, thread, thread.projectId)
+}
+
+function verifyMainPublication(database: NexusDatabase, message: Row<'message'>, thread: Row<'thread'>, actor: Actor): void {
+  if (!isHuman(database, actor) && agent(database, actor).role !== 'main')
+    fail('scope_denied')
+  verifyEnabledTopic(database, thread)
   if (message.askId) {
     const ask = required(database, 'ask', message.askId)
     const initiator = ask.initiatorBinding ? load(database, 'role_binding', ask.initiatorBinding) : null

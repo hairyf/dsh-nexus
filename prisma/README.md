@@ -30,7 +30,7 @@ Spec 01 的领域写入口是 `src/service/ledger.ts`，纯策略入口是 `src/
 
 `recordPullRequest` 只记录适配器核实的远端事实，不执行合并，也不产生批准。外部 merged 缺决定会保留 merged 并显示待核验。执行外部合并前调用 `resolveMerge`，第四参必须是本次核实的仓库要求结果；旧的 answered 状态、任意肯定文字、过期 head 或后来收紧的策略都不是许可。完成工单必须显式调用 `advanceTicket(..., 'complete', ...)`，ready/会话结束只转 review。
 
-main 的无票 Ask 可以通过已核实的 Thread→已启用、可用项目关系发布到其 source 原话题，正式答案沿用同一来源；无需也不得为发布伪造工单。main 发出的无票普通消息保存可信 Actor 来源快照，也可投递到上述已核实话题。只有当前 main 或经过核验的人可以发布这类消息；worker/project/supervisor 不获得无票出口，正文自报 main 不能建立来源身份，未知历史话题仍需人工核验。
+main 的无票 Ask 可以通过已核实的 Thread→已启用、可用项目关系发布到其 source 原话题，正式答案沿用同一来源；无需也不得为发布伪造工单。main 发出的无票普通消息保存可信 Actor 来源快照，也可直接把已登记 Thread ID 作为 sendMessage 的真实收件地址，无需伪造内部中转收件人或依赖项目会话可用，再通过 publishMessage 建立外部投递。有票的直接话题地址复用原有项目/工单/订阅权限，supervisor 和越权话题不因此获得出口。只有当前 main 或经过核验的人可以发布这类消息；worker/project/supervisor 不获得无票出口，正文自报 main 不能建立来源身份，未知历史话题仍需人工核验。
 
 Thread 的 repository 是持久事实；分诊、订阅和发布均按同一仓库身份核验。历史未知身份保持 `repository_identity_unverified`，不能根据显示名或项目归属字段猜仓库。
 
