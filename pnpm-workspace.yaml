@@ -93,6 +93,7 @@ catalogs:
   react:
     react: 18.3.1
     react-compiler-runtime: ^1.0.0
+    react-dom: 18.3.1
     react-if-lite: ^0.1.0
     recharts: ^3.10.1
   testing:
@@ -104,6 +105,7 @@ catalogs:
   types:
     '@types/node': ^26.1.1
     '@types/react': 19.3.0
+    '@types/react-dom': 19.3.0
   utils:
     '@reause/core': ^0.1.9
     croner: ^11.0.0

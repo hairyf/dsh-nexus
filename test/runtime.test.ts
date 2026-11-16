@@ -170,6 +170,21 @@ it('keeps accepted delivered read and handled distinct and suppresses duplicate 
   expect(await run.handled('s-p', 'event-1')).toMatchObject({ handledAt: expect.any(String) })
 })
 
+it('wakes the responsible project after an owner resumes without replacing execution or answering a question', async () => {
+  const { run, sessions } = await fixture()
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  ledger.createAsk(db, { id: 'resume-pending', ticketIds: ['P'], source: 'test:resume', content: 'Await owner', decisionType: 'important', withinAuthorization: true, options: [] }, { kind: 'agent', sessionId: 's-p' })
+  expect((await run.pause('P', true, 'Owner pauses', human)).stopped).toBe(true)
+  const resumed = await run.pause('P', false, 'Owner resumes', human)
+  expect(resumed.ticket).toMatchObject({ paused: 0, executionBindingId: worker.id })
+  expect(ledger.load(db, 'ask', 'resume-pending')).toMatchObject({ status: 'pending', answer: null })
+  const notice = ledger.load(db, 'message', sessions.deliveries.at(-1)!)!
+  expect(notice).toMatchObject({ recipient: 'manager-p', ticketId: 'P', kind: 'runtime:human' })
+  expect(sessions.modes.at(-1)).toBe('wake')
+  expect(ledger.list(db, 'role_binding').filter(binding => binding.ticketId === 'P')).toHaveLength(1)
+})
+
 it('queues ordinary worker progress without cancellation but interrupts a busy manager', async () => {
   const { run, sessions } = await fixture()
   await run.start('P', human)

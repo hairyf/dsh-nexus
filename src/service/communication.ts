@@ -67,12 +67,18 @@ export const communication = defineService({
       if (!input.requestId?.trim() || !input.question?.trim())
         throw new LedgerError('invalid_parameters')
       const ticketIds = input.ticketIds ?? (binding.role === 'worker' ? [binding.ticketId!] : [])
+      if (input.threadId) {
+        const thread = ledger.load(database, 'thread', input.threadId)
+        const project = thread?.projectId ? ledger.load(database, 'project', thread.projectId) : null
+        if (binding.role !== 'main' || ticketIds.length || !thread || !project?.enabled || !project.available || thread.repository !== project.repository)
+          throw new LedgerError('scope_denied')
+      }
       if (binding.role !== 'main' && !ticketIds.length)
         throw new LedgerError('ticket_required')
       if (input.multiSelect && (!input.options?.length || input.decisionType === 'merge' || input.decisionType === 'delivery'))
         throw new LedgerError('invalid_parameters')
       const id = `ask-${createHash('sha256').update(JSON.stringify([binding.role, binding.scope, input.requestId])).digest('hex').slice(0, 32)}`
-      const record = ledger.createAsk(database, { id, source: `communication:${input.requestId}`, ticketIds, content: input.question, options: input.options ?? [], presentation: { title: input.title, detail: input.detail, multiSelect: input.multiSelect ?? false }, decisionType: input.decisionType ?? 'important', withinAuthorization: true, target: input.target }, actor)
+      const record = ledger.createAsk(database, { id, source: input.threadId ?? `communication:${input.requestId}`, ticketIds, content: input.question, options: input.options ?? [], presentation: { title: input.title, detail: input.detail, multiSelect: input.multiSelect ?? false }, decisionType: input.decisionType ?? 'important', withinAuthorization: true, target: input.target }, actor)
       if (record.status !== 'pending')
         return state(record)
       const request = ledger.list(database, 'message').find(message => message.askId === id && message.kind === 'ask' && !message.supersededAt)!

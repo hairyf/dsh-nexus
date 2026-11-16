@@ -1,9 +1,80 @@
 import type { ChildProcess } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { isAbsolute, join, relative } from 'node:path'
 import process from 'node:process'
 import { x } from 'tinyexec'
+
+export interface ShellIsolation {
+  home: string
+  profile: string
+  patch: string
+  profileDirectory: string
+  env: NodeJS.ProcessEnv
+  close: () => Promise<void>
+}
+
+export async function createShellIsolation(inherited: NodeJS.ProcessEnv = process.env): Promise<ShellIsolation> {
+  const home = await realpath(await mkdtemp(join(tmpdir(), 'dsh-nexus-e2e-')))
+  const profile = inherited.DSH_E2E_PROFILE ?? 'nexus-e2e'
+  if (!/^[a-z0-9][\w-]*$/iu.test(profile)) {
+    await rm(home, { recursive: true, force: true })
+    throw new Error('DSH_E2E_PROFILE must be a simple profile name')
+  }
+  const directories = ['agents', 'artifacts', 'sessions', 'tmp', 'storages/nexus/worktrees', 'cache/npm', 'data']
+  await Promise.all(directories.map(directory => mkdir(join(home, directory), { recursive: true })))
+  const patch = join(home, 'e2e.patch.json')
+  const credentials = inherited.DSH_E2E_CREDENTIALS_FILE
+  if (credentials && (!isAbsolute(credentials) || !existsSync(credentials))) {
+    await rm(home, { recursive: true, force: true })
+    throw new Error('DSH_E2E_CREDENTIALS_FILE must name an existing absolute read-only credential reference')
+  }
+  await writeFile(patch, JSON.stringify([
+    { id: 'credentials', config: { path: credentials ?? join(home, '.credentials.yaml'), watch: false } },
+    { id: 'permission', config: { defaultPreset: 'danger-full-access' } },
+    { id: 'session-persistence-jsonl', config: { root: join(home, 'sessions') } },
+    { id: 'storage-json', config: { root: join(home, 'storages') } },
+    { id: 'attachment-local', config: { dshHome: home } },
+    { id: 'dsh-nexus', config: { dataDir: join(home, 'storages/nexus') } },
+    { id: 'llm-pi-ai', config: { providers: { magpie: {
+      apiKeyEnv: 'MAGPIE_API_KEY',
+      api: 'anthropic-messages',
+      baseURL: inherited.DSH_E2E_MAGPIE_BASE_URL,
+      models: [{ id: 'auto/deepseek-flash', name: 'DeepSeek V4.1 Flash', contextWindow: 1000000, maxTokens: 393216, input: ['text', 'image'], reasoningEfforts: { max: 'max' } }],
+    } } } },
+    { id: 'agent-default-model', config: { provider: 'magpie', model: 'auto/deepseek-flash', reasoningEffort: 'max' } },
+  ], null, 2), { mode: 0o600 })
+  return {
+    home,
+    profile,
+    patch,
+    profileDirectory: join(home, 'profiles', profile),
+    env: { ...inherited, CI: 'true', DSH_HOME: home, DSH_AGENTS_HOME: join(home, 'agents'), npm_config_cache: join(home, 'cache/npm'), XDG_CACHE_HOME: join(home, 'cache'), XDG_DATA_HOME: join(home, 'data'), TMPDIR: join(home, 'tmp'), TMP: join(home, 'tmp'), TEMP: join(home, 'tmp') },
+    close: () => rm(home, { recursive: true, force: true }),
+  }
+}
+
+export async function assertShellLandingPaths(home: string, paths: string[]): Promise<void> {
+  const root = await realpath(home)
+  for (const path of paths) {
+    const landing = await realpath(path)
+    const child = relative(root, landing)
+    if (!child || child === '..' || child.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) || isAbsolute(child))
+      throw new Error('DSH E2E storage escaped its isolated home')
+  }
+}
+
+export function processLaunchUrlFromLog(baseUrl: string, output: string): string {
+  let latest = ''
+  for (const line of output.split(/\r?\n/u)) {
+    const match = /^dsh web:\s+(https?:\/\/\S+)\s*$/u.exec(line)
+    if (match && trustedProcessLaunchUrl(baseUrl, match[1]!) !== null)
+      latest = match[1]!
+  }
+  return latest
+}
 
 export interface BrowserSeedCookie {
   name: string
@@ -155,9 +226,16 @@ export async function freePort(): Promise<number> {
 }
 
 export async function stop(process_: ChildProcess): Promise<void> {
-  if (process_.exitCode !== null)
+  if (process_.exitCode !== null || process_.signalCode !== null || process_.pid === undefined)
     return
-  if (process.platform === 'win32' && process_.pid !== undefined) {
+  const exited = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Owned DSH process did not stop within 10 seconds')), 10000)
+    process_.once('close', () => {
+      clearTimeout(timeout)
+      resolve()
+    })
+  })
+  if (process.platform === 'win32') {
     await x('taskkill', ['/pid', String(process_.pid), '/T', '/F'], {
       nodeOptions: { stdio: 'ignore' },
       timeout: 30_000,
@@ -166,7 +244,7 @@ export async function stop(process_: ChildProcess): Promise<void> {
   else {
     process_.kill('SIGTERM')
   }
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await exited
 }
 
 export async function exchangeProcessLaunchToken(

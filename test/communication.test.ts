@@ -64,6 +64,15 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true })
 })
 
+it('keeps a main triage question on its verified source topic without inventing a ticket', async () => {
+  ledger.saveChannel(db, 'github', 'GitHub', true)
+  const thread = ledger.recordThread(db, { channelId: 'github', repository: 'github.com/org/p', kind: 'issue', resourceId: '7', projectId: 'p', title: 'Triage question' })
+  const question = await service.ask('s-main', { requestId: 'triage-source', question: 'Which outcome?', options: ['investigate'], threadId: thread.id })
+  const publication = ledger.publishMessage(db, `ask:${question.askId}`, thread.id, { kind: 'agent', sessionId: 's-main' })
+  expect(publication).toMatchObject({ recipient: thread.id, ticketId: null, askId: question.askId })
+  await expect(service.ask('s-project', { requestId: 'wrong-source', question: 'Choose', ticketIds: ['T1'], threadId: thread.id })).rejects.toMatchObject({ code: 'scope_denied' })
+})
+
 it('creates a durable pending question, preserves its form, and returns the same identity on retry', async () => {
   const input = { requestId: 'choice-1', question: 'Which implementation?', options: ['first', 'second'], multiSelect: true, title: 'Implementation', detail: 'Choose the compatible approach', decisionType: 'ordinary' as const }
   const first = await service.ask('s-worker', input)

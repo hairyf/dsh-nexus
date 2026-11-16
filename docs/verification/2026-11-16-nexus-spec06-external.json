@@ -1,0 +1,173 @@
+{
+  "observedAt": "2026-11-16T21:27:40.230Z",
+  "beforeCancel": [
+    {
+      "id": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+      "status": "review",
+      "prState": "merged",
+      "executionBindingId": "b5073a51-3538-4127-8199-bf936f596df7",
+      "deliveryTarget": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/9\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"6655701243e96fc203b8e776a5f635fc827c2831\"}"
+    },
+    {
+      "id": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+      "status": "waiting",
+      "prState": null,
+      "executionBindingId": null,
+      "deliveryTarget": null
+    }
+  ],
+  "a": {
+    "id": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+    "projectId": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+    "channelId": "nexus",
+    "title": "[spec06-20261116-1647-externalcancel][A] 只读调查外部合并的 PR #9（base/head/merged/mergeSha）",
+    "description": "外部合并负例 A 票（spec06-20261116-1647-externalcancel）。PR #9 由测试 Owner 在 Nexus 无任何工单/问题/决定时外部合并；本票只读调查其真实 base/head/merged 状态与 mergeSha，project 以渠道事实与 set_delivery_target 如实记录 merged，但明确这不是 Nexus 批准、未给任何合并或交付决定。禁止假写批准、禁止调用 merge、禁止标 done、禁止任何写操作。A 报告完成后保持待核验，Ownercancel 后由临时 supervisor 再次尝试 dispatch B 以验证依赖仍不满足。",
+    "status": "cancelled",
+    "createdAt": "2026-11-16T21:10:09.791Z",
+    "updatedAt": "2026-11-16T21:27:01.836Z",
+    "acceptanceCriteria": "1) 真实命令输出：PR #9 的真实 base、head、merged 状态与 mergeSha；2) Worker 只读（Flash/max、私有 worktree），无任何写操作、无远端写；3) project 用 set_delivery_target 与渠道事实如实记录 merged，明确标注「外部事实，非 Nexus 批准」，不得假写批准；4) 不调用 merge_pull_request，不标 done；5) A 报告 merged 但无正式决定后保持待核验状态，等 Owner 处理；6) 本票与 B 构成依赖 B depends A，A 未正式完成前 B 不得启动。",
+    "authorization": "来源：当前 Native owner 用户消息（nativeSource.messageId=dc999c7d-13a7-4fb2-8a55-7f710815f0eb，rpcId=spec06-externalcancel-20261116-2110）。授权仅限：真实 Worker 只读调查 https://github.com/omdsh-dev/dsh-nexus/pull/9 —— 该 PR 是由测试 Owner 在 Nexus 无任何工单/问题/决定时外部合并的。允许 project 用 set_delivery_target 与渠道事实如实记录 merged。这是外部事实记录，不是 Nexus 批准：未给出任何合并或交付决定，禁止假写批准、禁止调用 merge、禁止把票标 done。禁止改文件、提交、推送、新建 PR、远端写、retry 或新执行。",
+    "questionLevel": "important",
+    "mergePolicy": "human_required",
+    "policyRevision": 0,
+    "pauseReason": "spec06真实取消依赖负例：PR9外部merged仅客观事实，无Nexus有效决定；明确取消调查，不是交付成功",
+    "pauseActor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+    "pausedAt": null,
+    "failureReason": null,
+    "failureBindingId": null,
+    "executionBindingId": "b5073a51-3538-4127-8199-bf936f596df7",
+    "executionAttention": null,
+    "deliveryTarget": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/9\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"6655701243e96fc203b8e776a5f635fc827c2831\"}",
+    "startedAt": "2026-11-16T21:10:34.092Z",
+    "endedAt": "2026-11-16T21:15:11.705Z",
+    "prUrl": "https://github.com/omdsh-dev/dsh-nexus/pull/9",
+    "prState": "merged",
+    "ciState": "failing",
+    "paused": 0,
+    "prepareError": null
+  },
+  "b": {
+    "id": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+    "projectId": "9916bcba-bdb5-4dac-9b9f-173962b8a7ce",
+    "channelId": "nexus",
+    "title": "[spec06-20261116-1647-externalcancel][B] 只读后续调查（硬依赖 A 正式完成，预期绝不启动）",
+    "description": "外部合并负例 B 票（spec06-20261116-1647-externalcancel）。只读后续调查，硬依赖 A 正式完成；预本负例绝不启动 B。supervisor 需在 A 被取消后再次实际尝试 dispatch B，仍应得到 dependency_unsatisfied。禁止任何写操作、禁止代答决定、禁止 retry 或替代执行。",
+    "status": "cancelled",
+    "createdAt": "2026-11-16T21:10:09.794Z",
+    "updatedAt": "2026-11-16T21:21:07.371Z",
+    "acceptanceCriteria": "1) B depends A 为硬依赖，A 未正式完成（含被 cancel、失败）时 dispatch 必须被拒为 dependency_unsatisfied；2) 取消/失败不得假当成功，不得开 B Worker；3) 任何时点不得为 B 发合并或交付决定、不得代答；4) 全程只读、Flash/max、私有 worktree；5) 最终由 Owner cancel B 收尾，届时 main 才关闭临时 supervisor。",
+    "authorization": "来源：当前 Native owner 用户消息（nativeSource.messageId=dc999c7d-13a7-4fb2-8a55-7f710815f0eb，rpcId=spec06-externalcancel-20261116-2110）。授权仅限只读后续调查，且受硬依赖约束：必须 A 正式完成后才可启动。本负例预期 B 绝不启动：A 被 Owner cancel 后仍不得开启 B Worker。禁止写文件、提交、推送、新建 PR、合并、远端写、发合并或交付决定、retry 或替代执行。",
+    "questionLevel": "important",
+    "mergePolicy": "human_required",
+    "policyRevision": 0,
+    "pauseReason": "spec06取消依赖拒绝已实际记录；B从未启动，仅清理本测试等待票",
+    "pauseActor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+    "pausedAt": null,
+    "failureReason": null,
+    "failureBindingId": null,
+    "executionBindingId": null,
+    "executionAttention": null,
+    "deliveryTarget": null,
+    "startedAt": null,
+    "endedAt": "2026-11-16T21:21:07.371Z",
+    "prUrl": null,
+    "prState": null,
+    "ciState": null,
+    "paused": 0,
+    "prepareError": null
+  },
+  "supervisor": {
+    "id": "supervisor-1706e89e2fa9626d99e91b8df95e9f44e4d331034ddc5caa965ee6e423ed9dc9",
+    "sessionId": "nexus-supervisor-1706e89e2fa9626d99e91b8df95e9f44e4d331034ddc5caa965ee6e423ed9dc9",
+    "title": "supervisor-1706e89e2fa9626d99e91b8df95e9f44e4d331034ddc5caa965ee6e423ed9dc9",
+    "reason": "spec06-20261116-1647-externalcancel 负例收尾：A(ticket-4cd983ae…dba2) 与 B(ticket-63fd4a70…48d8) 均已由 Owner 经正常 Web command 真实 cancelled（B 从未创建 executionBinding）；B 多次 dispatch 均被 dependency_unsatisfied 拒绝，cancel 未冒充 done、未开 B Worker；协调目标已按负例结论终止，关闭该 scope。不建新票/Worker、不发远端评论、不合并。",
+    "status": "closed",
+    "createdAt": "2026-11-16T21:10:12.921Z",
+    "closedAt": "2026-11-16T21:21:12.430Z"
+  },
+  "asks": [],
+  "workers": [
+    {
+      "startedAt": "2026-11-16T21:10:34.093Z",
+      "id": "b5073a51-3538-4127-8199-bf936f596df7",
+      "role": "worker",
+      "scope": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+      "sessionId": "b5073a51-3538-4127-8199-bf936f596df7",
+      "projectId": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+      "ticketId": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+      "supervisorId": null,
+      "status": "closed",
+      "activeKey": null,
+      "worktree": "/tmp/dsh-nexus-test/profiles/nexus-test/storages/nexus/worktrees/b5073a51-3538-4127-8199-bf936f596df7",
+      "branch": "nexus/b5073a51-3538-4127-8199-bf936f596df7",
+      "repository": "github.com/omdsh-dev/dsh-nexus",
+      "recoveryReason": "spec06真实取消依赖负例：PR9外部merged仅客观事实，无Nexus有效决定；明确取消调查，不是交付成功",
+      "previousBindingId": null,
+      "createdAt": "2026-11-16T21:10:33.933Z",
+      "updatedAt": "2026-11-16T21:15:11.717Z",
+      "closedAt": "2026-11-16T21:15:11.717Z",
+      "baseCommit": "cef1d6ca86214d263f68d6610c8d629398f8acee"
+    }
+  ],
+  "nativeSupervisor": {
+    "selection": [
+      {
+        "keys": [
+          "provider",
+          "model",
+          "reasoningEffort",
+          "maxTokens"
+        ],
+        "provider": "magpie",
+        "model": "auto/deepseek-flash",
+        "reasoningEffort": "max",
+        "parametersKeys": [],
+        "toolNames": [
+          "run_code"
+        ]
+      }
+    ],
+    "hasMore": false,
+    "dependencyCalls": [
+      {
+        "name": "dispatch_ticket",
+        "at": 1794863421776,
+        "seq": 44,
+        "isError": true,
+        "ticketId": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: dependency_unsatisfied"
+          }
+        ]
+      },
+      {
+        "name": "dispatch_ticket",
+        "at": 1794863723510,
+        "seq": 218,
+        "isError": true,
+        "ticketId": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: dependency_unsatisfied"
+          }
+        ]
+      },
+      {
+        "name": "dispatch_ticket",
+        "at": 1794863762620,
+        "seq": 368,
+        "isError": true,
+        "ticketId": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: dependency_unsatisfied"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -33,7 +33,7 @@ beforeEach(async () => {
     inputs.set(id, [])
     return [id, {
       status: 'idle',
-      session: { header: { cwd: directory } },
+      session: { header: { cwd: directory }, snapshotEvents: () => [] },
       inbox,
       followup: (input: Input) => {
         inbox.nextTurn.push(input)

@@ -111,7 +111,19 @@ export const webPanel = defineService({
     }
 
     function resolve(): PanelModel {
-      return { ...overview(), inbox: inbox(), topics: topics(), channels: channels(), settings: settings() }
+      const bindings = ledger.list(database, 'role_binding').filter(item => item.status !== 'closed')
+      const unavailable = bindings.find(item => item.status === 'unavailable')
+      const failed = ledger.list(database, 'message').find(item => item.error && !item.readAt && !item.handledAt && !item.supersededAt)
+      const outbox = ledger.list(database, 'outbox').find(item => ['failed', 'unknown'].includes(item.state) && !item.supersededAt)
+      const startup = ports.startup()
+      const run: PanelModel['run'] = startup.state !== 'ready'
+        ? { state: startup.state === 'starting' ? 'initializing' : 'initialization_failed', reason: startup.reason }
+        : failed || outbox
+          ? { state: 'delivery_failed', reason: failed?.error ?? outbox?.error ?? 'remote_result_unknown' }
+          : unavailable
+            ? { state: 'unavailable', reason: unavailable.recoveryReason }
+            : { state: bindings.some(item => item.status === 'running') ? 'running' : 'idle', reason: null }
+      return { ...overview(), run, inbox: inbox(), topics: topics(), channels: channels(), settings: settings() }
     }
 
     function ticket(id: string): TicketDetailModel {

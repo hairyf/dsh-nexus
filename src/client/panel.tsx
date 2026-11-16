@@ -101,6 +101,12 @@ export function Panel(): ReactNode {
             <div>
               <h1 className="text-xl leading-7 font-semibold">{t('title')}</h1>
               <p className="mt-1 text-[13px] text-[var(--dsw-alias-label-secondary)]">{t('desc')}</p>
+              {model && (
+                <p role="status" className="mt-1 text-[var(--dsw-alias-label-secondary)]">
+                  {{ initializing: '正在恢复运行责任', initialization_failed: '运行初始化失败', idle: '运行空闲', running: '正在执行', unavailable: '运行不可用', delivery_failed: '投递失败' }[model.run.state]}
+                  {model.run.reason ? ` · ${model.run.reason}` : ''}
+                </p>
+              )}
             </div>
             <Button variant="outline" size="sm" disabled={resource.isLoading} onClick={() => void refresh()}>{resource.isLoading ? '正在与账本对账…' : '刷新服务端状态'}</Button>
           </div>

@@ -92,34 +92,12 @@ it('installs only two communication verbs for trusted roles and keeps native hel
   await run.dispose()
 })
 
-it('does not install Nexus role tools on a same-preset helper or sidechat from the host entry point', async () => {
+it('owns one lifecycle without a preset-name agent-created hook', async () => {
   const { apply } = await import('../src')
-  const listeners = new Map<string, ((event: unknown) => unknown)[]>()
-  const effects: Promise<unknown>[] = []
-  const native = { name: 'send_message', marker: 'original-native-parent-child-definition' }
-  const scope = new Map<string, unknown>([['send_message', native]])
-  const ctx = {
-    get: () => ({ register: async () => () => {} }),
-    effect: (operation: () => unknown) => { effects.push(Promise.resolve(operation())) },
-    on: (name: string, handler: (event: unknown) => unknown) => { listeners.set(name, [...listeners.get(name) ?? [], handler]) },
-  }
-  await apply(ctx as never)
-  await Promise.all(effects)
-  const child = {
-    session: { id: 'native-child', header: { agentPreset: 'worker', origin: 'subagent', parentSession: 'parent' } },
-    ctx: {
-      effect: (operation: () => unknown) => operation(),
-      tools: { register: (tool: ToolDefinition) => {
-        scope.set(tool.name, tool)
-        return () => scope.delete(tool.name)
-      } },
-    },
-  }
-  for (const handler of listeners.get('agent/created') ?? [])
-    await handler({ agent: child })
-  child.session.header.origin = 'sidechat'
-  for (const handler of listeners.get('agent/created') ?? [])
-    await handler({ agent: child })
-  expect([...scope.keys()]).toEqual(['send_message'])
-  expect(scope.get('send_message')).toBe(native)
+  const effect = vi.fn()
+  const on = vi.fn()
+  await apply({ effect, on } as never)
+  expect(effect).toHaveBeenCalledOnce()
+  expect(effect.mock.calls[0][1]).toBe('nexus:lifecycle')
+  expect(on).not.toHaveBeenCalled()
 })

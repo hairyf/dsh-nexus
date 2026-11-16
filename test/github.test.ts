@@ -292,6 +292,23 @@ describe('gitHub managed comment delivery', () => {
     expect(ledger.load(db, 'ask', 'ask-two')).toMatchObject({ status: 'pending' })
   })
 
+  it('does not PATCH its own comment again after observing non-answer echoes', async () => {
+    await select()
+    const thread = topicThread()
+    const outbox = question('echo', thread.id, false)
+    gh.reply('POST repos/org/repo/issues/7/comments', nexusComment(55, 'receipt'))
+    expect(await channel.publish(outbox.id)).toMatchObject({ ok: true })
+    const body = String(gh.calls.find(call => call.method === 'POST')!.body!.body)
+    const remote = nexusComment(55, body)
+    comments(thread.id, [remote, comment(88, 'Context only, not a formal answer')])
+    expect(await channel.collectTopic('p', thread.id)).toMatchObject({ ok: true, answers: [] })
+    gh.reply('repos/org/repo/issues/comments/55', remote)
+    expect(await channel.publish(outbox.id)).toMatchObject({ ok: true, remoteId: '55' })
+    expect(gh.calls.filter(call => call.method === 'POST')).toHaveLength(1)
+    expect(gh.calls.filter(call => call.method === 'PATCH')).toHaveLength(0)
+    expect(ledger.load(db, 'ask', 'echo')).toMatchObject({ status: 'pending', answer: null })
+  })
+
   it('reconciles an unknown create by provider id and marker without sending a second comment', async () => {
     await select()
     const thread = topicThread()
@@ -343,7 +360,7 @@ const target = { repository, pullRequest: 'https://github.com/org/repo/pull/7', 
 const projectActor = { kind: 'agent', sessionId: 'project-session' } as const
 const workerActor = { kind: 'agent', sessionId: 'worker-session' } as const
 
-function delivery() {
+function delivery(answer = true) {
   ledger.bindRole(db, { id: 'project', role: 'project', projectId: 'p', sessionId: 'project-session' })
   ledger.createTicket(db, { id: 'T1', projectId: 'p', channelId: 'github', title: 'Fix', authorization: 'Fix only', acceptanceCriteria: 'Tests pass' }, main)
   ledger.bindRole(db, { id: 'worker', role: 'worker', projectId: 'p', ticketId: 'T1', sessionId: 'worker-session', repository, branch: 'isolated-work', worktree: directory }, projectActor)
@@ -354,7 +371,8 @@ function delivery() {
   ledger.subscribeThread(db, 'T1', thread.id, projectActor)
   ledger.recordAcceptance(db, { id: 'acceptance', ticketId: 'T1', executionBindingId: 'worker', scope: 'Fix', evidence: ['12 tests passed'], basis: 'Tests pass', verdict: 'accepted' }, projectActor)
   const ask = ledger.createAsk(db, { id: 'merge-ask', ticketIds: ['T1'], source: thread.id, content: 'Merge?', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, workerActor)
-  ledger.answerAsk(db, { askId: ask.id, answer: 'allow_merge', policyBasis: ask.policyBasis, target, verified: true }, human)
+  if (answer)
+    ledger.answerAsk(db, { askId: ask.id, answer: 'allow_merge', policyBasis: ask.policyBasis, target, verified: true }, human)
   return thread
 }
 
@@ -372,6 +390,147 @@ function preflight(patch: Record<string, unknown> = {}) {
   gh.reply('repos/org/repo/rules/branches/isolated-base?per_page=100&page=1', [])
   gh.reply('POST graphql', { data: { repository: { nameWithOwner: 'Org/Repo', pullRequest: { number: 7, headRefOid: 'head-one', baseRefName: 'isolated-base', mergeable: 'MERGEABLE', mergeStateStatus: 'CLEAN', reviewDecision: null, baseRef: { branchProtectionRule: null }, commits: { nodes: [{ commit: { oid: 'head-one', statusCheckRollup: { state: 'SUCCESS' } } }] }, ...patch } } } })
 }
+
+describe('gitHub read-only merge preflight', () => {
+  it('throws a useful error when no merge ask target can be resolved', async () => {
+    await select()
+    question('ordinary-ask', topicThread().id, false)
+    gh.calls = []
+    await expect(channel.preflight('unknown-ask')).rejects.toMatchObject({ code: 'invalid_merge_decision' })
+    await expect(channel.preflight('ordinary-ask')).rejects.toBeInstanceOf(GhError)
+    await expect(channel.preflight('ordinary-ask')).rejects.toMatchObject({ code: 'invalid_merge_decision' })
+    expect(gh.calls).toEqual([])
+  })
+
+  it('requires the exact PR thread subscription for the linked ticket', async () => {
+    await select()
+    const thread = delivery(false)
+    ledger.subscribeThread(db, 'T1', thread.id, projectActor, false)
+    gh.calls = []
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'topic_mismatch' })
+    expect(gh.calls.map(call => [call.method, call.path])).toEqual([['GET', 'user'], ['GET', 'repos/org/repo']])
+  })
+
+  it.each(['project_unavailable', 'account_mismatch', 'repository_mismatch'])('rejects unavailable project environment %s', async (reason) => {
+    await select()
+    delivery(false)
+    if (reason === 'project_unavailable')
+      ledger.updateProject(db, 'p', false, human)
+    else if (reason === 'account_mismatch')
+      gh.reply('user', { id: 2, login: 'other-account', type: 'User' })
+    else
+      gh.reply('repos/org/repo', { id: 101, full_name: 'Org/Other' })
+    gh.calls = []
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason })
+    expect(gh.calls.filter(call => call.method !== 'GET')).toEqual([])
+    expect(gh.calls.filter(call => call.path.startsWith('repos/org/repo/pulls/'))).toEqual([])
+  })
+
+  it.each([
+    ['repository_requirements_unsatisfied', { mergeStateStatus: 'BLOCKED' }],
+    ['repository_requirements_unsatisfied', { reviewDecision: 'CHANGES_REQUESTED' }],
+    ['preflight_target_changed', { headRefOid: 'head-two' }],
+    ['preflight_target_changed', { baseRefName: 'other-base' }],
+    ['repository_requirements_unsatisfied', { baseRef: { branchProtectionRule: { requiresStatusChecks: true, requiredStatusCheckContexts: ['missing'], requiredStatusChecks: [], requiresApprovingReviews: false, requiredDeploymentEnvironments: [] } } }],
+  ])('enforces repository protection rejection %s', async (reason, protection) => {
+    await select()
+    delivery(false)
+    facts()
+    preflight(protection)
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason })
+    expect(gh.calls.filter(call => call.method !== 'GET').map(call => [call.method, call.path])).toEqual([['POST', 'graphql']])
+  })
+
+  it('rejects unsupported active rules and does not bypass inaccessible protections', async () => {
+    await select()
+    delivery(false)
+    facts()
+    preflight()
+    gh.reply('repos/org/repo/rules/branches/isolated-base?per_page=100&page=1', [{ type: 'merge_queue', parameters: {} }])
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'unsupported_repository_requirement' })
+    gh.reply('repos/org/repo/rules/branches/isolated-base?per_page=100&page=1', new GhError('forbidden'))
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'forbidden' })
+    expect(gh.calls.filter(call => call.method !== 'GET').map(call => [call.method, call.path])).toEqual([['POST', 'graphql'], ['POST', 'graphql']])
+  })
+
+  it('distinguishes absent checks from an unavailable current CI read', async () => {
+    await select()
+    delivery(false)
+    facts()
+    gh.reply('repos/org/repo/commits/head-one/check-runs?per_page=100&page=1', { total_count: 0, check_runs: [] })
+    preflight({ commits: { nodes: [{ commit: { oid: 'head-one', statusCheckRollup: null } }] } })
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: true })
+    gh.reply('repos/org/repo/commits/head-one/check-runs?per_page=100&page=1', new GhError('forbidden'))
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'ci_unavailable' })
+    expect(gh.calls.filter(call => call.method !== 'GET').map(call => [call.method, call.path])).toEqual([['POST', 'graphql']])
+  })
+
+  it('rejects an ask whose linked ticket now targets a different delivery', async () => {
+    await select()
+    delivery(false)
+    ledger.setDeliveryTarget(db, 'T1', { ...target, head: 'head-two' }, projectActor)
+    facts()
+    preflight()
+    gh.calls = []
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'stale_target' })
+    expect(gh.calls).toEqual([])
+    expect(ledger.load(db, 'ticket', 'T1')!.deliveryTarget).toBe(JSON.stringify({ ...target, head: 'head-two' }))
+  })
+
+  it('rejects failing current-head CI even without configured required checks or a rollup', async () => {
+    await select()
+    delivery(false)
+    facts()
+    gh.reply('repos/org/repo/commits/head-one/check-runs?per_page=100&page=1', { total_count: 1, check_runs: [{ id: 501, name: 'unit', head_sha: 'head-one', status: 'completed', conclusion: 'failure', started_at: baseline, completed_at: baseline, app: { id: 1 } }] })
+    preflight({ commits: { nodes: [{ commit: { oid: 'head-one', statusCheckRollup: null } }] } })
+    expect(await channel.preflight('merge-ask')).toEqual({ target, verified: false, reason: 'repository_requirements_unsatisfied' })
+    expect(gh.calls.filter(call => call.method !== 'GET').map(call => [call.method, call.path])).toEqual([['POST', 'graphql']])
+    expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ ciState: 'failing', status: 'running' })
+    expect(ledger.load(db, 'ask', 'merge-ask')).toMatchObject({ status: 'pending', answer: null })
+  })
+
+  it.each([
+    ['head_changed', { head: { sha: 'head-two' } }, { ...target, head: 'head-two' }],
+    ['base_changed', { base: { ref: 'other-base', repo: { full_name: 'Org/Repo' } } }, { ...target, base: 'other-base' }],
+    ['pull_request_closed', { state: 'closed' }, target],
+    ['pull_request_closed', { state: 'closed', merged: true }, target],
+  ])('rejects current PR %s without an external write', async (reason, remote, currentTarget) => {
+    await select()
+    delivery(false)
+    facts(remote)
+    gh.reply('repos/org/repo/commits/head-two/check-runs?per_page=100&page=1', { total_count: 0, check_runs: [] })
+    gh.reply('repos/org/repo/commits/head-two/status?per_page=100&page=1', { sha: 'head-two', total_count: 0, statuses: [] })
+    preflight()
+    expect(await channel.preflight('merge-ask')).toEqual({ target: currentTarget, verified: false, reason })
+    expect(gh.calls.filter(call => call.method !== 'GET')).toEqual([])
+    expect(ledger.load(db, 'ask', 'merge-ask')!.status).not.toBe('answered')
+  })
+
+  it('verifies a pending exact target without remote writes or answering the ask', async () => {
+    await select()
+    delivery(false)
+    facts()
+    preflight()
+    gh.calls = []
+    const signal = new AbortController().signal
+    expect(await channel.preflight('merge-ask', signal)).toEqual({ target, verified: true })
+    expect(gh.calls.map(call => [call.method, call.path])).toEqual([
+      ['GET', 'user'],
+      ['GET', 'repos/org/repo'],
+      ['GET', 'repos/org/repo/pulls/7'],
+      ['GET', 'repos/org/repo/commits/head-one/check-runs?per_page=100&page=1'],
+      ['GET', 'repos/org/repo/commits/head-one/status?per_page=100&page=1'],
+      ['POST', 'graphql'],
+      ['GET', 'repos/org/repo/rules/branches/isolated-base?per_page=100&page=1'],
+    ])
+    expect(gh.calls.every(call => call.signal === signal)).toBe(true)
+    expect(gh.calls.find(call => call.path === 'graphql')!.body!.query).toMatch(/^query\(/)
+    expect(ledger.load(db, 'ask', 'merge-ask')).toMatchObject({ status: 'pending', answer: null })
+    expect(channel.status('p').filter(row => row.name.startsWith('merge_status:'))).toEqual([])
+    const ask = ledger.load(db, 'ask', 'merge-ask')!
+    expect(ledger.answerAsk(db, { askId: ask.id, answer: 'allow_merge', policyBasis: ask.policyBasis, target, verified: true }, human)).toMatchObject({ status: 'answered' })
+  })
+})
 
 describe('gitHub PR facts and external merge', () => {
   it.each(['pause', 'policy', 'evidence'])('rechecks current ledger %s before performing the merge action', async (change) => {

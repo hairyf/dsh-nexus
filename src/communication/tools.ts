@@ -19,6 +19,7 @@ export function createCommunicationTools(service: Communication, sessionId: stri
       name: 'ask',
       description: '创建持久问题或用 askId 上交同一问题。requestId 对同一个决定保持不变，重启/重试复用。pending 不代表批准，受影响工作线停止，其他已授权工单可继续。',
       parameters: {
+        threadId: { type: 'string', description: 'main 无票分诊问题的已登记原话题；不用于改变工单范围。' },
         requestId: { type: 'string', description: '新问题的稳定请求标识；重试必须复用。' },
         askId: { type: 'string', description: '上交已有问题时只传 askId，不改原问题。' },
         question: { type: 'string', description: '实际问题正文。' },

@@ -12,6 +12,7 @@ export interface SourceContext {
   entries: { origin: string, at: string, text: string }[]
 }
 export interface WebPorts {
+  startup: () => { state: 'starting' | 'ready' | 'failed', reason: string | null }
   runtime: Pick<ReturnType<typeof runtime.create>, 'dispatch' | 'pause' | 'cancel' | 'retry' | 'projectChanged'>
   communication: Pick<Communication, 'answer'>
   discoverProjects: () => Promise<ProjectInput[]>
@@ -70,6 +71,7 @@ export interface WebSettings extends Omit<Row<'setting'>, 'whitelist'> {
   whitelist: string[]
 }
 export interface PanelModel extends OverviewModel {
+  run: { state: 'initializing' | 'initialization_failed' | 'idle' | 'running' | 'unavailable' | 'delivery_failed', reason: string | null }
   inbox: InboxModel
   topics: TopicsModel
   channels: ChannelModel[]

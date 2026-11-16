@@ -358,6 +358,43 @@ export class GitHubChannel {
     }
   }
 
+  async preflight(askId: string, signal?: AbortSignal): Promise<{ target: MergeTarget, verified: boolean, reason?: string }> {
+    const ask = ledger.load(this.database, 'ask', askId)
+    const links = ledger.list(this.database, 'ask_ticket').filter(link => link.askId === askId)
+    if (ask?.decisionType !== 'merge' || !ask.target || links.length !== 1)
+      throw new GhError('invalid_merge_decision')
+    const target: MergeTarget = JSON.parse(ask.target)
+    let currentTarget = target
+    try {
+      const ticket = ledger.load(this.database, 'ticket', links[0]!.ticketId)!
+      const deliveryTarget: MergeTarget | null = ticket.deliveryTarget ? JSON.parse(ticket.deliveryTarget) : null
+      if (!deliveryTarget || deliveryTarget.repository !== target.repository || deliveryTarget.pullRequest !== target.pullRequest || deliveryTarget.head !== target.head || deliveryTarget.base !== target.base)
+        throw new GhError('stale_target')
+      const environment = await this.verifyEnvironment(ticket.projectId, signal)
+      if (!environment.available)
+        throw new GhError(environment.reason!)
+      if (target.repository !== environment.repository)
+        throw new GhError('repository_mismatch')
+      const number = pullNumber(target)
+      const thread = ledger.list(this.database, 'thread').find(row => row.repository === environment.repository && row.kind === 'pull' && resourceNumber(row) === number && row.projectId === ticket.projectId)
+      if (!thread || !this.subscriptions(thread.id).includes(ticket.id))
+        throw new GhError('topic_mismatch')
+      const fact = await this.readPullRequest(environment, thread, signal)
+      currentTarget = fact.target
+      if (fact.state !== 'open')
+        throw new GhError('pull_request_closed')
+      if (fact.target.head !== target.head)
+        throw new GhError('head_changed')
+      if (fact.target.base !== target.base)
+        throw new GhError('base_changed')
+      const verified = await this.repositoryRequirements(environment, fact, signal)
+      return { target: currentTarget, verified, ...(!verified ? { reason: 'repository_requirements_unsatisfied' } : {}) }
+    }
+    catch (error) {
+      return { target: currentTarget, verified: false, reason: failure(error) }
+    }
+  }
+
   async merge(askId: string, signal?: AbortSignal): Promise<{ ok: boolean, reason?: string, state?: string }> {
     const ask = ledger.load(this.database, 'ask', askId)
     const links = ledger.list(this.database, 'ask_ticket').filter(link => link.askId === askId)
@@ -624,7 +661,7 @@ export class GitHubChannel {
     if (commit.oid !== fact.target.head)
       return false
     if (commit.statusCheckRollup === null)
-      return !checksRequired
+      return !checksRequired && (!evidence.checks.length || fact.ciState === 'passing')
     return object(commit.statusCheckRollup).state === 'SUCCESS' && fact.ciState === 'passing'
   }
 
@@ -679,7 +716,7 @@ export class GitHubChannel {
     }
     for (const message of publications.filter(item => !item.askId && !item.supersededAt).slice(-5))
       sections.push(message.content)
-    const rejected = ledger.list(this.database, 'source_state').filter(row => row.channelId === channelId && row.name.startsWith(key(thread.repository!, `answer_result:${thread.id}:`))).slice(-5)
+    const rejected = ledger.list(this.database, 'source_state').filter(row => row.channelId === channelId && row.name.startsWith(key(thread.repository!, `answer_result:${thread.id}:`)) && (JSON.parse(row.value) as AnswerResult[]).length > 0).slice(-5)
     for (const result of rejected)
       sections.push(`答复结果: ${result.value}`)
     return { body: sections.join('\n\n'), asks }

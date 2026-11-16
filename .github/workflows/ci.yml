@@ -24,7 +24,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install DSH and Playwright
-        run: pnpm install -g @deepseek-ai/dsh@0.2.1-rc.5 && pnpm exec playwright install chromium
+        run: pnpm install -g @deepseek-ai/dsh@0.2.2-rc.1 && pnpm exec playwright install chromium
 
       - name: Lint and typecheck
         run: pnpm run lint && pnpm run typecheck
@@ -36,6 +36,8 @@ jobs:
         run: pnpm run test
 
       - name: Test (E2E)
-        run: pnpm run test:e2e
+        run: node ./node_modules/vitest/vitest.mjs run --project e2e
         env:
           DSH_E2E_REQUIRED: '1'
+          DSH_E2E_MAGPIE_BASE_URL: ${{ vars.DSH_E2E_MAGPIE_BASE_URL }}
+          MAGPIE_API_KEY: ${{ secrets.MAGPIE_API_KEY }}
