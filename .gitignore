@@ -18,3 +18,5 @@ temp
 !**/skills/*/**
 **/skills/npm-*
 prisma/database
+# exec wave worktrees
+.worktrees/
