@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { playwright } from '@vitest/browser-playwright'
 import { defineConfig } from 'vitest/config'
 import { closeDsh, getDshErrors, inDsh, launchDsh, openDshPage } from './test/__setup__/commands'
@@ -18,7 +19,8 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright(),
+      screenshotFailures: false,
+      provider: playwright({ launchOptions: { executablePath: process.env.DSH_E2E_CHROMIUM_EXECUTABLE } }),
       instances: [{ browser: 'chromium' }],
       commands: {
         launchDsh,

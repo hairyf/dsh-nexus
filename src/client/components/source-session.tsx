@@ -1,6 +1,6 @@
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { useAsyncState } from '@reause/core'
 import { useState } from 'react'
 import { nexus } from '../apis/nexus'
@@ -81,7 +81,7 @@ export function SourceSession({ sessionId }: {
           variant="ghost"
           onClick={() => {
             try {
-              ctx.uiWorkspace.openSession(SessionId(sessionId))
+              ctx.uiWorkspace.openSession(sessionId as SessionId)
             }
             catch (error) {
               setError(error instanceof Error ? error.message : String(error))

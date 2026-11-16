@@ -5,6 +5,7 @@ export interface Question {
   requestId: string
   question: string
   ticketIds?: string[]
+  threadId?: string
   options?: string[]
   multiSelect?: boolean
   title?: string

@@ -64,9 +64,11 @@ export const ledger = defineService({
     update(database, 'project', id, { enabled: Number(enabled), attentionReason: null, updatedAt: now() })
     return required(database, 'project', id)
   },
-  createTicket(database: NexusDatabase, input: TicketInput, actor: Actor): Row<'ticket'> {
+  createTicket(database: NexusDatabase, input: TicketInput, actor: Actor, source?: { kind: 'native_user', sessionId: string, messageId: string, rpcId: string }): Row<'ticket'> {
     return transaction(database, () => {
       manager(database, actor, ['main'])
+      if (source && (actor.kind !== 'agent' || actor.sessionId !== source.sessionId))
+        fail('unauthorized_source')
       activeProject(database, input.projectId)
       if (!input.id || !input.title.trim() || !input.authorization.trim() || !input.acceptanceCriteria.trim())
         fail('invalid_config')
@@ -79,6 +81,8 @@ export const ledger = defineService({
       const settings = ledger.getSettings(database)
       insert(database, 'channel', { id: input.channelId, name: input.channelId, createdAt: now() }, true)
       insert(database, 'ticket', { ...input, questionLevel: settings.defaultQuestionLevel, mergePolicy: settings.defaultMergePolicy, status: 'waiting', createdAt: now(), updatedAt: now() })
+      if (source)
+        ledger.saveSourceState(database, input.channelId, `native_source:${input.id}`, JSON.stringify(source))
       return required(database, 'ticket', input.id)
     })
   },
@@ -541,9 +545,14 @@ export const ledger = defineService({
     return required(database, 'ticket', ticketId)
   },
   linkTickets(database: NexusDatabase, ticketId: string, relatedId: string, kind: 'depends' | 'relates', actor: Actor): void {
-    manager(database, actor, ['main'])
-    required(database, 'ticket', ticketId)
-    required(database, 'ticket', relatedId)
+    manager(database, actor, ['main', 'supervisor'])
+    const ticket = required(database, 'ticket', ticketId)
+    const related = required(database, 'ticket', relatedId)
+    if (actor.kind === 'agent') {
+      const caller = agent(database, actor)
+      scope(database, caller, ticket)
+      scope(database, caller, related)
+    }
     if (ticketId === relatedId)
       fail('invalid_config')
     insert(database, 'ticket_link', { ticketId, relatedId, kind, createdAt: now() }, true)

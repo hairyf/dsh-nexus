@@ -188,6 +188,8 @@ export const runtime = defineService({
     async function pause(ticketId: string, paused: boolean, reason: string, actor: Actor, signal?: AbortSignal): Promise<{ ticket: Row<'ticket'>, stopped: boolean, reason?: string }> {
       checkInterrupt(signal)
       const ticket = ledger.pauseTicket(database, ticketId, paused, reason, actor)
+      if (!paused)
+        await intake({ id: `resume:${ticket.id}:${ticket.updatedAt}`, source: `ticket:${ticket.id}:resume`, recipient: projectBinding(ticket.projectId).id, ticketId, kind: actor.kind === 'agent' ? 'message' : 'human', content: JSON.stringify({ ticketId, paused: false, reason, actor, instruction: 'Read existing answers and delivery facts; continue only authorized unfinished work without replacing the execution or inventing approval.' }) }, signal)
       return { ticket, ...(paused ? await stop(ticketId, reason, signal, actor) : { stopped: false }) }
     }
 
@@ -627,6 +629,6 @@ export const runtime = defineService({
       cancellations.clear()
     }
 
-    return { bind, resolve, dispatch, start, pause, cancel, retry, intake, deliver, read, handled, suspend, recover, boot, startQueued, closeSupervisor, observe, projectChanged, watch, progress, settleAttention, remind, dispose }
+    return { bind, resolve, dispatch, start, retire: stop, pause, cancel, retry, intake, deliver, read, handled, suspend, recover, boot, startQueued, closeSupervisor, observe, projectChanged, watch, progress, settleAttention, remind, dispose }
   },
 })

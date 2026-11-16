@@ -1,0 +1,101 @@
+{
+  "at": "2026-11-16T21:31:38.453Z",
+  "run": {
+    "state": "idle",
+    "reason": null
+  },
+  "projects": [
+    {
+      "id": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+      "enabled": 0
+    },
+    {
+      "id": "9916bcba-bdb5-4dac-9b9f-173962b8a7ce",
+      "enabled": 0
+    }
+  ],
+  "tickets": [
+    {
+      "id": "ticket-bd94d978914c05bc81b9882d57a15a12847e04f78d3e7643f0b53974f8c6a9d9",
+      "status": "done"
+    },
+    {
+      "id": "ticket-e9d1f6c5003af177f59a9eb3f5a1e89bbe05f142e994fd88179d1c2faded0262",
+      "status": "done"
+    },
+    {
+      "id": "ticket-11dffef120a00785213c611e1d1b1bb599356d2b9afd79d8b39ab74525aec43e",
+      "status": "done"
+    },
+    {
+      "id": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "status": "done"
+    },
+    {
+      "id": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "status": "done"
+    },
+    {
+      "id": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "status": "cancelled"
+    },
+    {
+      "id": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+      "status": "cancelled"
+    },
+    {
+      "id": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+      "status": "cancelled"
+    }
+  ],
+  "pending": [],
+  "workers": [
+    {
+      "id": "202cae63-aa12-427c-a25e-d91ebc858ca3",
+      "status": "closed",
+      "closedAt": "2026-11-16T17:57:18.774Z"
+    },
+    {
+      "id": "92419204-d511-4627-848b-1de9fca492ce",
+      "status": "closed",
+      "closedAt": "2026-11-16T18:38:23.646Z"
+    },
+    {
+      "id": "e87d0875-1462-4762-8164-2e0050bea2ca",
+      "status": "closed",
+      "closedAt": "2026-11-16T19:10:16.885Z"
+    },
+    {
+      "id": "05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "status": "closed",
+      "closedAt": "2026-11-16T20:08:58.019Z"
+    },
+    {
+      "id": "7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "status": "closed",
+      "closedAt": "2026-11-16T20:12:34.223Z"
+    },
+    {
+      "id": "2809c08b-ffef-4d4c-9ce2-8853c115d2d9",
+      "status": "closed",
+      "closedAt": "2026-11-16T20:48:13.941Z"
+    },
+    {
+      "id": "b5073a51-3538-4127-8199-bf936f596df7",
+      "status": "closed",
+      "closedAt": "2026-11-16T21:15:11.717Z"
+    }
+  ],
+  "supervisors": [
+    {
+      "id": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+      "status": "closed",
+      "closedAt": "2026-11-16T20:12:52.584Z"
+    },
+    {
+      "id": "supervisor-1706e89e2fa9626d99e91b8df95e9f44e4d331034ddc5caa965ee6e423ed9dc9",
+      "status": "closed",
+      "closedAt": "2026-11-16T21:21:12.430Z"
+    }
+  ]
+}

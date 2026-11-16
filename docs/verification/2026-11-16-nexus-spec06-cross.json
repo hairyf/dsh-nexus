@@ -1,0 +1,269 @@
+{
+  "observedAt": "2026-11-16T20:56:36.591Z",
+  "sources": [
+    {
+      "name": "native_source:ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "value": {
+        "kind": "native_user",
+        "sessionId": "7be193ce-4bdb-4571-82c1-b2592eb2a7a2",
+        "messageId": "a2a92e59-0ee4-4e98-80ab-6fc9e5a4c5c4",
+        "rpcId": "spec06-cross-20261116-2005"
+      }
+    },
+    {
+      "name": "native_source:ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "value": {
+        "kind": "native_user",
+        "sessionId": "7be193ce-4bdb-4571-82c1-b2592eb2a7a2",
+        "messageId": "a2a92e59-0ee4-4e98-80ab-6fc9e5a4c5c4",
+        "rpcId": "spec06-cross-20261116-2005"
+      }
+    }
+  ],
+  "tickets": [
+    {
+      "id": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "projectId": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+      "channelId": "nexus",
+      "title": "[spec06-20261116-1647-cross][B] dsh-nexus 只读调查：pwd/分支/git status 并引用 A 结论",
+      "description": "跨项目只读验收 B 票。目标仓库 github.com/omdsh-dev/dsh-nexus（项目 project，16884f02-b7fb-4fd9-b8cb-822608fd4883）。只读报告 pwd、当前分支、git status --short，并引用 A 票（项目 9916bcba…，octocat/hello-world）已验收的 HEAD 与 README 首行结论。B depends A：A 未实际 done 前不得派 B Worker。严格只读，无任何远端写。",
+      "status": "done",
+      "createdAt": "2026-11-16T20:06:03.261Z",
+      "updatedAt": "2026-11-16T20:12:34.210Z",
+      "acceptanceCriteria": "1) 真实 Worker 报告 pwd、当前分支、git status --short 的真实命令输出；2) 明确引用 A 票经验收的调查结论（HEAD 与 README 首行），不是复述自报；3) 真实命令证据齐全，不接受自报；4) 全程只读：无写入、无提交、无推送、无 PR、无合并、无远端写、未改全局配置；5) Worker 使用宿主专用 worktree 与 Flash/max；6) 硬依赖：A 未 done 前不得派 B Worker，dispatch 会被拒为 dependency_unsatisfied；7) 项目记录真实验收并发正式无 PR delivery ask，由关联两票的临时 supervisor 按 automatic 策略代答，记录真实代理来源，不冒充本人。",
+      "authorization": "来源：当前 Native owner 用户消息（nativeSource.messageId=a2a92e59-0ee4-4e98-80ab-6fc9e5a4c5c4，rpcId=spec06-cross-20261116-2005），非 GitHub 触发器。授权范围：对 github.com/omdsh-dev/dsh-nexus 做只读调查，报告真实 pwd、当前分支、git status --short，并引用 A 票已验收的调查结果。只读调查，禁止写文件、提交、推送、建 PR、合并、改全局配置；仅使用宿主专用 worktree；Worker 使用 Flash/max 路由；验收必须有真实命令输出，不许远端写。",
+      "questionLevel": "automatic",
+      "mergePolicy": "follow_question_level",
+      "policyRevision": 0,
+      "pauseReason": null,
+      "pauseActor": null,
+      "pausedAt": null,
+      "failureReason": null,
+      "failureBindingId": null,
+      "executionBindingId": "7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "executionAttention": null,
+      "deliveryTarget": null,
+      "startedAt": "2026-11-16T20:09:29.177Z",
+      "endedAt": "2026-11-16T20:12:34.210Z",
+      "prUrl": null,
+      "prState": null,
+      "ciState": null,
+      "paused": 0,
+      "prepareError": null
+    },
+    {
+      "id": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "projectId": "9916bcba-bdb5-4dac-9b9f-173962b8a7ce",
+      "channelId": "nexus",
+      "title": "[spec06-20261116-1647-cross][A] octocat/Hello-World 只读调查：HEAD 与 README 首行",
+      "description": "跨项目只读验收 A 票。目标仓库 github.com/octocat/hello-world（项目 readonly-project，9916bcba-bdb5-4dac-9b9f-173962b8a7ce）。只读报告两件事：HEAD 提交、README 第一行。严格只读，不产生任何远端写。本票与 B 票（ticket 待建，项目 16884f02…）构成跨项目依赖：B 依赖 A 的已验收结果。项目编排需派真实 Worker（Flash/max、宿主专用 worktree），不手工冒充；验收后发正式无 PR delivery ask，由关联两票的临时 supervisor 按 automatic 策略代答。",
+      "status": "done",
+      "createdAt": "2026-11-16T20:06:03.259Z",
+      "updatedAt": "2026-11-16T20:08:58.004Z",
+      "acceptanceCriteria": "1) 真实 Worker 报告 HEAD（git rev-parse HEAD 的真实输出）与 README 第一行（真实读取命令输出）；2) 证据为真实命令与其输出，不接受自报；3) 全程只读：无文件写入、无提交、无推送、无 PR、无合并、无远端写、未改全局配置；4) Worker 使用宿主专用 worktree 与 Flash/max；5) 项目记录真实验收并发正式无 PR delivery ask，按本票策略由负责 supervisor 代答并记录真实代理来源，不冒充本人。",
+      "authorization": "来源：当前 Native owner 用户消息（nativeSource.messageId=a2a92e59-0ee4-4e98-80ab-6fc9e5a4c5c4，rpcId=spec06-cross-20261116-2005），非 GitHub 触发器。授权范围：对 github.com/octocat/hello-world 做只读调查，报告真实 HEAD 与 README 第一行。只读调查，禁止写文件、提交、推送、建 PR、合并、改全局配置；仅使用宿主专用 worktree；Worker 使用 Flash/max 路由；验收必须有真实命令输出，不许远端写。",
+      "questionLevel": "automatic",
+      "mergePolicy": "follow_question_level",
+      "policyRevision": 0,
+      "pauseReason": null,
+      "pauseActor": null,
+      "pausedAt": null,
+      "failureReason": null,
+      "failureBindingId": null,
+      "executionBindingId": "05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "executionAttention": null,
+      "deliveryTarget": null,
+      "startedAt": "2026-11-16T20:06:25.450Z",
+      "endedAt": "2026-11-16T20:08:58.004Z",
+      "prUrl": null,
+      "prState": null,
+      "ciState": null,
+      "paused": 0,
+      "prepareError": null
+    }
+  ],
+  "supervisor": {
+    "id": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+    "sessionId": "nexus-supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+    "title": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+    "reason": "spec06-cross 收尾：两票均 done、无未决决定，关闭临时 supervisor。",
+    "status": "closed",
+    "createdAt": "2026-11-16T20:06:06.149Z",
+    "closedAt": "2026-11-16T20:12:52.584Z"
+  },
+  "links": [
+    {
+      "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "relatedId": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "kind": "depends",
+      "createdAt": "2026-11-16T20:06:12.698Z",
+      "satisfiedAt": "2026-11-16T20:08:58.005Z",
+      "wakeupId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5:ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571"
+    }
+  ],
+  "scope": [
+    {
+      "supervisorId": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+      "ticketId": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "createdAt": "2026-11-16T20:06:06.150Z"
+    },
+    {
+      "supervisorId": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+      "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "createdAt": "2026-11-16T20:06:06.150Z"
+    }
+  ],
+  "workers": [
+    {
+      "startedAt": "2026-11-16T20:06:25.451Z",
+      "id": "05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "role": "worker",
+      "scope": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "sessionId": "05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "projectId": "9916bcba-bdb5-4dac-9b9f-173962b8a7ce",
+      "ticketId": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571",
+      "supervisorId": null,
+      "status": "closed",
+      "activeKey": null,
+      "worktree": "/tmp/dsh-nexus-test/profiles/nexus-test/storages/nexus/worktrees/05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "branch": "nexus/05c71a73-6c62-43d4-a89f-745ed9c5da1e",
+      "repository": "github.com/octocat/hello-world",
+      "recoveryReason": "delivery_complete: 无 PR 交付已完成：acceptance-db080b09…（accepted）由 binding 05c71a73 产出并经主线程独立只读复核；正式无 PR 交付决定 ask-71022131… 由账本策略确定的 supervisor-397ab4… 代答 accept_delivery（automatic，非冒充本人）。无 PR/合并事实（只读调查）。",
+      "previousBindingId": null,
+      "createdAt": "2026-11-16T20:06:25.349Z",
+      "updatedAt": "2026-11-16T20:08:58.019Z",
+      "closedAt": "2026-11-16T20:08:58.019Z",
+      "baseCommit": "7fd1a60b01f91b314f59955a4e4d4e80d8edf11d"
+    },
+    {
+      "startedAt": "2026-11-16T20:09:29.178Z",
+      "id": "7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "role": "worker",
+      "scope": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "sessionId": "7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "projectId": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+      "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "supervisorId": null,
+      "status": "closed",
+      "activeKey": null,
+      "worktree": "/tmp/dsh-nexus-test/profiles/nexus-test/storages/nexus/worktrees/7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "branch": "nexus/7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2",
+      "repository": "github.com/omdsh-dev/dsh-nexus",
+      "recoveryReason": "delivery_complete: 正式交付决定 ask-cf8ba7bdb9d14217de16c2fd1351d37f 已按本票 automatic 策略由代理作出 accept_delivery（真实 answerSource 记录于账本），验收 accepted，B 票只读交付证据与 A 验收记录引用均已由编排独立核对。",
+      "previousBindingId": null,
+      "createdAt": "2026-11-16T20:09:29.017Z",
+      "updatedAt": "2026-11-16T20:12:34.223Z",
+      "closedAt": "2026-11-16T20:12:34.223Z",
+      "baseCommit": "cef1d6ca86214d263f68d6610c8d629398f8acee"
+    }
+  ],
+  "asks": [
+    {
+      "id": "ask-71022131ba8dd0bb6cb3356b2aa2add6",
+      "source": "communication:spec06-cross-20261116-2005:ticket-b0f4:delivery-1",
+      "initiatorRole": "project",
+      "initiatorBinding": "6af93d8d-4776-4dd7-bbf1-a841ab313367",
+      "responseRecipient": "6af93d8d-4776-4dd7-bbf1-a841ab313367",
+      "handler": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+      "decisionType": "delivery",
+      "withinAuthorization": 1,
+      "policyBasis": "[{\"id\":\"ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571\",\"questionLevel\":\"automatic\",\"mergePolicy\":\"follow_question_level\",\"revision\":0,\"executionBindingId\":\"05c71a73-6c62-43d4-a89f-745ed9c5da1e\"}]",
+      "content": "请对 A 票交付作出正式无 PR 交付决定：accept_delivery 或 reject_delivery。",
+      "options": "[\"accept_delivery\",\"reject_delivery\"]",
+      "status": "answered",
+      "answer": "accept_delivery",
+      "answerActor": "{\"kind\":\"agent\",\"sessionId\":\"nexus-supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b\"}",
+      "answerSource": "agent",
+      "answeredAt": "2026-11-16T20:08:46.906Z",
+      "answerPolicy": "[{\"id\":\"ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571\",\"questionLevel\":\"automatic\",\"mergePolicy\":\"follow_question_level\",\"revision\":0,\"executionBindingId\":\"05c71a73-6c62-43d4-a89f-745ed9c5da1e\"}]",
+      "target": null,
+      "verified": 0,
+      "createdAt": "2026-11-16T20:08:23.148Z",
+      "cancelledAt": null,
+      "cancelReason": null,
+      "supersedesId": null,
+      "escalations": 0,
+      "lastEscalatedAt": null,
+      "presentation": "{\"title\":\"A 票无 PR 交付决定：octocat/Hello-World 只读调查（HEAD + README 首行）\",\"detail\":\"交付物：只读调查报告（无代码变更、无 PR）。\\nHEAD：7fd1a60b01f91b314f59955a4e4d4e80d8edf11d（Worker `git rev-parse HEAD` 真实输出；主线程独立复核一致；与 `git ls-remote origin HEAD` 一致）。\\nREADME 首行：Hello World!（`head -n 1 README`、`git show HEAD:README | head -n 1` 真实输出；`od -An -tx1` = 48 65 6c 6c 6f 20 57 6f 72 6c 64 21 0a）。\\n只读核验：工作区干净（status 为空）、origin/master..HEAD=0、远端 refs/heads/nexus/* 为空（未推送）、无 PR/合并、未改全局配置。\\n隔离与路由：runtime 分配的宿主专用 worktree …/worktrees/05c71a73-…（分支 nexus/05c71a73-…）；会话元数据 modelSelection.lastUsed = magpie / auto/deepseek-flash / max。\\n验收记录：acceptance-db080b09e19eea829d1f29840427dcf54bb7f830855bf75c5923b039fd31ac1e（verdict=accepted）。\\n本票策略 questionLevel=automatic / mergePolicy=follow_question_level，由账本策略确定的负责 supervisor 代答；请在答复中明示真实代理来源（不冒充本人）。\\n已知依赖：B 票（另一项目 16884f02…）依赖本票已验收结果。\",\"multiSelect\":false}",
+      "selections": null
+    },
+    {
+      "id": "ask-cf8ba7bdb9d14217de16c2fd1351d37f",
+      "source": "communication:delivery-ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+      "initiatorRole": "project",
+      "initiatorBinding": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "responseRecipient": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "handler": "supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b",
+      "decisionType": "delivery",
+      "withinAuthorization": 1,
+      "policyBasis": "[{\"id\":\"ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5\",\"questionLevel\":\"automatic\",\"mergePolicy\":\"follow_question_level\",\"revision\":0,\"executionBindingId\":\"7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2\"}]",
+      "content": "B 票（dsh-nexus 只读调查）Worker 已交付并经编排独立复跑核对：pwd=/tmp/dsh-nexus-test/profiles/nexus-test/storages/nexus/worktrees/7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2，分支=nexus/7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2，HEAD=cef1d6c；git status --short 为空、diff 为空、远端无该分支、gh pr list 为空，无写入/提交/推送/PR/合并/远端写/全局配置改动。已明确引用 A 票验收记录 acceptance-db080b09e19eea829d1f29840427dcf54bb7f830855bf75c5923b039fd31ac1e（ticket-b0f4b239…，done）的结论：HEAD=7fd1a60b01f91b314f59955a4e4d4e80d8edf11d，README 首行=\"Hello World!\"。请依本票 automatic / follow_question_level 策略作出正式交付决定：accept_delivery（接受该无 PR 只读交付）或 reject_delivery（不接受）。",
+      "options": "[\"accept_delivery\",\"reject_delivery\"]",
+      "status": "answered",
+      "answer": "accept_delivery",
+      "answerActor": "{\"kind\":\"agent\",\"sessionId\":\"nexus-supervisor-397ab4eefed72287a3b7abd5ade0ea5de57172b7f8ed1136deb267d8c7cc037b\"}",
+      "answerSource": "agent",
+      "answeredAt": "2026-11-16T20:12:30.245Z",
+      "answerPolicy": "[{\"id\":\"ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5\",\"questionLevel\":\"automatic\",\"mergePolicy\":\"follow_question_level\",\"revision\":0,\"executionBindingId\":\"7599cc42-e7d5-4f61-9601-6a1b1d8d4ae2\"}]",
+      "target": null,
+      "verified": 0,
+      "createdAt": "2026-11-16T20:12:05.790Z",
+      "cancelledAt": null,
+      "cancelReason": null,
+      "supersedesId": null,
+      "escalations": 0,
+      "lastEscalatedAt": null,
+      "presentation": "{\"title\":\"交付决定：B 票无 PR 只读调查 (spec06-20261116-1647-cross，automatic)\",\"detail\":\"工单 ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5（来源 Native owner 消息 a2a92e59-0ee4-4e98-80ab-6fc9e5a4c5c4）。acceptance 已记录（verdict=accepted）。B 依赖 A：A status=done（endedAt 20:08:58Z）后才 dispatch。决定方由策略决定（本票 automatic，由关联 A/B 的临时 supervisor 代答），答复须记录真实代理来源，不冒充本人。\",\"multiSelect\":false}",
+      "selections": null
+    }
+  ],
+  "nativeSupervisor": {
+    "selection": [
+      {
+        "keys": [
+          "provider",
+          "model",
+          "reasoningEffort",
+          "maxTokens"
+        ],
+        "provider": "magpie",
+        "model": "auto/deepseek-flash",
+        "reasoningEffort": "max",
+        "parametersKeys": [],
+        "toolNames": [
+          "run_code"
+        ]
+      }
+    ],
+    "hasMore": false,
+    "dependencyCalls": [
+      {
+        "name": "link_dependency",
+        "isError": false,
+        "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+        "dependsOn": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571"
+      },
+      {
+        "name": "dispatch_ticket",
+        "isError": true,
+        "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5",
+        "error": [
+          {
+            "type": "text",
+            "text": "Error: dependency_unsatisfied"
+          }
+        ]
+      },
+      {
+        "name": "dispatch_ticket",
+        "isError": false,
+        "ticketId": "ticket-b0f4b239adb4be8f125a371cd7f0c52acf23863fac06df996353dea027ec9571"
+      },
+      {
+        "name": "dispatch_ticket",
+        "isError": false,
+        "ticketId": "ticket-8441073cc5ae93bbe4b06666ef340da29e2e99f71d426eee33ee9e65fd0029e5"
+      }
+    ]
+  }
+}

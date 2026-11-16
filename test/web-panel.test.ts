@@ -67,7 +67,7 @@ beforeEach(async () => {
     throw new Error('network_forbidden')
   } })
 
-  ports = { runtime: run, communication: communication.create(db, run), discoverProjects: async () => discovered, sourceContext: async sessionId => ({ sessionId, available: false, reason: 'source_missing', entries: [] }), githubStatus: projectId => github.status(projectId), verifyMerge: async ask => ({ target: JSON.parse(ask.target!), verified: true }), reconcileExternal: async () => 'unknown' }
+  ports = { startup: () => ({ state: 'ready', reason: null }), runtime: run, communication: communication.create(db, run), discoverProjects: async () => discovered, sourceContext: async sessionId => ({ sessionId, available: false, reason: 'source_missing', entries: [] }), githubStatus: projectId => github.status(projectId), verifyMerge: async ask => ({ target: JSON.parse(ask.target!), verified: true }), reconcileExternal: async () => 'unknown' }
 
   panel = webPanel.create(db, ports)
 })
@@ -82,6 +82,22 @@ afterEach(async () => {
   vi.useRealTimers()
 
   await rm(directory, { recursive: true, force: true })
+})
+
+it('distinguishes idle, running, unavailable and delivery failure from durable facts', () => {
+  ports.startup = () => ({ state: 'starting', reason: null })
+  expect(panel.resolve().run.state).toBe('initializing')
+  ports.startup = () => ({ state: 'failed', reason: 'preset_unavailable' })
+  expect(panel.resolve().run).toMatchObject({ state: 'initialization_failed', reason: 'preset_unavailable' })
+  ports.startup = () => ({ state: 'ready', reason: null })
+  expect(panel.resolve().run).toMatchObject({ state: 'idle', reason: null })
+  ledger.updateBinding(db, 'project', 'running', 'turn started')
+  expect(panel.resolve().run.state).toBe('running')
+  ledger.updateBinding(db, 'project', 'unavailable', 'model_unavailable')
+  expect(panel.resolve().run).toMatchObject({ state: 'unavailable', reason: 'model_unavailable' })
+  const message = ledger.sendMessage(db, 'failed-delivery', 'main', 'T1', 'Delivery', owner)
+  ledger.updateMessage(db, message.id, 'failed', 'session_unavailable')
+  expect(panel.resolve().run).toMatchObject({ state: 'delivery_failed', reason: 'session_unavailable' })
 })
 
 it('projects only human pending questions and preserves who waits, form and reminders on the original ask', () => {
@@ -377,7 +393,13 @@ it('opens only the explicit source sidechat without answering or settling the pe
 
   const openSession = vi.fn()
 
-  const ctx = { betterSidebar: { getTab: () => ({ id: 'sidechat' }), isTabEnabled: () => true, openTab }, uiWorkspace: { openSession } } as unknown as ClientContext
+  const sidebar = { getTab: () => ({ id: 'sidechat' }), isTabEnabled: () => true, openTab }
+
+  const ctx = { get: () => sidebar, uiWorkspace: { openSession } } as unknown as ClientContext
+
+  Object.defineProperty(ctx, 'betterSidebar', { get: () => {
+    throw new Error('cannot get property betterSidebar without inject')
+  } })
 
   openSidechat(ctx, 's-main')
 
@@ -387,7 +409,7 @@ it('opens only the explicit source sidechat without answering or settling the pe
 
   expect(panel.inbox().pending[0]).toMatchObject({ id: 'sidechat', status: 'pending', answer: null })
 
-  const disabled = { ...ctx, betterSidebar: { ...ctx.betterSidebar!, isTabEnabled: () => false } }
+  const disabled = { ...ctx, get: () => ({ ...sidebar, isTabEnabled: () => false }) } as unknown as ClientContext
 
   expect(() => openSidechat(disabled, 's-main')).toThrow('禁用')
 
