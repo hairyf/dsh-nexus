@@ -91,7 +91,6 @@ CREATE TABLE "role_binding" (
 );
 
 CREATE TABLE "message" (
-    "destinationThreadId" TEXT,
     "triggerId" TEXT,
     "threadId" TEXT,
     "title" TEXT,
@@ -115,7 +114,6 @@ CREATE TABLE "message" (
     "nextRetryAt" TEXT,
     CONSTRAINT "message_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "ticket" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "message_triggerId_fkey" FOREIGN KEY ("triggerId") REFERENCES "trigger" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "message_destinationThreadId_fkey" FOREIGN KEY ("destinationThreadId") REFERENCES "thread" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "message_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "thread" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "message_askId_fkey" FOREIGN KEY ("askId") REFERENCES "ask" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );

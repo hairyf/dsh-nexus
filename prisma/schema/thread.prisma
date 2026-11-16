@@ -22,8 +22,7 @@ enum TriggerKind {
 model Thread {
   repository String?
   attentionReason String?
-  messages Message[] @relation("MessageSource")
-  destinations Message[] @relation("MessageDestination")
+  messages Message[]
   id        String     @id
   channelId String
   projectId String?

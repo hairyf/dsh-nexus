@@ -213,7 +213,6 @@ export type CiWatch = {
     updatedAt: string;
 };
 export type Message = {
-    destinationThreadId: string | null;
     triggerId: string | null;
     threadId: string | null;
     title: string | null;
