@@ -20,6 +20,7 @@ export interface MergeTarget {
   head: string
 }
 export type Row<T extends keyof DB> = Selectable<DB[T]>
+export type IdTable = { [T in keyof DB]: DB[T] extends { id: unknown } ? T : never }[keyof DB]
 export interface ProjectInput {
   id: string
   name: string

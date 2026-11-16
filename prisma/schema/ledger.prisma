@@ -3,6 +3,7 @@ model Ask {
   source String
   initiatorRole String
   initiatorBinding String?
+  responseRecipient String?
   handler String
   decisionType String
   withinAuthorization Boolean
@@ -22,6 +23,7 @@ model Ask {
   cancelReason String?
   supersedesId String?
   escalations Int @default(0)
+  lastEscalatedAt String?
   @@map("ask")
   tickets AskTicket[]
   messages Message[]
@@ -73,6 +75,13 @@ model RoleBinding {
   attention Attention[]
 }
 model Message {
+  triggerId String?
+  threadId String?
+  title String?
+  source String?
+  supersededAt String?
+  trigger Trigger? @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  thread Thread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
   id String @id
   seq Int @unique
   ticketId String?
@@ -165,4 +174,17 @@ model Attention {
   ticket Ticket? @relation(fields: [ticketId], references: [id])
   ask Ask? @relation(fields: [askId], references: [id])
   binding RoleBinding? @relation(fields: [bindingId], references: [id])
+}
+model TicketTransition {
+  id String @id
+  ticketId String
+  event String
+  fromStatus String
+  toStatus String
+  actor String
+  reason String
+  bindingId String?
+  at String
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  @@map("ticket_transition")
 }

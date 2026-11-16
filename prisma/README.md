@@ -18,7 +18,7 @@ Spec 01 的领域写入口是 `src/service/ledger.ts`，纯策略入口是 `src/
 
 旧项目不按显示名或 channel 猜仓库，全部保留原 ID、工作区、会话与历史引用，记录原 channel 身份证据，禁用并标记 `repository_identity_unverified`；人工确认仓库后才能启用。旧工单固定补 `important + human_required`；旧全局设置无论 autoMerge 原值为何都转 `human_required`。新安装默认 `important + follow_question_level`、4 个 Worker、10 分钟提醒。已结束工单不补验收或批准。
 
-旧 Inbox 被迁成同 ID 的 Message；其中问题另迁成同 ID 的唯一 Ask，保留来源、问题、历史答案和回答角色快照。历史 `user` 不转成已核验的人，无法核实的旧收件地址显式标记待恢复；旧 Inbox 表删除，不保留第二份答案。历史顺序按旧 seq、时间、ID 稳定归一，不让旧的重复 seq 导致丢消息。只有新流程的显式决定、当前验收证据与真实 merged 事实能完成新的交付。
+旧 Inbox 被迁成同 ID 的 Message；其中问题另迁成同 ID 的唯一 Ask，保留来源、问题、历史答案、回答角色快照及升级次数/时间。所有消息种类均保留 triggerId、threadId、title 外键/字段和不可变来源 JSON，不只为 Ask 留来源。历史 `user` 不转成已核验的人，无法核实的旧收件地址显式标记待恢复；旧 Inbox 表删除，不保留第二份答案。历史顺序按旧 seq、时间、ID 稳定归一，不让旧的重复 seq 导致丢消息。只有新流程的显式决定、当前验收证据与真实 merged 事实能完成新的交付。
 
 ## 信任边界与下游须知
 
@@ -28,22 +28,26 @@ Spec 01 的领域写入口是 `src/service/ledger.ts`，纯策略入口是 `src/
 
 `recordPullRequest` 只记录适配器核实的远端事实，不执行合并，也不产生批准。外部 merged 缺决定会保留 merged 并显示待核验。执行外部合并前调用 `resolveMerge`，第四参必须是本次核实的仓库要求结果；旧的 answered 状态、任意肯定文字、过期 head 或后来收紧的策略都不是许可。完成工单必须显式调用 `advanceTicket(..., 'complete', ...)`，ready/会话结束只转 review。
 
-正式答案必须回传当前 `policyBasis`，一次事务内结清 Ask 并写入回送消息。升级沿用原 askId；实质目标变化会取消旧 pending Ask，已答旧决定保留但不能用于新目标。已读和处理完通知均不回答 Ask。答复落账后不要求人在恢复时重答。
+Thread 的 repository 是持久事实；分诊、订阅和发布均按同一仓库身份核验。历史未知身份保持 `repository_identity_unverified`，不能根据显示名或项目归属字段猜仓库。
 
-Message 的 acceptedAt、deliveredAt、readAt、handledAt 是不同事实。同票同收件责任按 seq 保序，不同票互不阻塞。失败保留次数、原因、重试时间；角色替换只能显式移交相同责任的未读消息和 pending Ask。Outbox 的 unknown 必须由适配器先核对远端关联，不能盲目重发；sent 需要远端 ID，已知成功不能再次发送。
+执行入口统一使用 `dispatchTicket` 受理 queued、`startTicket` 原子记录 Ticket.running/首次 startedAt 与 Worker 运行事实、`retryTicket` 在确认旧 Worker 关闭后重新排队；均校验 project/人工授权、项目可用、暂停、依赖与待答问题，不改变既有工单授权。`ticket_transition` 保留操作者、原因、前后状态与执行绑定。`updateBinding` 不能把 idle Worker 直接改成 running 来绕过实际启动入口。
+
+正式答案必须回传当前 `policyBasis`，一次事务内结清 Ask 并写入回送消息。升级沿用原 askId；实质目标变化会取消旧 pending Ask，已答旧决定保留但不能用于新目标。已读和处理完通知均不回答 Ask。Ask.initiatorBinding 保留原发起者审计，responseRecipient 保存已核验的当前回送责任；transferMessages 必须核验 previousBindingId、同角色/范围和旧会话关闭，并在同一事务迁移该回送地址。发起方尚未恢复时，答案仍一次性落账，回送消息显式失败为 initiator_requires_recovery，恢复后移交原消息，不要求重答。
+
+Message 的 acceptedAt、deliveredAt、readAt、handledAt 是不同事实。同票同收件责任按 seq 保序，不同票互不阻塞。失败保留次数、原因、重试时间；角色替换只能显式移交相同责任的未读消息和 pending Ask。策略变更或升级改变 handler 时，在同一事务将旧待办标为 superseded 并向新责任人落一条 pending 投递；消费方必须排除 supersededAt 非空的消息，原 readAt/handledAt 不伪造为已处理。handler 不变的策略编辑不额外造通知。不可用的处理者会在创建/升级/策略重路由前被拒绝，整次写入回滚。Outbox 的 unknown 必须由适配器先核对远端关联，不能盲目重发；sent 需要远端 ID，已知成功不能再次发送。
 
 只在成功新交付时写 dependency satisfaction 与 durable wakeup，历史 done、failed、cancelled 不冒充成功。Attention 保存等待依据、有效进展时间、提醒目标/时间、失败、升级与处置；它不负责定时器，不改变 Ask、暂停或授权。
 
 ## 导出的共享判断与账本签名
 
-以下方法均为同步账本操作，数据库打开为异步。`Row<T>` 是生成的 Kysely Selectable 类型；输入类型取自 `src/types/ledger.ts`。
+以下方法均为同步账本操作，数据库打开为异步。`Row<T>` 是生成的 Kysely Selectable 类型；输入类型取自 `src/types/ledger.ts`。load 仅接收确有 id 主键的 IdTable；复合主键事实通过 list 或其专用领域方法访问，不能假装存在 id 列。
 
 ```text
 openDatabase(stateDirectory: string): Promise<NexusDatabase>
 resolveDataDirectory(options?: { dataDir?: string }, dshHome?: string, profileDirectory?: string): string
 policy.resolve(snapshot: PolicySnapshot, initiator: Role, decision: DecisionType, withinAuthorization: boolean, hasSupervisor?: boolean): 'human' | 'main' | 'project' | 'supervisor'
 policy.peek(actor: Actor, whitelist: readonly string[]): boolean
-load<T extends keyof DB>(database: NexusDatabase, table: T, id: string): Row<T> | null
+load<T extends IdTable>(database: NexusDatabase, table: T, id: string): Row<T> | null
 list<T extends keyof DB>(database: NexusDatabase, table: T): Row<T>[]
 getSettings(database: NexusDatabase): Row<'setting'>
 updateSettings(database: NexusDatabase, patch: SettingsPatch, actor: Actor): Row<'setting'>
@@ -62,6 +66,9 @@ setDeliveryTarget(database: NexusDatabase, ticketId: string, target: MergeTarget
 recordPullRequest(database: NexusDatabase, ticketId: string, target: MergeTarget, state: 'open' | 'merged' | 'closed', ciState?: Row<'ticket'>['ciState']): Row<'ticket'>
 recordAcceptance(database: NexusDatabase, input: AcceptanceInput, actor: Actor): Row<'acceptance'>
 resolveMerge(database: NexusDatabase, askId: string, target: MergeTarget, repositoryVerified: boolean): boolean
+dispatchTicket(database: NexusDatabase, ticketId: string, actor: Actor): Row<'ticket'>
+startTicket(database: NexusDatabase, ticketId: string, bindingId: string, actor: Actor): Row<'ticket'>
+retryTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'>
 advanceTicket(database: NexusDatabase, ticketId: string, event: 'ready' | 'session_ended' | 'failed' | 'complete', actor: Actor, reason = ''): Row<'ticket'>
 pauseTicket(database: NexusDatabase, ticketId: string, paused: boolean, reason: string, actor: Actor): Row<'ticket'>
 cancelTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'>

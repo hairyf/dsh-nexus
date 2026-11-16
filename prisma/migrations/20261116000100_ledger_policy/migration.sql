@@ -1,12 +1,29 @@
 CREATE TEMP TABLE nexus_old_project AS SELECT id, channelId FROM project;
+ALTER TABLE thread ADD COLUMN repository TEXT;
+ALTER TABLE thread ADD COLUMN attentionReason TEXT;
+UPDATE thread SET attentionReason = 'repository_identity_unverified';
 ALTER TABLE "ticket_link" ADD COLUMN "satisfiedAt" TEXT;
 ALTER TABLE "ticket_link" ADD COLUMN "wakeupId" TEXT;
+
+CREATE TABLE "ticket_transition" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "ticketId" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "fromStatus" TEXT NOT NULL,
+    "toStatus" TEXT NOT NULL,
+    "actor" TEXT NOT NULL,
+    "reason" TEXT NOT NULL,
+    "bindingId" TEXT,
+    "at" TEXT NOT NULL,
+    CONSTRAINT "ticket_transition_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "ticket" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
 
 CREATE TABLE "ask" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "source" TEXT NOT NULL,
     "initiatorRole" TEXT NOT NULL,
     "initiatorBinding" TEXT,
+    "responseRecipient" TEXT,
     "handler" TEXT NOT NULL,
     "decisionType" TEXT NOT NULL,
     "withinAuthorization" BOOLEAN NOT NULL,
@@ -25,7 +42,8 @@ CREATE TABLE "ask" (
     "cancelledAt" TEXT,
     "cancelReason" TEXT,
     "supersedesId" TEXT,
-    "escalations" INTEGER NOT NULL DEFAULT 0
+    "escalations" INTEGER NOT NULL DEFAULT 0,
+    "lastEscalatedAt" TEXT
 );
 
 CREATE TABLE "ask_ticket" (
@@ -72,6 +90,11 @@ CREATE TABLE "role_binding" (
 );
 
 CREATE TABLE "message" (
+    "triggerId" TEXT,
+    "threadId" TEXT,
+    "title" TEXT,
+    "source" TEXT,
+    "supersededAt" TEXT,
     "id" TEXT NOT NULL PRIMARY KEY,
     "seq" INTEGER NOT NULL,
     "ticketId" TEXT,
@@ -89,6 +112,8 @@ CREATE TABLE "message" (
     "error" TEXT,
     "nextRetryAt" TEXT,
     CONSTRAINT "message_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "ticket" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "message_triggerId_fkey" FOREIGN KEY ("triggerId") REFERENCES "trigger" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "message_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "thread" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "message_askId_fkey" FOREIGN KEY ("askId") REFERENCES "ask" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -273,12 +298,13 @@ CREATE UNIQUE INDEX "outbox_messageId_recipient_key" ON "outbox"("messageId", "r
 UPDATE project SET attentionReason = 'repository_identity_unverified', identityEvidence = (SELECT json_object('channelId', channelId) FROM nexus_old_project WHERE nexus_old_project.id = project.id);
 DROP TABLE nexus_old_project;
 UPDATE setting SET defaultMergePolicy = 'human_required';
-INSERT INTO ask (id, source, initiatorRole, handler, decisionType, withinAuthorization, policyBasis, content, options, status, answer, answerActor, answerSource, answeredAt, createdAt)
-SELECT id, json_object('inboxId', id, 'triggerId', triggerId, 'threadId', threadId, 'workerId', workerId, 'previousHandler', type, 'origin', origin), CASE WHEN origin IN ('main', 'project', 'supervisor', 'worker') THEN origin ELSE 'main' END, 'human', 'important', 0, CASE WHEN ticketId IS NULL THEN '[]' ELSE json_array(json_object('id', ticketId, 'questionLevel', 'important', 'mergePolicy', 'human_required', 'revision', 0)) END, message, '[]', CASE WHEN answer IS NOT NULL THEN 'answered' ELSE 'pending' END, answer, NULL, answeredBy, answeredAt, createdAt FROM inbox WHERE kind = 'ask';
+INSERT INTO ask (id, source, initiatorRole, handler, decisionType, withinAuthorization, policyBasis, content, options, status, answer, answerActor, answerSource, answeredAt, createdAt, escalations, lastEscalatedAt)
+SELECT id, json_object('inboxId', id, 'triggerId', triggerId, 'threadId', threadId, 'workerId', workerId, 'previousHandler', type, 'origin', origin), CASE WHEN origin IN ('main', 'project', 'supervisor', 'worker') THEN origin ELSE 'main' END, 'human', 'important', 0, CASE WHEN ticketId IS NULL THEN '[]' ELSE json_array(json_object('id', ticketId, 'questionLevel', 'important', 'mergePolicy', 'human_required', 'revision', 0)) END, message, '[]', CASE WHEN answer IS NOT NULL THEN 'answered' ELSE 'pending' END, answer, NULL, answeredBy, answeredAt, createdAt, escalations, lastEscalatedAt FROM inbox WHERE kind = 'ask';
 INSERT INTO ask_ticket SELECT id, ticketId FROM inbox WHERE kind = 'ask' AND ticketId IS NOT NULL;
-INSERT INTO message (id, seq, ticketId, recipient, sender, kind, content, askId, acceptedAt, deliveredAt, readAt, handledAt, deliveryState, attempts, error, nextRetryAt)
-SELECT id, ROW_NUMBER() OVER (ORDER BY seq, createdAt, id), ticketId, CASE WHEN type = 'user' THEN 'human' ELSE 'unresolved:' || type || ':' || COALESCE(projectId, supervisorId, id) END, json_object('origin', origin, 'workerId', workerId), kind, message, CASE WHEN kind = 'ask' THEN id ELSE NULL END, createdAt, readAt, readAt, CASE WHEN kind != 'ask' AND status = 'done' THEN doneAt ELSE NULL END, CASE WHEN readAt IS NULL THEN 'failed' ELSE 'delivered' END, deliveryAttempts, COALESCE(deliveryError, 'recipient_binding_requires_verification'), nextRetryAt FROM inbox;
+INSERT INTO message (id, seq, ticketId, recipient, sender, kind, content, askId, acceptedAt, deliveredAt, readAt, handledAt, deliveryState, attempts, error, nextRetryAt, triggerId, threadId, title, source)
+SELECT id, ROW_NUMBER() OVER (ORDER BY seq, createdAt, id), ticketId, CASE WHEN type = 'user' THEN 'human' ELSE 'unresolved:' || type || ':' || COALESCE(projectId, supervisorId, id) END, json_object('origin', origin, 'workerId', workerId), kind, message, CASE WHEN kind = 'ask' THEN id ELSE NULL END, createdAt, readAt, readAt, CASE WHEN kind != 'ask' AND status = 'done' THEN doneAt ELSE NULL END, CASE WHEN readAt IS NULL THEN 'failed' ELSE 'delivered' END, deliveryAttempts, COALESCE(deliveryError, 'recipient_binding_requires_verification'), nextRetryAt, triggerId, threadId, title, json_object('inboxId', id, 'seq', seq, 'type', type, 'projectId', projectId, 'supervisorId', supervisorId, 'origin', origin, 'status', status, 'title', title, 'triggerId', triggerId, 'threadId', threadId, 'workerId', workerId, 'escalations', escalations, 'lastEscalatedAt', lastEscalatedAt, 'doneAt', doneAt) FROM inbox;
 DROP TABLE inbox;
 INSERT INTO role_binding (id, role, scope, sessionId, projectId, ticketId, status, activeKey, worktree, branch, recoveryReason, createdAt, updatedAt, closedAt)
 SELECT 'migrated:worker:' || w.id, 'worker', w.ticketId, w.id, t.projectId, w.ticketId, CASE WHEN w.status = 'ended' THEN 'closed' ELSE 'unavailable' END, CASE WHEN w.status != 'ended' AND (SELECT COUNT(*) FROM worker active WHERE active.ticketId = w.ticketId AND active.status != 'ended') = 1 THEN 'worker:' || w.ticketId ELSE NULL END, w.worktree, w.branch, 'migration_requires_session_verification', w.createdAt, COALESCE(w.endedAt, w.startedAt, w.createdAt), w.endedAt FROM worker w JOIN ticket t ON t.id = w.ticketId;
 UPDATE ask SET initiatorBinding = (SELECT 'migrated:worker:' || worker.id FROM worker WHERE worker.id = json_extract(ask.source, '$.workerId')) WHERE initiatorRole = 'worker';
+UPDATE ask SET responseRecipient = initiatorBinding;

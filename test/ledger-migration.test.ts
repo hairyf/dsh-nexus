@@ -48,6 +48,8 @@ function history(connection: DatabaseSync) {
     + 'INSERT INTO supervisor (id, title, reason, createdAt) VALUES (\'S1\', \'Coordinator\', \'Cross project\', \'old\');'
     + 'INSERT INTO supervisor_ticket VALUES (\'S1\', \'T1\', \'old\');'
     + 'INSERT INTO inbox (id, seq, type, projectId, origin, kind, message, createdAt, ticketId, triggerId, threadId, workerId) VALUES (\'ask-old\', 1, \'project\', \'P1\', \'worker\', \'ask\', \'Old pending question\', \'old\', \'T1\', \'trigger1\', \'thread1\', \'old-worker\');'
+    + 'UPDATE inbox SET escalations = 2, lastEscalatedAt = \'2026-11-13T01:00:00Z\' WHERE id = \'ask-old\';'
+    + 'INSERT INTO inbox (id, seq, type, projectId, origin, kind, title, message, createdAt, ticketId, triggerId, threadId) VALUES (\'trigger-message-old\', 3, \'project\', \'P1\', \'channel\', \'trigger\', \'Original trigger title\', \'Original trigger message\', \'old\', \'T1\', \'trigger1\', \'thread1\');'
     + 'INSERT INTO inbox (id, seq, type, origin, kind, message, createdAt, status, answer, answeredBy, answeredAt) VALUES (\'answered-old\', 1, \'user\', \'main\', \'ask\', \'Old historical answer\', \'old\', \'done\', \'yes\', \'user\', \'old\');',
   )
 }
@@ -72,7 +74,12 @@ it.each([false, true])('upgrades the real immutable baseline preserving history 
   expect(JSON.parse(ledger.load(database, 'ask', 'ask-old')!.source)).toEqual({ inboxId: 'ask-old', triggerId: 'trigger1', threadId: 'thread1', workerId: 'old-worker', previousHandler: 'project', origin: 'worker' })
   expect(ledger.load(database, 'ask', 'answered-old')).toMatchObject({ status: 'answered', answer: 'yes', answerActor: null, answerSource: 'user', verified: 0 })
   expect(ledger.list(database, 'acceptance')).toEqual([])
-  expect(ledger.list(database, 'message')).toHaveLength(2)
+  expect(ledger.list(database, 'message')).toHaveLength(3)
+  expect(ledger.load(database, 'message', 'trigger-message-old')).toMatchObject({ triggerId: 'trigger1', threadId: 'thread1', title: 'Original trigger title', content: 'Original trigger message' })
+  expect(JSON.parse(ledger.load(database, 'message', 'trigger-message-old')!.source!)).toMatchObject({ inboxId: 'trigger-message-old', origin: 'channel', projectId: 'P1', triggerId: 'trigger1', threadId: 'thread1', title: 'Original trigger title' })
+  expect(ledger.load(database, 'ask', 'ask-old')).toMatchObject({ escalations: 2, lastEscalatedAt: '2026-11-13T01:00:00Z' })
+  expect(ledger.load(database, 'thread', 'thread1')).toMatchObject({ repository: null, attentionReason: 'repository_identity_unverified' })
+  expect(() => ledger.triageThread(database, 'thread1', 'P1', 'claimed', { kind: 'web', authenticated: true, userId: 'host-user' })).toThrow('repository_identity_unverified')
   expect(ledger.load(database, 'message', 'ask-old')).toMatchObject({ readAt: null, handledAt: null, deliveryState: 'failed', error: 'recipient_binding_requires_verification' })
   expect(ledger.load(database, 'role_binding', 'migrated:worker:old-worker')).toMatchObject({ sessionId: 'old-worker', ticketId: 'T1', status: 'unavailable', activeKey: 'worker:T1', worktree: '/old/worktree', recoveryReason: 'migration_requires_session_verification' })
   expect(database.connection.prepare('SELECT count(*) AS count FROM sqlite_master WHERE type = \'table\' AND name = \'inbox\'').get()).toEqual({ count: 0 })

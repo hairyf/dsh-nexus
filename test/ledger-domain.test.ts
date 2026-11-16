@@ -1,8 +1,10 @@
 import type { NexusDatabase } from '../src/database'
 import type { Actor, AskInput, MergePolicy, MergeTarget, QuestionLevel, Role } from '../src/types/ledger'
 import { randomUUID } from 'node:crypto'
+import { once } from 'node:events'
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
+import { Worker } from 'node:worker_threads'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDatabase } from '../src/database'
 import { ledger } from '../src/service/ledger'
@@ -153,14 +155,48 @@ describe('ask single settlement', () => {
   it('commits one answer and one return message when two authenticated channels race', async () => {
     ledger.updateSettings(db, { whitelist: ['alice'] }, web)
     const created = ask('race', { decisionType: 'important' })
-    const second = await openDatabase(directory)
-    try {
-      const results = await Promise.allSettled([Promise.resolve().then(() => ledger.answerAsk(db, { askId: created.id, policyBasis: created.policyBasis, answer: 'web answer' }, web)), Promise.resolve().then(() => ledger.answerAsk(second, { askId: created.id, policyBasis: created.policyBasis, answer: 'github answer' }, github))])
-      expect(results.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected'])
-      expect(ledger.load(db, 'ask', 'race')).toMatchObject({ status: 'answered', answer: 'web answer' })
-      expect(ledger.list(db, 'message').filter(message => message.kind === 'answer')).toHaveLength(1)
-    }
-    finally { second.close() }
+    const barrier = new SharedArrayBuffer(4)
+    const threads = [web, github].map((actor) => {
+      const thread = new Worker(`
+        const { parentPort, workerData } = require('node:worker_threads')
+        require('tsx/cjs')
+        const { openDatabase } = require(workerData.database)
+        const { ledger } = require(workerData.ledger)
+        openDatabase(workerData.directory).then((database) => {
+          parentPort.postMessage({ type: 'ready' })
+          Atomics.wait(new Int32Array(workerData.barrier), 0, 0)
+          try {
+            const ask = ledger.answerAsk(database, workerData.input, workerData.actor)
+            parentPort.postMessage({ type: 'result', status: 'fulfilled', answer: ask.answer })
+          } catch (error) {
+            parentPort.postMessage({ type: 'result', status: 'rejected', code: error.code })
+          } finally {
+            database.close()
+            parentPort.close()
+          }
+        }).catch(error => { throw error })
+      `, { eval: true, workerData: { database: join(import.meta.dirname, '../src/database/index.ts'), ledger: join(import.meta.dirname, '../src/service/ledger.ts'), directory, barrier, actor, input: { askId: created.id, policyBasis: created.policyBasis, answer: `${actor.kind} answer` } } })
+      const ready = once(thread, 'message')
+      const exit = once(thread, 'exit')
+      const result = new Promise<{ status: string, answer?: string, code?: string }>((resolve, reject) => {
+        thread.on('error', reject)
+        thread.on('message', (message) => {
+          if (message.type === 'result')
+            resolve(message)
+        })
+      })
+      return { ready, result, exit }
+    })
+    await Promise.all(threads.map(thread => thread.ready))
+    Atomics.store(new Int32Array(barrier), 0, 1)
+    Atomics.notify(new Int32Array(barrier), 0, 2)
+    const results = await Promise.all(threads.map(thread => thread.result))
+    await Promise.all(threads.map(thread => thread.exit))
+    expect(results.map(result => result.status).sort()).toEqual(['fulfilled', 'rejected'])
+    expect(results.find(result => result.status === 'rejected')).toMatchObject({ code: 'ask_settled' })
+    expect(ledger.load(db, 'ask', 'race')).toMatchObject({ status: 'answered', answer: results.find(result => result.status === 'fulfilled')!.answer })
+    expect(['web answer', 'github answer']).toContain(ledger.load(db, 'ask', 'race')!.answer)
+    expect(ledger.list(db, 'message').filter(message => message.kind === 'answer')).toHaveLength(1)
   })
   it('moves a pending ask current handler with an explicitly recovered responsibility without changing identity', () => {
     ask()
@@ -332,6 +368,106 @@ describe('acceptance and delivery invariants', () => {
     expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ status: 'cancelled', pauseActor: JSON.stringify(web), pauseReason: 'Stop this work' })
     expect(ledger.resolveTicket(db, 'T2')).toMatchObject({ dependencySatisfied: false })
     expect(ledger.list(db, 'wakeup')).toEqual([])
+  })
+})
+
+describe('reviewed cross-boundary invariants', () => {
+  it('rejects cross-repository triage, subscription and publication independently', () => {
+    const thread = ledger.recordThread(db, { channelId: 'github', repository: 'github.com/foreign/repo', kind: 'issue', resourceId: '1', title: 'Foreign issue' })
+    expect(() => ledger.triageThread(db, thread.id, 'p', 'claimed', main)).toThrow('scope_denied')
+    expect(() => ledger.subscribeThread(db, 'T1', thread.id, project)).toThrow('scope_denied')
+    db.connection.prepare('UPDATE thread SET projectId = ? WHERE id = ?').run('p', thread.id)
+    db.connection.prepare('INSERT INTO ticket_thread VALUES (?, ?, ?)').run('T1', thread.id, new Date().toISOString())
+    ledger.sendMessage(db, 'foreign-write', 'project', 'T1', 'Do not publish this', worker)
+    expect(() => ledger.publishMessage(db, 'foreign-write', thread.id, project)).toThrow('scope_denied')
+    expect(ledger.list(db, 'outbox')).toEqual([])
+  })
+  it('routes a late formal answer to the verified replacement while retaining original initiator audit', () => {
+    ask('late')
+    ledger.updateBinding(db, 'worker', 'closed', 'Original execution stopped')
+    ledger.bindRole(db, { id: 'worker-next', role: 'worker', sessionId: 'worker-next-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/T1-next', worktree: directory, previousBindingId: 'worker', recoveryReason: 'Verified stopped original' }, project)
+    ledger.transferMessages(db, 'worker', 'worker-next')
+    answer('late', 'first', project)
+    expect(ledger.load(db, 'ask', 'late')).toMatchObject({ initiatorBinding: 'worker', responseRecipient: 'worker-next', status: 'answered' })
+    expect(ledger.load(db, 'message', 'answer:late')).toMatchObject({ recipient: 'worker-next', handledAt: null })
+  })
+  it('preserves an answer with an explicit recovery delivery failure and later moves it without asking the human again', () => {
+    ask('await-recovery')
+    ledger.updateBinding(db, 'worker', 'closed', 'Original execution stopped')
+    answer('await-recovery', 'first', project)
+    expect(ledger.load(db, 'ask', 'await-recovery')).toMatchObject({ status: 'answered', answer: 'first' })
+    expect(ledger.load(db, 'message', 'answer:await-recovery')).toMatchObject({ recipient: 'worker', deliveryState: 'failed', error: 'initiator_requires_recovery' })
+    ledger.bindRole(db, { id: 'worker-next', role: 'worker', sessionId: 'worker-next-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/T1-next', worktree: directory, previousBindingId: 'worker', recoveryReason: 'Verified stopped original' }, project)
+    ledger.transferMessages(db, 'worker', 'worker-next')
+    expect(ledger.load(db, 'message', 'answer:await-recovery')).toMatchObject({ recipient: 'worker-next', deliveryState: 'pending', error: null })
+    expect(ledger.list(db, 'message').filter(message => message.kind === 'answer')).toHaveLength(1)
+    expect(() => answer('await-recovery', 'second', web)).toThrow('ask_settled')
+  })
+  it('atomically reroutes effective pending ask delivery in both policy directions without spurious notifications', () => {
+    ask('reroute')
+    ledger.setPolicy(db, 'T1', { questionLevel: 'detailed', mergePolicy: 'human_required' }, 'Human now responsible', web)
+    expect(ledger.list(db, 'message').filter(message => message.askId === 'reroute' && message.kind === 'ask' && !message.supersededAt)).toMatchObject([{ recipient: 'human' }])
+    expect(ledger.load(db, 'message', 'ask:reroute')).toMatchObject({ recipient: 'project', deliveryState: 'superseded', supersededAt: expect.any(String) })
+    ledger.setPolicy(db, 'T1', { questionLevel: 'important', mergePolicy: 'human_required' }, 'Project may answer ordinary choices', web)
+    expect(ledger.list(db, 'message').filter(message => message.askId === 'reroute' && message.kind === 'ask' && !message.supersededAt)).toMatchObject([{ recipient: 'project' }])
+    const count = ledger.list(db, 'message').length
+    ledger.setPolicy(db, 'T1', { questionLevel: 'important', mergePolicy: 'automatic_allowed' }, 'Merge-only change', web)
+    createTicket('T2')
+    ledger.setPolicy(db, 'T2', { questionLevel: 'detailed', mergePolicy: 'human_required' }, 'Unrelated ticket', web)
+    expect(ledger.list(db, 'message')).toHaveLength(count)
+    expect(ledger.load(db, 'ask', 'reroute')).toMatchObject({ id: 'reroute', handler: 'project', status: 'pending' })
+  })
+  it('rejects unavailable ask creation and escalation without a half ask or responsibility change', () => {
+    ledger.updateBinding(db, 'project', 'unavailable', 'Project session missing')
+    expect(() => ask('offline')).toThrow('target_unavailable')
+    expect(ledger.list(db, 'ask')).toEqual([])
+    expect(ledger.list(db, 'message')).toEqual([])
+    ledger.updateBinding(db, 'project', 'idle', 'Project verified restored')
+    ask('upgrade-offline')
+    ledger.updateBinding(db, 'main', 'unavailable', 'Main missing')
+    expect(() => ledger.escalateAsk(db, 'upgrade-offline', project)).toThrow('target_unavailable')
+    expect(ledger.load(db, 'ask', 'upgrade-offline')).toMatchObject({ handler: 'project', escalations: 0 })
+    expect(ledger.list(db, 'message')).toHaveLength(1)
+  })
+  it('rolls back a policy reroute to an unavailable handler including its policy audit', () => {
+    ledger.setPolicy(db, 'T1', { questionLevel: 'detailed', mergePolicy: 'human_required' }, 'Human handles question', web)
+    ask('policy-offline')
+    ledger.updateBinding(db, 'project', 'unavailable', 'Project missing')
+    const auditCount = ledger.list(db, 'policy_change').length
+    expect(() => ledger.setPolicy(db, 'T1', { questionLevel: 'important', mergePolicy: 'human_required' }, 'Would route offline', web)).toThrow('target_unavailable')
+    expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ questionLevel: 'detailed' })
+    expect(ledger.load(db, 'ask', 'policy-offline')).toMatchObject({ handler: 'human', status: 'pending' })
+    expect(ledger.list(db, 'policy_change')).toHaveLength(auditCount)
+    expect(ledger.list(db, 'message')).toHaveLength(1)
+  })
+  it('rejects unauthorized, paused, disabled and unsatisfied-dependency dispatch without accepting partial work', () => {
+    expect(() => ledger.dispatchTicket(db, 'T1', worker)).toThrow('scope_denied')
+    ledger.pauseTicket(db, 'T1', true, 'Human hold', web)
+    expect(() => ledger.dispatchTicket(db, 'T1', project)).toThrow('human_paused')
+    ledger.pauseTicket(db, 'T1', false, 'Hold cleared', web)
+    createTicket('T2')
+    ledger.linkTickets(db, 'T1', 'T2', 'depends', main)
+    ledger.cancelTicket(db, 'T2', 'Cancelled predecessor', web)
+    expect(() => ledger.dispatchTicket(db, 'T1', project)).toThrow('dependency_unsatisfied')
+    ledger.updateProject(db, 'p', false, web)
+    expect(() => ledger.dispatchTicket(db, 'T1', project)).toThrow('project_disabled')
+    expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ status: 'waiting', startedAt: null })
+    expect(ledger.list(db, 'ticket_transition')).toEqual([])
+  })
+  it('owns dispatch, actual start and authorized retry status transitions with preserved authorization', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-16T00:00:00Z'))
+    expect(() => ledger.updateBinding(db, 'worker', 'running', 'Cannot bypass domain start')).toThrow('invalid_transition')
+    expect(ledger.dispatchTicket(db, 'T1', project)).toMatchObject({ status: 'queued', startedAt: null })
+    expect(ledger.startTicket(db, 'T1', 'worker', project)).toMatchObject({ status: 'running', startedAt: '2026-11-16T00:00:00.000Z' })
+    expect(ledger.load(db, 'role_binding', 'worker')).toMatchObject({ status: 'running' })
+    ledger.advanceTicket(db, 'T1', 'failed', worker, 'Tests failed')
+    expect(() => ledger.retryTicket(db, 'T1', 'Retry after investigation', project)).toThrow('binding_conflict')
+    ledger.updateBinding(db, 'worker', 'closed', 'Confirmed execution ended')
+    expect(() => ledger.retryTicket(db, 'T1', 'Agent asks for retry', worker)).toThrow('binding_closed')
+    vi.advanceTimersByTime(60000)
+    expect(ledger.retryTicket(db, 'T1', 'Authorized retry after fix', project)).toMatchObject({ status: 'queued', failureReason: null, authorization: 'Only the assigned bug fix', startedAt: '2026-11-16T00:00:00.000Z' })
+    expect(ledger.list(db, 'ticket_transition').map(transition => transition.event)).toEqual(['dispatch', 'start', 'failed', 'retry'])
   })
 })
 

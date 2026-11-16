@@ -142,6 +142,7 @@ export type Ask = {
     source: string;
     initiatorRole: string;
     initiatorBinding: string | null;
+    responseRecipient: string | null;
     handler: string;
     decisionType: string;
     withinAuthorization: number;
@@ -161,6 +162,7 @@ export type Ask = {
     cancelReason: string | null;
     supersedesId: string | null;
     escalations: Generated<number>;
+    lastEscalatedAt: string | null;
 };
 export type AskTicket = {
     askId: string;
@@ -210,6 +212,11 @@ export type CiWatch = {
     updatedAt: string;
 };
 export type Message = {
+    triggerId: string | null;
+    threadId: string | null;
+    title: string | null;
+    source: string | null;
+    supersededAt: string | null;
     id: string;
     seq: number;
     ticketId: string | null;
@@ -320,6 +327,8 @@ export type SupervisorTicket = {
     createdAt: string;
 };
 export type Thread = {
+    repository: string | null;
+    attentionReason: string | null;
     id: string;
     channelId: string;
     projectId: string | null;
@@ -371,6 +380,17 @@ export type TicketThread = {
     ticketId: string;
     threadId: string;
     createdAt: string;
+};
+export type TicketTransition = {
+    id: string;
+    ticketId: string;
+    event: string;
+    fromStatus: string;
+    toStatus: string;
+    actor: string;
+    reason: string;
+    bindingId: string | null;
+    at: string;
 };
 export type Trigger = {
     id: string;
@@ -435,6 +455,7 @@ export type DB = {
     ticket: Ticket;
     ticket_link: TicketLink;
     ticket_thread: TicketThread;
+    ticket_transition: TicketTransition;
     trigger: Trigger;
     wakeup: Wakeup;
     worker: Worker;

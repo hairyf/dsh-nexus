@@ -20,6 +20,9 @@ enum TriggerKind {
 }
 
 model Thread {
+  repository String?
+  attentionReason String?
+  messages Message[]
   id        String     @id
   channelId String
   projectId String?
@@ -46,6 +49,7 @@ model Thread {
 }
 
 model Trigger {
+  messages Message[]
   id        String      @id
   channelId String
   threadId  String

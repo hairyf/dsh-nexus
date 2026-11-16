@@ -4,6 +4,7 @@ enum TicketLinkKind {
 }
 
 model Ticket {
+  transitions TicketTransition[]
   asks AskTicket[]
   policyChanges PolicyChange[]
   bindings RoleBinding[]
