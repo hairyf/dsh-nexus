@@ -1,86 +1,75 @@
 import type { ReactNode } from 'react'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { ArrowLeftIcon } from '../../../components/icons'
+import { SourceLink } from '../../../components/source-link'
+import { usePanel } from '../../../hooks/use-panel'
 import { useActions, useStore } from '../../../hooks/use-store'
-import { useTranslation } from '../../../hooks/use-translation'
-import { groupTopics, RECORDS, sourceHref, THREAD_KINDS, TRIAGE } from '../model'
-import { Event } from './components/event'
 
 export function TriggerDetail(): ReactNode {
-  const { t } = useTranslation()
+  const { data } = usePanel()
+
   const { go, openTicket } = useActions()
+
   const id = useStore(state => state.trigger.selectedId)
-  const topic = groupTopics(RECORDS).find(topic => topic.latest.thread.id === id)
-  const back = <Button size="sm" variant="ghost" icon={<ArrowLeftIcon width={16} height={16} />} onClick={() => go('trigger')}>{t('triggerBack')}</Button>
-  if (!topic) {
-    return (
-      <section className="flex flex-col gap-5 pb-10">
-        <div>{back}</div>
-        <p className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-5 text-sm">{t('triggerTopicNotFound')}</p>
-      </section>
-    )
-  }
-  const { latest, events } = topic
-  const href = sourceHref(latest.channel, latest.thread.url)
-  const channel = latest.channel === 'feishu' ? t('triggerFeishu') : latest.channel === 'github' ? 'GitHub' : 'GitLab'
-  const tickets = [...new Set(events.flatMap(event => [...event.tickets]))]
+
+  const thread = data.topics.threads.find(thread => thread.id === id)
+
+  const events = data.topics.triggers.filter(trigger => trigger.threadId === id).sort((a, b) => b.at.localeCompare(a.at))
+
+  const subscriptions = data.topics.subscriptions.filter(link => link.threadId === id)
+
   return (
-    <section className="@container flex min-w-0 flex-col gap-5 pb-10" aria-label={t('triggerTopicDetail')}>
-      <div>{back}</div>
-      <header>
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-[var(--dsw-alias-label-tertiary)]">
-          <span>{channel}</span>
-          {href
-            ? (
-                <a href={href} target="_blank" rel="noopener noreferrer" title={t('triggerSampleLink')} className="text-[var(--dsw-alias-state-business-primary)] underline-offset-4 hover:underline focus-visible:underline">
-                  {latest.thread.ref}
+    <section className="flex min-w-0 flex-col gap-4">
+      <div><Button size="sm" variant="ghost" onClick={() => go('trigger')}>返回来源话题</Button></div>
+      {thread
+        ? (
+            <>
+              <header>
+                <h2 className="m-0 text-lg font-medium">{thread.title}</h2>
+                <p className="text-xs">
+                  <SourceLink href={thread.url}>{thread.refId}</SourceLink>
                   {' '}
-                  ↗
-                </a>
-              )
-            : <span>{latest.thread.ref}</span>}
-          <Tag tone="neutral">{t(THREAD_KINDS[latest.thread.kind])}</Tag>
-          <Tag tone="outline">{t(TRIAGE[latest.thread.triage])}</Tag>
-          <Tag tone="quiet">{t('overviewDemo')}</Tag>
-        </div>
-        <h2 className="m-0 text-lg leading-7 font-medium [overflow-wrap:anywhere]">{t(latest.thread.title)}</h2>
-      </header>
-      <div className="grid min-w-0 gap-5 @min-[780px]:grid-cols-[minmax(0,1fr)_250px]">
-        <div className="min-w-0">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h3 className="m-0 text-sm font-medium">{t('triggerTimeline')}</h3>
-            <span className="text-xs text-[var(--dsw-alias-label-tertiary)]">
-              {t('triggerEventCount', { count: events.length })}
-              {' '}
-              ·
-              {' '}
-              {t('triggerNewestFirst')}
-            </span>
-          </div>
-          <ol className="m-0 list-none p-0 pl-1.5">{events.map(event => <Event key={event.id} record={event} />)}</ol>
-        </div>
-        <aside className="flex min-w-0 flex-col gap-4 self-start @min-[780px]:sticky @min-[780px]:top-4">
-          <section className="rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-4">
-            <h3 className="m-0 text-sm font-medium">{t('triggerThread')}</h3>
-            <dl className="m-0 mt-3 flex flex-col gap-3 text-xs">
-              <div>
-                <dt className="text-[var(--dsw-alias-label-tertiary)]">{t('ticketProject')}</dt>
-                <dd className="m-0 mt-1 break-all leading-5">{latest.thread.project ?? t('triggerNoProject')}</dd>
+                  ·
+                  {' '}
+                  {thread.repository}
+                  {' '}
+                  ·
+                  {' '}
+                  <Tag tone="quiet">{thread.triage}</Tag>
+                </p>
+              </header>
+              <div className="flex flex-wrap gap-2">
+                {subscriptions.map(link => <Button key={link.ticketId} size="sm" variant="outline" onClick={() => openTicket(link.ticketId)}>{link.ticketId}</Button>)}
+                {!subscriptions.length && <p className="text-xs">尚无订阅工单。</p>}
               </div>
-              <div>
-                <dt className="text-[var(--dsw-alias-label-tertiary)]">{t('triggerThreadId')}</dt>
-                <dd className="m-0 mt-1 break-all font-mono text-[11px] leading-5">{latest.thread.id}</dd>
-              </div>
-            </dl>
-          </section>
-          <section className="rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-4">
-            <h3 className="m-0 text-sm font-medium">{t('triggerLinkedTasks')}</h3>
-            <div className="mt-3 flex flex-wrap gap-2">{tickets.length ? tickets.map(ticket => <Button key={ticket} size="sm" variant="outline" onClick={() => openTicket(ticket)}>{ticket}</Button>) : <span className="text-xs text-[var(--dsw-alias-label-tertiary)]">{t('triggerNoTask')}</span>}</div>
-          </section>
-          <p className="m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]">{t('triggerExternalText')}</p>
-          {href && <p className="m-0 text-[11px] leading-5 text-[var(--dsw-alias-label-tertiary)]">{t('triggerSampleLink')}</p>}
-        </aside>
-      </div>
+              <ol className="m-0 flex list-none flex-col gap-3 p-0">
+                {events.map(event => (
+                  <li key={event.id} className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+                    <header className="flex flex-wrap gap-2 text-xs text-[var(--dsw-alias-label-secondary)]">
+                      <span>{event.actorLogin ?? event.actorName ?? '未知作者'}</span>
+                      <span>
+                        {event.kind}
+                        {' '}
+                        ·
+                        {' '}
+                        {event.at}
+                      </span>
+                      <span>
+                        {event.human ? '已核验人类来源' : '非人工授权来源'}
+                        {' '}
+                        ·
+                        {' '}
+                        {event.mentioned ? '提及 Nexus' : '未提及'}
+                      </span>
+                    </header>
+                    <p className="whitespace-pre-wrap break-words">{event.text}</p>
+                    <SourceLink href={event.url}>打开原始事件</SourceLink>
+                  </li>
+                ))}
+              </ol>
+              {!events.length && <p>话题已登记，但尚无触发事件。</p>}
+            </>
+          )
+        : <p>来源话题不存在，请返回列表刷新。</p>}
     </section>
   )
 }

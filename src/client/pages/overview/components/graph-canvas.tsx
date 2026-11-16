@@ -3,23 +3,43 @@ import type { AgentGraphEdge, AgentGraphNode } from '../../../types'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useRef } from 'react'
 import { AgentIcon, FitViewIcon, ZoomInIcon, ZoomOutIcon } from '../../../components/icons'
-import { AGENT_GRAPH, AGENT_GRAPH_EDGE_COLORS } from '../../../constants'
+import { SourceSession } from '../../../components/source-session'
 import { useActions, useStore } from '../../../hooks/use-store'
 import { useTranslation } from '../../../hooks/use-translation'
 import { GraphEdgePath } from './graph-edge-path'
+import { AGENT_GRAPH, AGENT_GRAPH_EDGE_COLORS } from './graph-layout'
 import { GraphNodeCard } from './graph-node-card'
 
-export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[], edges: readonly AgentGraphEdge[] }): ReactNode {
+export function GraphCanvas({ nodes, edges }: {
+  nodes: readonly AgentGraphNode[]
+  edges: readonly AgentGraphEdge[]
+}): ReactNode {
   const { t } = useTranslation()
+
   const { zoomGraph, panGraph, resetGraph, selectAgent, openTicket } = useActions()
+
   const { zoom, x, y, selectedId } = useStore(state => state.graph)
-  const drag = useRef<{ id: number, x: number, y: number } | null>(null)
-  const width = AGENT_GRAPH.width / zoom
-  const height = AGENT_GRAPH.height / zoom
-  const left = (AGENT_GRAPH.width - width) / 2 + x
-  const top = (AGENT_GRAPH.height - height) / 2 + y
+
+  const drag = useRef<{
+    id: number
+    x: number
+    y: number
+  } | null>(null)
+
+  const canvasWidth = Math.max(AGENT_GRAPH.width, ...nodes.map(node => node.x + AGENT_GRAPH.nodeWidth + 20))
+  const canvasHeight = Math.max(AGENT_GRAPH.height, ...nodes.map(node => node.y + AGENT_GRAPH.nodeHeight + 20))
+  const width = canvasWidth / zoom
+
+  const height = canvasHeight / zoom
+
+  const left = (canvasWidth - width) / 2 + x
+
+  const top = (canvasHeight - height) / 2 + y
+
   const selected = nodes.find(node => node.id === selectedId)
+
   const supervised = nodes.filter(node => node.group === 'supervisor')
+
   const group = supervised.length
     ? {
         x: Math.min(...supervised.map(node => node.x)) - 16,
@@ -28,6 +48,7 @@ export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[]
         height: Math.max(...supervised.map(node => node.y)) - Math.min(...supervised.map(node => node.y)) + AGENT_GRAPH.nodeHeight + 28,
       }
     : null
+
   return (
     <div>
       <div className="relative">
@@ -41,30 +62,44 @@ export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[]
             onPointerDown={(event) => {
               if (event.button !== 0 || (event.target as Element).closest('button'))
                 return
+
               drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+
               event.currentTarget.setPointerCapture(event.pointerId)
             }}
             onPointerMove={(event) => {
               const previous = drag.current
+
               if (!previous || previous.id !== event.pointerId)
                 return
+
               const bounds = event.currentTarget.getBoundingClientRect()
+
               const scale = Math.min(bounds.width / width, bounds.height / height)
+
               if (scale > 0)
                 panGraph((previous.x - event.clientX) / scale, (previous.y - event.clientY) / scale)
+
               drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
             }}
             onPointerUp={(event) => {
               drag.current = null
+
               if (event.currentTarget.hasPointerCapture(event.pointerId))
                 event.currentTarget.releasePointerCapture(event.pointerId)
             }}
-            onPointerCancel={() => { drag.current = null }}
-            onLostPointerCapture={() => { drag.current = null }}
+            onPointerCancel={() => {
+              drag.current = null
+            }}
+            onLostPointerCapture={() => {
+              drag.current = null
+            }}
             onKeyDown={(event) => {
               if (event.target !== event.currentTarget)
                 return
+
               const delta = 40 / zoom
+
               if (event.key === 'ArrowLeft')
                 panGraph(-delta, 0)
               else if (event.key === 'ArrowRight')
@@ -79,7 +114,9 @@ export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[]
                 zoomGraph(-0.2)
               else if (event.key === 'Home')
                 resetGraph()
-              else return
+              else
+                return
+
               event.preventDefault()
             }}
           >
@@ -111,14 +148,15 @@ export function GraphCanvas({ nodes, edges }: { nodes: readonly AgentGraphNode[]
           ))}
         </span>
       </div>
+      {selected?.sessionId && <SourceSession key={selected.sessionId} sessionId={selected.sessionId} />}
       {selected && (
         <div className="flex flex-wrap items-center gap-3 border-t border-[var(--dsw-alias-border-l3)] px-5 py-3 text-xs">
           <AgentIcon width={16} height={16} />
           <span>
-            {t(selected.label)}
+            {selected.label}
             {selected.subtitle ? ` · ${selected.subtitle}` : ''}
           </span>
-          <span className="text-[var(--dsw-alias-label-tertiary)]">{t(selected.waiting ? 'graphWaiting' : 'overviewDemo')}</span>
+          <span className="text-[var(--dsw-alias-label-tertiary)]">{selected.status}</span>
           {selected.taskId && (
             <Button
               size="sm"
