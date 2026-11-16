@@ -22,7 +22,7 @@ export interface SessionGateway {
   inspect: (sessionId: string, signal?: AbortSignal) => Promise<SessionSnapshot>
   create: (sessionId: string, preset: string, cwd: string, signal?: AbortSignal) => Promise<void>
   resume: (sessionId: string, preset: string, signal?: AbortSignal) => Promise<void>
-  deliver: (sessionId: string, message: Pick<Row<'message'>, 'id' | 'content' | 'source'>, mode: 'wake' | 'queue' | 'interrupt', signal?: AbortSignal) => Promise<void>
+  deliver: (sessionId: string, message: Pick<Row<'message'>, 'id' | 'content' | 'source'> & Partial<Pick<Row<'message'>, 'askId' | 'ticketId' | 'facts'>> & { question?: Pick<Row<'ask'>, 'content' | 'options' | 'presentation' | 'status' | 'policyBasis' | 'target' | 'selections'> & { ticketIds: string[] } }, mode: 'wake' | 'queue' | 'interrupt', signal?: AbortSignal) => Promise<void>
   receipt: (sessionId: string, messageId: string, signal?: AbortSignal) => Promise<'absent' | 'queued' | 'read' | 'unknown'>
   cancel: (sessionId: string, reason: string, signal?: AbortSignal) => Promise<void>
   stop: (sessionId: string, reason: string, signal?: AbortSignal) => Promise<boolean>

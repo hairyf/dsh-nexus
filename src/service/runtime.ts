@@ -262,7 +262,20 @@ export const runtime = defineService({
                 if (ticket.status !== 'running' || reasons.some(reason => ['human_paused', 'project_disabled', 'project_unavailable', 'pending_ask'].includes(reason)) || (ticket.failureReason && ticket.failureBindingId === binding.id))
                   mode = 'queue'
               }
-              await interruptible(() => gateway.deliver(binding.sessionId, message, mode, signal), signal)
+              const ask = message.askId ? ledger.load(database, 'ask', message.askId) : null
+              const question = ask
+                ? {
+                    content: ask.content,
+                    options: ask.options,
+                    presentation: ask.presentation,
+                    status: ask.status,
+                    policyBasis: ask.policyBasis,
+                    target: ask.target,
+                    selections: ask.selections,
+                    ticketIds: ledger.list(database, 'ask_ticket').filter(link => link.askId === ask.id).map(link => link.ticketId),
+                  }
+                : undefined
+              await interruptible(() => gateway.deliver(binding.sessionId, { ...message, question }, mode, signal), signal)
             }
             checkInterrupt(signal)
             if (!message.deliveredAt)

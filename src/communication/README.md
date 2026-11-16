@@ -15,7 +15,7 @@ Spec 03 不打开数据库、不启动宿主、不创建角色会话。主机入
 - cancel(askId, reason, Actor, signal?) 是独立管理入口，不是第三个模型通信工具。
 - list() 为可信适配器返回同一账本状态、表单、处理责任、policyBasis 与目标；Web/渠道自身负责认证后展示范围。
 
-runtimePort 只需要 02 实例的 resolve/suspend/deliver。pending ask 挂起原工作线，不等待人答的调用栈；中断只结束本次等待，问题保留。答案通过原 Message/Ask 关联回送；人类暂停保持暂停，发起者不可恢复时答案仍落账并返回 initiator_requires_recovery。投递失败返回 accepted 与独立 delivery 故障，不假称已发送、已读或已处理。
+runtimePort 只需要 02 实例的 resolve/suspend/deliver。02 在实际 deliver 时读取当前 Ask 与全部 ask_ticket，不在 Message.content 持久保存第二份表单快照；SessionGateway 的可选 askId/ticketId/facts/question 元数据被呈现为正文前独立的 nexus_context 文本块，包含当前 policyBasis、表单/选项/detail、完整工单关联、精确合并目标和正式多选结果。原始 item.content 保持为后一个独立文本块，普通消息/答案正文与持久 Message.content 均不改写；旧的无关联输入仍按原样投递。pending ask 挂起原工作线，不等待人答的调用栈；中断只结束本次等待，问题保留。答案通过原 Message/Ask 关联回送；人类暂停保持暂停，发起者不可恢复时答案仍落账并返回 initiator_requires_recovery。投递失败返回 accepted 与独立 delivery 故障，不假称已发送、已读或已处理。
 
 verifyMerge 是宿主提供的可信核验端口：接收账本 Ask、真实 Actor、AbortSignal，返回本次核实的 target 和 verified。工具的 allow_merge 没有此核验就拒绝。04 的远端读取、发布/更新与最终合并不在本模块执行。
 
