@@ -407,6 +407,71 @@ it('re-arms stagnation reminders only for newly delivered evidence-bearing progr
   expect(JSON.parse(reminders[0].content)).toMatchObject({ waitingFor: 'completed chunk 5', progressAt })
 })
 
+it.each(['manager-p', 'worker'] as const)('does not refresh execution attention when a dependency notification to %s is handled', async (recipient) => {
+  const timers = new Timers()
+  const { run, sessions } = await fixture(2, timers)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  const id = `execution:${worker.id}`
+  const original = ledger.load(db, 'attention', id)!
+  sessions.receipts.set(id, 'read')
+  await run.read(worker.sessionId, id)
+  await run.handled(worker.sessionId, id)
+  await timers.advance(540000)
+  const target = recipient === 'worker' ? worker : ledger.load(db, 'role_binding', recipient)!
+  const notification = await run.intake({ id: 'dependency-only', source: 'wakeup:dependency-Q', recipient: target.id, ticketId: 'P', kind: 'ticket', content: 'Dependency Q completed; awareness only' })
+  sessions.receipts.set(notification.id, 'read')
+  await run.read(target.sessionId, notification.id)
+  await run.handled(target.sessionId, notification.id)
+  expect(ledger.load(db, 'attention', id)).toEqual(original)
+  await timers.advance(60000)
+  const reminders = ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')
+  expect(reminders).toMatchObject([{ recipient: 'manager-p', acceptedAt: '2026-11-16T01:10:00.000Z' }])
+  expect(JSON.parse(reminders[0].content)).toMatchObject({ waitingFor: worker.id, progressAt: '2026-11-16T01:00:00.000Z' })
+})
+
+it('refreshes only its own execution when a worker handles its real dispatch continuation', async () => {
+  const timers = new Timers()
+  const { run, sessions } = await fixture(2, timers)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  const id = `execution:${worker.id}`
+  await run.watch({ id: `runtime:${worker.id}:fault`, bindingId: worker.id, ticketId: 'P', recipient: worker.id, reason: 'unknown_remote_result', waitingFor: 'runtime reconciliation', progressAt: new Date().toISOString() })
+  const fault = ledger.load(db, 'attention', `runtime:${worker.id}:fault`)!
+  await timers.advance(300000)
+  sessions.receipts.set(id, 'read')
+  await run.read(worker.sessionId, id)
+  await run.handled(worker.sessionId, id)
+  expect(ledger.load(db, 'attention', id)).toMatchObject({ progressAt: '2026-11-16T01:05:00.000Z', dueAt: '2026-11-16T01:15:00.000Z' })
+  expect(ledger.load(db, 'attention', `runtime:${worker.id}:fault`)).toEqual(fault)
+  await timers.advance(300000)
+  await run.handled(worker.sessionId, id)
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:05:00.000Z')
+})
+
+it('does not let manager evidence for a task ask refresh the worker execution or runtime fault wait', async () => {
+  const { run } = await fixture()
+  const service = communication.create(db, run)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  const worker = ledger.list(db, 'role_binding').find(item => item.ticketId === 'P')!
+  const id = `execution:${worker.id}`
+  const original = ledger.load(db, 'attention', id)!
+  const ask = await service.ask('s-p', { requestId: 'scope-wait', ticketIds: ['P'], question: 'Owner decision?' })
+  await run.watch({ id: `runtime:${worker.id}:fault`, bindingId: worker.id, ticketId: 'P', recipient: worker.id, reason: 'unknown_remote_result', waitingFor: 'runtime reconciliation', progressAt: new Date().toISOString() })
+  const fault = ledger.load(db, 'attention', `runtime:${worker.id}:fault`)!
+  vi.setSystemTime(new Date('2026-11-16T01:05:00Z'))
+  await service.sendMessage('s-p', 'ask-only-evidence', { to: 'binding:main', ticketId: 'P', message: 'Owner review confirmed', facts: { state: 'progress', summary: 'Wait for owner review', evidence: ['Owner review scheduled at 02:00'] } })
+  expect(ledger.load(db, 'attention', `ask:${ask.askId}`)).toMatchObject({ progressAt: '2026-11-16T01:05:00.000Z', waitingFor: 'Wait for owner review' })
+  expect(ledger.load(db, 'attention', id)).toEqual(original)
+  expect(ledger.load(db, 'attention', `runtime:${worker.id}:fault`)).toEqual(fault)
+})
+
 it('does not count an undelivered progress report or its later duplicate as fresh progress', async () => {
   const timers = new Timers()
   const { run, sessions } = await fixture(2, timers)
@@ -767,6 +832,37 @@ it('records background budget interruption without completion approval or automa
   expect(ledger.list(db, 'attention')).toContainEqual(expect.objectContaining({ bindingId: worker.id, reason: 'background_budget_expired', handledAt: null }))
   await expect(run.recover(worker.id, async () => 'verified')).rejects.toMatchObject({ code: 'background_budget_expired' })
   expect(ledger.list(db, 'ask')).toHaveLength(0)
+})
+
+it('re-arms queued worker-limit reminders after explicit resume and still escalates without reviving other waits', async () => {
+  const timers = new Timers()
+  const { run } = await fixture(1, timers)
+  ledger.updateSettings(db, { backgroundLimitMinutes: 120 }, human)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
+  await run.start('P', human)
+  expect(await run.start('Q', human)).toMatchObject({ started: false, reason: 'worker_limit' })
+  expect(ledger.load(db, 'attention', 'queue:Q')).toMatchObject({ handledAt: null, reason: 'worker_limit' })
+  await run.watch({ id: 'runtime:queue-fault', ticketId: 'Q', recipient: 'manager-q', reason: 'unknown_remote_result', waitingFor: 'reconciliation', progressAt: new Date().toISOString() })
+  await run.settleAttention('runtime:queue-fault', 'reconciled')
+  await run.watch({ id: 'human-paused-wait', ticketId: 'Q', recipient: 'manager-q', reason: 'human_paused', waitingFor: 'human', progressAt: new Date().toISOString() })
+  const fault = ledger.load(db, 'attention', 'runtime:queue-fault')!
+  const humanWait = ledger.load(db, 'attention', 'human-paused-wait')!
+  await run.pause('Q', true, 'planned queue pause', human, async () => 'verified')
+  expect(ledger.load(db, 'attention', 'queue:Q')).toMatchObject({ handledAt: '2026-11-16T01:00:00.000Z', resolution: 'human_paused' })
+  await timers.advance(1200000)
+  expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.ticketId === 'Q')).toEqual([])
+  await run.pause('Q', false, 'resume queue', human, async () => 'verified')
+  expect(await run.start('Q', human)).toMatchObject({ started: false, reason: 'worker_limit' })
+  expect(ledger.load(db, 'attention', 'queue:Q')).toMatchObject({ handledAt: null, resolution: null, progressAt: '2026-11-16T01:20:00.000Z', dueAt: '2026-11-16T01:30:00.000Z', waitingFor: 'worker slot' })
+  expect(ledger.load(db, 'attention', 'runtime:queue-fault')).toEqual(fault)
+  expect(ledger.load(db, 'attention', 'human-paused-wait')).toEqual(humanWait)
+  await timers.advance(600000)
+  await timers.advance(600000)
+  const reminders = ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.ticketId === 'Q')
+  expect(reminders.map(item => ({ recipient: item.recipient, acceptedAt: item.acceptedAt }))).toEqual([{ recipient: 'manager-q', acceptedAt: '2026-11-16T01:30:00.000Z' }, { recipient: 'main', acceptedAt: '2026-11-16T01:40:00.000Z' }])
+  expect(ledger.load(db, 'attention', 'queue:Q')).toMatchObject({ escalatedAt: '2026-11-16T01:40:00.000Z', handledAt: null })
+  expect(ledger.load(db, 'ticket', 'Q')).toMatchObject({ status: 'queued', paused: 0, executionBindingId: null, startedAt: null })
 })
 
 it('does not produce false execution stagnation reminders after a verified human pause', async () => {

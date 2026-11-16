@@ -1264,6 +1264,7 @@ const ledger = defineService({
 					return required(database, "ticket", ticketId);
 				}
 				if (!["running", "review"].includes(ticket.status) || ticket.failureReason && ticket.failureBindingId === execution.id) fail("invalid_transition");
+				if (event === "ready" && ticket.status === "review" && !ticket.failureReason) return ticket;
 				update(database, "ticket", ticketId, {
 					status: "review",
 					...event === "ready" ? {
@@ -1289,7 +1290,7 @@ const ledger = defineService({
 	},
 	pauseTicket(database, ticketId, paused, reason, actor) {
 		human(database, actor);
-		required(database, "ticket", ticketId);
+		const ticket = required(database, "ticket", ticketId);
 		if (!reason.trim()) fail("invalid_config");
 		update(database, "ticket", ticketId, {
 			paused: Number(paused),
@@ -1299,6 +1300,10 @@ const ledger = defineService({
 			updatedAt: now$1()
 		});
 		if (paused) for (const item of rows(database, "attention").filter((item) => item.ticketId === ticketId && !item.askId && ["execution_in_progress", "worker_limit"].includes(item.reason) && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", "human_paused");
+		else if (ticket.paused && ticket.status === "queued" && !ticket.executionBindingId && !ticket.startedAt) {
+			const item = load(database, "attention", `queue:${ticketId}`);
+			if (item?.reason === "worker_limit" && item.resolution === "human_paused" && !item.askId) ledger.refreshAttention(database, item.id, now$1(), item.reason, item.waitingFor);
+		}
 		return required(database, "ticket", ticketId);
 	},
 	cancelTicket(database, ticketId, reason, actor) {
@@ -1427,11 +1432,15 @@ const ledger = defineService({
 		}
 		const ticket = message.ticketId ? load(database, "ticket", message.ticketId) : null;
 		const facts = message.facts ? JSON.parse(message.facts) : null;
-		const report = event === "delivered" && !message.deliveredAt && facts?.evidence?.some((item) => item.trim()) && !rows(database, "message").some((item) => item.id !== message.id && item.ticketId === message.ticketId && item.sender === message.sender && item.facts === message.facts && item.deliveredAt);
-		const continuation = event === "handled" && !message.handledAt && ["runtime:ticket", "answer"].includes(message.kind);
+		const report = message.kind === "message" && event === "delivered" && !message.deliveredAt && facts?.evidence?.some((item) => item.trim()) && !rows(database, "message").some((item) => item.id !== message.id && item.ticketId === message.ticketId && item.sender === message.sender && item.facts === message.facts && item.deliveredAt);
+		const continuation = event === "handled" && !message.handledAt && message.recipient === ticket?.executionBindingId && (message.kind === "answer" || message.kind === "runtime:ticket" && [
+			`dispatch:${ticket.id}`,
+			`ticket:${ticket.id}:resume`,
+			`binding:${ticket.executionBindingId}`
+		].includes(message.source));
 		if (ticket && !ticket.paused && !["done", "cancelled"].includes(ticket.status) && (report || continuation)) {
 			const sender = rows(database, "role_binding").find((item) => item.sessionId === message.sender);
-			for (const item of rows(database, "attention").filter((item) => item.ticketId === ticket.id && !item.handledAt && !item.id.startsWith("runtime:") && item.reason !== "human_paused" && (!item.bindingId || item.bindingId === ticket.executionBindingId || item.recipient === sender?.id || continuation && item.bindingId === message.recipient) && (!item.askId || item.recipient === sender?.id))) {
+			for (const item of rows(database, "attention").filter((item) => item.ticketId === ticket.id && !item.handledAt && item.reason !== "human_paused" && (item.askId ? report && item.recipient === sender?.id : item.id === `execution:${ticket.executionBindingId}` && (continuation || report && sender?.id === ticket.executionBindingId)))) {
 				const progressAt = continuation ? now$1() : message.acceptedAt;
 				if (progressAt > item.progressAt) ledger.refreshAttention(database, item.id, progressAt, item.reason, facts?.summary ?? message.content);
 			}
@@ -4200,7 +4209,7 @@ function createManagementTools(database, run, github, binding) {
 			if (!args.reason.trim()) throw new LedgerError("invalid_config");
 			const advanced = ledger.advanceTicket(database, ticket.id, args.event, actor, args.reason, args.executionBindingId);
 			const attention = ledger.load(database, "attention", `execution:${args.executionBindingId}`);
-			if (attention && !attention.handledAt && args.event !== "complete") await run.progress(attention.id, advanced.updatedAt, attention.reason, args.reason, exec.signal);
+			if (attention && !attention.handledAt && args.event !== "complete" && advanced.updatedAt !== ticket.updatedAt) await run.progress(attention.id, advanced.updatedAt, attention.reason, args.reason, exec.signal);
 			return {
 				ticket: advanced,
 				...args.event === "complete" ? { retirement: await run.retire(ticket.id, `delivery_complete: ${args.reason}`, exec.signal, actor) } : {}

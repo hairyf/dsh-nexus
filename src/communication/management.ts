@@ -370,7 +370,7 @@ export function createManagementTools(database: NexusDatabase, run: ReturnType<t
           throw new LedgerError('invalid_config')
         const advanced = ledger.advanceTicket(database, ticket.id, args.event, actor, args.reason, args.executionBindingId)
         const attention = ledger.load(database, 'attention', `execution:${args.executionBindingId}`)
-        if (attention && !attention.handledAt && args.event !== 'complete')
+        if (attention && !attention.handledAt && args.event !== 'complete' && advanced.updatedAt !== ticket.updatedAt)
           await run.progress(attention.id, advanced.updatedAt, attention.reason, args.reason, exec.signal)
         return { ticket: advanced, ...(args.event === 'complete' ? { retirement: await run.retire(ticket.id, `delivery_complete: ${args.reason}`, exec.signal, actor) } : {}) }
       },
