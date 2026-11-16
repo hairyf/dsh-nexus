@@ -45,6 +45,7 @@ function history(connection: DatabaseSync) {
     + 'INSERT INTO ticket_thread VALUES (\'T1\', \'thread1\', \'old\');'
     + 'INSERT INTO ticket_link VALUES (\'T1\', \'T3\', \'depends\', \'old\');'
     + 'INSERT INTO worker (id, ticketId, status, createdAt, worktree, branch) VALUES (\'old-worker\', \'T1\', \'running\', \'old\', \'/old/worktree\', \'old/branch\');'
+    + 'INSERT INTO worker (id, ticketId, status, createdAt, startedAt, endedAt) VALUES (\'ended-worker\', \'T2\', \'ended\', \'old\', \'2026-11-13T00:00:00Z\', \'2026-11-13T00:30:00Z\');'
     + 'INSERT INTO supervisor (id, title, reason, createdAt) VALUES (\'S1\', \'Coordinator\', \'Cross project\', \'old\');'
     + 'INSERT INTO supervisor_ticket VALUES (\'S1\', \'T1\', \'old\');'
     + 'INSERT INTO inbox (id, seq, type, projectId, origin, kind, message, createdAt, ticketId, triggerId, threadId, workerId) VALUES (\'ask-old\', 1, \'project\', \'P1\', \'worker\', \'ask\', \'Old pending question\', \'old\', \'T1\', \'trigger1\', \'thread1\', \'old-worker\');'
@@ -68,7 +69,9 @@ it.each([false, true])('upgrades the real immutable baseline preserving history 
   expect(ledger.load(database, 'ticket', 'T2')).toMatchObject({ status: 'done' })
   expect(ledger.list(database, 'ticket_thread')).toEqual([{ ticketId: 'T1', threadId: 'thread1', createdAt: 'old' }])
   expect(ledger.list(database, 'ticket_link')).toMatchObject([{ ticketId: 'T1', relatedId: 'T3', satisfiedAt: null, wakeupId: null }])
-  expect(ledger.list(database, 'worker')).toMatchObject([{ id: 'old-worker', ticketId: 'T1', status: 'running', branch: 'old/branch', worktree: '/old/worktree' }])
+  expect(ledger.list(database, 'worker')).toHaveLength(2)
+  expect(ledger.load(database, 'worker', 'old-worker')).toMatchObject({ ticketId: 'T1', status: 'running', branch: 'old/branch', worktree: '/old/worktree' })
+  expect(ledger.load(database, 'role_binding', 'migrated:worker:ended-worker')).toMatchObject({ status: 'closed', startedAt: '2026-11-13T00:00:00Z', closedAt: '2026-11-13T00:30:00Z' })
   expect(ledger.list(database, 'supervisor_ticket')).toEqual([{ supervisorId: 'S1', ticketId: 'T1', createdAt: 'old' }])
   expect(ledger.load(database, 'ask', 'ask-old')).toMatchObject({ id: 'ask-old', status: 'pending', handler: 'human', content: 'Old pending question', verified: 0 })
   expect(JSON.parse(ledger.load(database, 'ask', 'ask-old')!.source)).toEqual({ inboxId: 'ask-old', triggerId: 'trigger1', threadId: 'thread1', workerId: 'old-worker', previousHandler: 'project', origin: 'worker' })
@@ -81,7 +84,9 @@ it.each([false, true])('upgrades the real immutable baseline preserving history 
   expect(ledger.load(database, 'thread', 'thread1')).toMatchObject({ repository: null, attentionReason: 'repository_identity_unverified' })
   expect(() => ledger.triageThread(database, 'thread1', 'P1', 'claimed', { kind: 'web', authenticated: true, userId: 'host-user' })).toThrow('repository_identity_unverified')
   expect(ledger.load(database, 'message', 'ask-old')).toMatchObject({ readAt: null, handledAt: null, deliveryState: 'failed', error: 'recipient_binding_requires_verification' })
-  expect(ledger.load(database, 'role_binding', 'migrated:worker:old-worker')).toMatchObject({ sessionId: 'old-worker', ticketId: 'T1', status: 'unavailable', activeKey: 'worker:T1', worktree: '/old/worktree', recoveryReason: 'migration_requires_session_verification' })
+  expect(ledger.load(database, 'role_binding', 'migrated:worker:old-worker')).toMatchObject({ sessionId: 'old-worker', ticketId: 'T1', status: 'unavailable', startedAt: null, activeKey: 'worker:T1', worktree: '/old/worktree', recoveryReason: 'migration_requires_session_verification' })
+  expect(() => ledger.advanceTicket(database, 'T1', 'ready', { kind: 'web', authenticated: true, userId: 'host-user' }, '', 'migrated:worker:old-worker')).toThrow('execution_not_started')
+  expect(ledger.load(database, 'message', 'answered-old')).toMatchObject({ deliveryState: 'superseded', readAt: null, handledAt: null })
   expect(database.connection.prepare('SELECT count(*) AS count FROM sqlite_master WHERE type = \'table\' AND name = \'inbox\'').get()).toEqual({ count: 0 })
   expect(database.connection.prepare('PRAGMA foreign_key_check').all()).toEqual([])
   expect(database.connection.prepare('PRAGMA integrity_check').get()).toEqual({ integrity_check: 'ok' })

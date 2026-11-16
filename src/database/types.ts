@@ -125,6 +125,7 @@ export const ReportState = {
 } as const;
 export type ReportState = (typeof ReportState)[keyof typeof ReportState];
 export type Acceptance = {
+    executionBindingId: string | null;
     id: string;
     ticketId: string;
     scope: string;
@@ -276,6 +277,7 @@ export type Project = {
     updatedAt: string;
 };
 export type RoleBinding = {
+    startedAt: string | null;
     id: string;
     role: string;
     scope: string;
@@ -359,6 +361,8 @@ export type Ticket = {
     pauseActor: string | null;
     pausedAt: string | null;
     failureReason: string | null;
+    failureBindingId: string | null;
+    executionBindingId: string | null;
     deliveryTarget: string | null;
     startedAt: string | null;
     endedAt: string | null;

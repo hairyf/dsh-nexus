@@ -30,11 +30,13 @@ Spec 01 的领域写入口是 `src/service/ledger.ts`，纯策略入口是 `src/
 
 Thread 的 repository 是持久事实；分诊、订阅和发布均按同一仓库身份核验。历史未知身份保持 `repository_identity_unverified`，不能根据显示名或项目归属字段猜仓库。
 
-执行入口统一使用 `dispatchTicket` 受理 queued、`startTicket` 原子记录 Ticket.running/首次 startedAt 与 Worker 运行事实、`retryTicket` 在确认旧 Worker 关闭后重新排队；均校验 project/人工授权、项目可用、暂停、依赖与待答问题，不改变既有工单授权。`ticket_transition` 保留操作者、原因、前后状态与执行绑定。`updateBinding` 不能把 idle Worker 直接改成 running 来绕过实际启动入口。
+执行入口统一使用 `dispatchTicket` 受理 queued、`startTicket` 原子记录 Ticket.running/首次 startedAt 与 Worker 运行事实、`retryTicket` 在确认旧 Worker 关闭后重新排队；均校验 project/人工授权、项目可用、暂停、依赖与待答问题，不改变既有工单授权。`ticket_transition` 保留操作者、原因、前后状态与执行绑定。RoleBinding.startedAt 只由受控启动或真实旧 Worker.startedAt 产生，单纯绑定、派工受理或旧 running 标记都不构成已启动证据。宿主核验会话实际启动后才能调用 startTicket；本层不执行 spawn。Ticket.executionBindingId 保存当前执行，failureBindingId 保存失败来源。updateBinding 不能把 idle/unavailable Worker 改成 running；已有实际启动证据的当前执行只能通过 recoverTicket 在重新核验项目、暂停、授权、依赖和并发后恢复。恢复调用前由运行层核对真实会话和工作区，不凭同名 preset 猜测。
+
+ready/failed/session_ended 必须属于当前且真实启动过的执行：Worker 身份从可信会话绑定推导，宿主/project 转交事件必须显式提供 executionBindingId。失败不会被迟到 ready/session_ended 清除；retry 仅重新排队并保留失败，只有获授权的新执行产生 ready 才清除当前失败，失败历史仍在 ticket_transition。AcceptanceInput.executionBindingId 为必填，验收记录和交付决定均绑定当前执行，不能跨重试重放旧证据或旧批准。
 
 正式答案必须回传当前 `policyBasis`，一次事务内结清 Ask 并写入回送消息。升级沿用原 askId；实质目标变化会取消旧 pending Ask，已答旧决定保留但不能用于新目标。已读和处理完通知均不回答 Ask。Ask.initiatorBinding 保留原发起者审计，responseRecipient 保存已核验的当前回送责任；transferMessages 必须核验 previousBindingId、同角色/范围和旧会话关闭，并在同一事务迁移该回送地址。发起方尚未恢复时，答案仍一次性落账，回送消息显式失败为 initiator_requires_recovery，恢复后移交原消息，不要求重答。
 
-Message 的 acceptedAt、deliveredAt、readAt、handledAt 是不同事实。同票同收件责任按 seq 保序，不同票互不阻塞。失败保留次数、原因、重试时间；角色替换只能显式移交相同责任的未读消息和 pending Ask。策略变更或升级改变 handler 时，在同一事务将旧待办标为 superseded 并向新责任人落一条 pending 投递；消费方必须排除 supersededAt 非空的消息，原 readAt/handledAt 不伪造为已处理。handler 不变的策略编辑不额外造通知。不可用的处理者会在创建/升级/策略重路由前被拒绝，整次写入回滚。Outbox 的 unknown 必须由适配器先核对远端关联，不能盲目重发；sent 需要远端 ID，已知成功不能再次发送。
+Message 的 acceptedAt、deliveredAt、readAt、handledAt 是不同事实。同票同收件责任按 seq 保序，不同票互不阻塞。失败保留次数、原因、重试时间；角色替换只能显式移交相同责任的未读消息和 pending Ask。策略变更或升级改变 handler 时，在同一事务将旧待办标为 superseded 并向新责任人落一条 pending 投递；消费方必须排除 supersededAt 非空的消息，原 readAt/handledAt 不伪造为已处理。handler 不变的策略编辑不额外造通知。取消、正式结清以及两种目标变化路径也在同一事务退役原请求，保留 readAt/handledAt 历史；退役请求不阻塞后续投递。不可用的处理者会在创建/升级/策略重路由前被拒绝，整次写入回滚。Outbox 的 unknown 必须由适配器先核对远端关联，不能盲目重发；sent 需要远端 ID，已知成功不能再次发送。
 
 只在成功新交付时写 dependency satisfaction 与 durable wakeup，历史 done、failed、cancelled 不冒充成功。Attention 保存等待依据、有效进展时间、提醒目标/时间、失败、升级与处置；它不负责定时器，不改变 Ask、暂停或授权。
 
@@ -68,8 +70,9 @@ recordAcceptance(database: NexusDatabase, input: AcceptanceInput, actor: Actor):
 resolveMerge(database: NexusDatabase, askId: string, target: MergeTarget, repositoryVerified: boolean): boolean
 dispatchTicket(database: NexusDatabase, ticketId: string, actor: Actor): Row<'ticket'>
 startTicket(database: NexusDatabase, ticketId: string, bindingId: string, actor: Actor): Row<'ticket'>
+recoverTicket(database: NexusDatabase, ticketId: string, bindingId: string, reason: string, actor: Actor): Row<'ticket'>
 retryTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'>
-advanceTicket(database: NexusDatabase, ticketId: string, event: 'ready' | 'session_ended' | 'failed' | 'complete', actor: Actor, reason = ''): Row<'ticket'>
+advanceTicket(database: NexusDatabase, ticketId: string, event: 'ready' | 'session_ended' | 'failed' | 'complete', actor: Actor, reason = '', executionBindingId?: string): Row<'ticket'>
 pauseTicket(database: NexusDatabase, ticketId: string, paused: boolean, reason: string, actor: Actor): Row<'ticket'>
 cancelTicket(database: NexusDatabase, ticketId: string, reason: string, actor: Actor): Row<'ticket'>
 linkTickets(database: NexusDatabase, ticketId: string, relatedId: string, kind: 'depends' | 'relates', actor: Actor): void

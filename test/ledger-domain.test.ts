@@ -44,9 +44,16 @@ function createTicket(id: string) {
 function ask(id = 'A1', patch: Partial<AskInput> = {}, actor = worker) {
   return ledger.createAsk(db, { id, ticketIds: ['T1'], source: 'message:1', content: 'Which implementation?', decisionType: 'ordinary', withinAuthorization: true, options: ['first', 'second'], ...patch }, actor)
 }
+function startWorker() {
+  if (!ledger.load(db, 'role_binding', 'worker')!.startedAt) {
+    ledger.dispatchTicket(db, 'T1', project)
+    ledger.startTicket(db, 'T1', 'worker', project)
+  }
+}
 function mergeAsk(id = 'M1') {
+  startWorker()
   ledger.setDeliveryTarget(db, 'T1', target, project)
-  ledger.recordAcceptance(db, { id: `accept-${id}`, ticketId: 'T1', scope: 'Bug fix', evidence: ['pnpm test: 12 passed'], basis: 'Regression suite passes', verdict: 'accepted' }, project)
+  ledger.recordAcceptance(db, { executionBindingId: 'worker', id: `accept-${id}`, ticketId: 'T1', scope: 'Bug fix', evidence: ['pnpm test: 12 passed'], basis: 'Regression suite passes', verdict: 'accepted' }, project)
   return ask(id, { decisionType: 'merge', target, options: ['allow_merge', 'deny_merge'] })
 }
 function answer(id: string, value: string, actor = web, currentTarget?: MergeTarget) {
@@ -247,12 +254,14 @@ describe('ask single settlement', () => {
     db.connection.exec('CREATE TRIGGER reject_return BEFORE INSERT ON message WHEN NEW.kind = \'answer\' BEGIN SELECT RAISE(ABORT, \'disk write failed\'); END')
     expect(() => ledger.answerAsk(db, { askId: created.id, policyBasis: created.policyBasis, answer: 'first' }, web)).toThrow('disk write failed')
     expect(ledger.load(db, 'ask', 'atomic')).toMatchObject({ status: 'pending', answer: null })
+    expect(ledger.load(db, 'message', 'ask:atomic')).toMatchObject({ supersededAt: null, deliveryState: 'pending' })
     expect(ledger.list(db, 'message')).toHaveLength(1)
   })
 })
 
 describe('acceptance and delivery invariants', () => {
   it('treats ready and session end as review, failures as unfinished and PR closed-unmerged as not done', () => {
+    startWorker()
     expect(ledger.advanceTicket(db, 'T1', 'ready', worker)).toMatchObject({ status: 'review', endedAt: null })
     expect(ledger.advanceTicket(db, 'T1', 'session_ended', worker)).toMatchObject({ status: 'review', endedAt: null })
     expect(ledger.advanceTicket(db, 'T1', 'failed', worker, 'CI failed')).toMatchObject({ status: 'waiting', failureReason: 'CI failed', endedAt: null })
@@ -272,8 +281,9 @@ describe('acceptance and delivery invariants', () => {
     expect(ledger.advanceTicket(db, 'T1', 'complete', project)).toMatchObject({ status: 'done', prState: 'merged' })
   })
   it('rejects missing evidence or explicit merge options and cannot replay permission to a different repository, PR, base or head', () => {
+    startWorker()
     ledger.setDeliveryTarget(db, 'T1', target, project)
-    expect(() => ledger.recordAcceptance(db, { id: 'empty', ticketId: 'T1', scope: 'Fix', evidence: [], basis: 'No proof', verdict: 'accepted' }, project)).toThrow('acceptance_evidence_required')
+    expect(() => ledger.recordAcceptance(db, { executionBindingId: 'worker', id: 'empty', ticketId: 'T1', scope: 'Fix', evidence: [], basis: 'No proof', verdict: 'accepted' }, project)).toThrow('acceptance_evidence_required')
     expect(() => ask('missing-options', { decisionType: 'merge', target })).toThrow('invalid_merge_target')
     mergeAsk()
     answer('M1', 'allow_merge', web, target)
@@ -307,7 +317,7 @@ describe('acceptance and delivery invariants', () => {
     ledger.updateProject(db, 'p', false, web)
     expect(ledger.resolveMerge(db, 'M1', target, true)).toBe(false)
     ledger.updateProject(db, 'p', true, web)
-    ledger.recordAcceptance(db, { id: 'reject-new', ticketId: 'T1', scope: 'New evidence', evidence: ['Regression failed'], basis: 'Criteria failed', verdict: 'rejected' }, project)
+    ledger.recordAcceptance(db, { executionBindingId: 'worker', id: 'reject-new', ticketId: 'T1', scope: 'New evidence', evidence: ['Regression failed'], basis: 'Criteria failed', verdict: 'rejected' }, project)
     expect(ledger.resolveMerge(db, 'M1', target, true)).toBe(false)
   })
   it('records a changed provider head as fact, cancels pending old targets and never reuses old approval', () => {
@@ -315,7 +325,7 @@ describe('acceptance and delivery invariants', () => {
     answer('M1', 'allow_merge', web, target)
     ask('pending-old', { decisionType: 'merge', target, options: ['allow_merge', 'deny_merge'] })
     const changed = { ...target, head: 'provider-new-head' }
-    expect(ledger.recordPullRequest(db, 'T1', changed, 'merged')).toMatchObject({ prState: 'merged', deliveryTarget: JSON.stringify(changed), status: 'waiting' })
+    expect(ledger.recordPullRequest(db, 'T1', changed, 'merged')).toMatchObject({ prState: 'merged', deliveryTarget: JSON.stringify(changed), status: 'running' })
     expect(ledger.load(db, 'ask', 'pending-old')).toMatchObject({ status: 'cancelled', cancelReason: 'delivery_target_changed' })
     expect(ledger.load(db, 'ask', 'M1')).toMatchObject({ status: 'answered' })
     expect(ledger.resolveMerge(db, 'M1', changed, true)).toBe(false)
@@ -329,8 +339,9 @@ describe('acceptance and delivery invariants', () => {
     expect(ledger.resolveMerge(db, 'M1', target, true)).toBe(false)
   })
   it('preserves external merged facts without inventing an approval or repeating a merge', () => {
+    startWorker()
     ledger.setDeliveryTarget(db, 'T1', target, project)
-    ledger.recordAcceptance(db, { id: 'accept', ticketId: 'T1', scope: 'Fix', evidence: ['12 passing tests'], basis: 'Criteria verified', verdict: 'accepted' }, project)
+    ledger.recordAcceptance(db, { executionBindingId: 'worker', id: 'accept', ticketId: 'T1', scope: 'Fix', evidence: ['12 passing tests'], basis: 'Criteria verified', verdict: 'accepted' }, project)
     ledger.advanceTicket(db, 'T1', 'ready', worker)
     ledger.recordPullRequest(db, 'T1', target, 'merged')
     expect(() => ledger.advanceTicket(db, 'T1', 'complete', project)).toThrow('delivery_decision_required')
@@ -338,9 +349,10 @@ describe('acceptance and delivery invariants', () => {
     expect(ledger.list(db, 'ask')).toEqual([])
   })
   it('accepts no-PR delivery with evidence and a delivery decision and durably wakes successful dependants', () => {
+    startWorker()
     createTicket('T2')
     ledger.linkTickets(db, 'T2', 'T1', 'depends', main)
-    ledger.recordAcceptance(db, { id: 'no-pr', ticketId: 'T1', scope: 'Analysis', evidence: ['Report with reproduction'], basis: 'All criteria met', verdict: 'accepted' }, project)
+    ledger.recordAcceptance(db, { executionBindingId: 'worker', id: 'no-pr', ticketId: 'T1', scope: 'Analysis', evidence: ['Report with reproduction'], basis: 'All criteria met', verdict: 'accepted' }, project)
     ask('delivery', { decisionType: 'delivery', options: ['accept_delivery', 'reject_delivery'] })
     answer('delivery', 'accept_delivery', web)
     ledger.advanceTicket(db, 'T1', 'ready', worker)
@@ -359,6 +371,7 @@ describe('acceptance and delivery invariants', () => {
     expect(() => ledger.pauseTicket(db, 'T1', false, 'I think safe', project)).toThrow('human_required')
   })
   it('never satisfies failed or cancelled predecessors and requires explicit human cancellation', () => {
+    startWorker()
     createTicket('T2')
     ledger.linkTickets(db, 'T2', 'T1', 'depends', main)
     ledger.advanceTicket(db, 'T1', 'failed', worker, 'No credentials')
@@ -368,6 +381,107 @@ describe('acceptance and delivery invariants', () => {
     expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ status: 'cancelled', pauseActor: JSON.stringify(web), pauseReason: 'Stop this work' })
     expect(ledger.resolveTicket(db, 'T2')).toMatchObject({ dependencySatisfied: false })
     expect(ledger.list(db, 'wakeup')).toEqual([])
+  })
+})
+
+describe('execution-result and retired-request regressions', () => {
+  it('keeps a failed execution failed when a delayed session end follows previously accepted evidence', () => {
+    ledger.dispatchTicket(db, 'T1', project)
+    ledger.startTicket(db, 'T1', 'worker', project)
+    ledger.recordAcceptance(db, { executionBindingId: 'worker', id: 'before-failure', ticketId: 'T1', scope: 'No PR result', evidence: ['Initially passing regression'], basis: 'Initial result', verdict: 'accepted' }, project)
+    ask('before-failure-decision', { decisionType: 'delivery', options: ['accept_delivery', 'reject_delivery'] })
+    answer('before-failure-decision', 'accept_delivery', web)
+    ledger.advanceTicket(db, 'T1', 'failed', worker, 'Regression now fails')
+    expect(ledger.advanceTicket(db, 'T1', 'session_ended', worker)).toMatchObject({ status: 'waiting', failureReason: 'Regression now fails', endedAt: null })
+    expect(() => ledger.advanceTicket(db, 'T1', 'ready', worker)).toThrow('invalid_transition')
+    expect(() => ledger.advanceTicket(db, 'T1', 'complete', project)).toThrow('invalid_transition')
+    expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ status: 'waiting', failureReason: 'Regression now fails', failureBindingId: 'worker' })
+    ledger.updateBinding(db, 'worker', 'closed', 'Failed execution confirmed ended')
+    expect(ledger.retryTicket(db, 'T1', 'Authorized retry after investigation', project)).toMatchObject({ status: 'queued', failureReason: 'Regression now fails', executionBindingId: null })
+    ledger.bindRole(db, { id: 'fresh-worker', role: 'worker', sessionId: 'fresh-worker-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/fresh', worktree: directory, previousBindingId: 'worker', recoveryReason: 'Authorized retry' }, project)
+    ledger.startTicket(db, 'T1', 'fresh-worker', project)
+    expect(() => ledger.advanceTicket(db, 'T1', 'ready', project, 'Delayed old result', 'worker')).toThrow('stale_execution')
+    expect(() => ledger.advanceTicket(db, 'T1', 'ready', project)).toThrow('execution_identity_required')
+    const freshActor: Actor = { kind: 'agent', sessionId: 'fresh-worker-session' }
+    expect(ledger.advanceTicket(db, 'T1', 'ready', freshActor)).toMatchObject({ status: 'review', failureReason: null, failureBindingId: null, executionBindingId: 'fresh-worker' })
+    expect(() => ledger.advanceTicket(db, 'T1', 'complete', project)).toThrow('acceptance_evidence_required')
+    expect(() => ledger.recordAcceptance(db, { id: 'stale-acceptance', executionBindingId: 'worker', ticketId: 'T1', scope: 'Old result', evidence: ['Old passing result'], basis: 'Old execution', verdict: 'accepted' }, project)).toThrow('stale_execution')
+    ledger.recordAcceptance(db, { id: 'fresh-acceptance', executionBindingId: 'fresh-worker', ticketId: 'T1', scope: 'New result', evidence: ['New execution regression passes'], basis: 'Fresh result verified', verdict: 'accepted' }, project)
+    expect(() => ledger.advanceTicket(db, 'T1', 'complete', project)).toThrow('delivery_decision_required')
+    ask('fresh-decision', { decisionType: 'delivery', options: ['accept_delivery', 'reject_delivery'] }, freshActor)
+    answer('fresh-decision', 'accept_delivery', web)
+    expect(ledger.advanceTicket(db, 'T1', 'complete', project)).toMatchObject({ status: 'done', failureReason: null })
+    expect(ledger.list(db, 'ticket_transition').find(item => item.event === 'failed')).toMatchObject({ bindingId: 'worker', reason: 'Regression now fails' })
+  })
+  it('does not let a never-started replacement become running through an unavailable hop', () => {
+    ledger.dispatchTicket(db, 'T1', project)
+    ledger.startTicket(db, 'T1', 'worker', project)
+    ledger.updateBinding(db, 'worker', 'closed', 'Original execution confirmed stopped')
+    ledger.bindRole(db, { id: 'never-started', role: 'worker', sessionId: 'never-started-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/replacement', worktree: directory, previousBindingId: 'worker', recoveryReason: 'Registered replacement only' }, project)
+    expect(() => ledger.startTicket(db, 'T1', 'never-started', project)).toThrow('invalid_transition')
+    ledger.updateBinding(db, 'never-started', 'unavailable', 'Not observed running')
+    ledger.pauseTicket(db, 'T1', true, 'Human hold', web)
+    ledger.updateProject(db, 'p', false, web)
+    expect(() => ledger.updateBinding(db, 'never-started', 'running', 'Unavailable hop')).toThrow('invalid_transition')
+    expect(ledger.load(db, 'role_binding', 'never-started')).toMatchObject({ status: 'unavailable', startedAt: null })
+    expect(ledger.list(db, 'ticket_transition').map(item => item.event)).toEqual(['dispatch', 'start'])
+    ledger.updateProject(db, 'p', true, web)
+    ledger.pauseTicket(db, 'T1', false, 'Human resumed', web)
+    expect(() => ledger.recoverTicket(db, 'T1', 'never-started', 'No actual start proof', project)).toThrow('stale_execution')
+    expect(ledger.load(db, 'role_binding', 'never-started')).toMatchObject({ status: 'unavailable', startedAt: null })
+  })
+  it('does not import claimed start or running proof from role-binding metadata', () => {
+    startWorker()
+    ledger.updateBinding(db, 'worker', 'closed', 'Original confirmed stopped')
+    const metadata = { id: 'metadata-worker', role: 'worker' as const, sessionId: 'metadata-worker-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/metadata', worktree: directory, status: 'running', startedAt: '2026-11-16T00:00:00Z' }
+    expect(ledger.bindRole(db, metadata, project)).toMatchObject({ status: 'idle', startedAt: null })
+  })
+  it('recovers only an actually started current execution through checked pause and project gates', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-16T00:00:00Z'))
+    ledger.dispatchTicket(db, 'T1', project)
+    ledger.startTicket(db, 'T1', 'worker', project)
+    ledger.updateBinding(db, 'worker', 'unavailable', 'Session needs verification')
+    expect(() => ledger.updateBinding(db, 'worker', 'running', 'Cannot skip recovery checks')).toThrow('invalid_transition')
+    ledger.pauseTicket(db, 'T1', true, 'Human hold', web)
+    expect(() => ledger.recoverTicket(db, 'T1', 'worker', 'Verified same running session', project)).toThrow('human_paused')
+    ledger.pauseTicket(db, 'T1', false, 'Human resumed', web)
+    ledger.updateProject(db, 'p', false, web)
+    expect(() => ledger.recoverTicket(db, 'T1', 'worker', 'Verified same running session', project)).toThrow('project_disabled')
+    ledger.updateProject(db, 'p', true, web)
+    vi.advanceTimersByTime(60000)
+    expect(ledger.recoverTicket(db, 'T1', 'worker', 'Verified same session and worktree', project)).toMatchObject({ status: 'running', executionBindingId: 'worker' })
+    expect(ledger.load(db, 'role_binding', 'worker')).toMatchObject({ status: 'running', startedAt: '2026-11-16T00:00:00.000Z' })
+    expect(ledger.list(db, 'ticket_transition').map(item => item.event)).toEqual(['dispatch', 'start', 'recover'])
+  })
+  it.each(['cancel', 'answer'])('retires a request after %s without fabricating reads or blocking the next request', (action) => {
+    ask('retired')
+    if (action === 'cancel')
+      ledger.cancelAsk(db, 'retired', 'Explicit cancellation', worker)
+    else
+      answer('retired', 'first', project)
+    ask('next')
+    expect(ledger.updateMessage(db, 'ask:next', 'delivered')).toMatchObject({ deliveryState: 'delivered' })
+    expect(ledger.load(db, 'message', 'ask:retired')).toMatchObject({ deliveryState: 'superseded', supersededAt: expect.any(String), readAt: null, handledAt: null })
+  })
+  it('retires an already read and handled request without rewriting its receipt history', () => {
+    ask('read-request')
+    ledger.updateMessage(db, 'ask:read-request', 'delivered')
+    ledger.updateMessage(db, 'ask:read-request', 'read')
+    const before = ledger.updateMessage(db, 'ask:read-request', 'handled')
+    ledger.cancelAsk(db, 'read-request', 'Explicit withdrawal after reading', worker)
+    expect(ledger.load(db, 'message', 'ask:read-request')).toMatchObject({ readAt: before.readAt, handledAt: before.handledAt, deliveredAt: before.deliveredAt, supersededAt: expect.any(String), deliveryState: 'superseded' })
+  })
+  it.each(['manager', 'provider'])('retires an obsolete merge request after a %s target change without blocking the next human request', (source) => {
+    mergeAsk('obsolete-target')
+    const next = { ...target, head: 'new-target-head' }
+    if (source === 'manager')
+      ledger.setDeliveryTarget(db, 'T1', next, project)
+    else
+      ledger.recordPullRequest(db, 'T1', next, 'open')
+    ask('next-human', { decisionType: 'important' })
+    expect(ledger.updateMessage(db, 'ask:next-human', 'delivered')).toMatchObject({ deliveryState: 'delivered' })
+    expect(ledger.load(db, 'message', 'ask:obsolete-target')).toMatchObject({ deliveryState: 'superseded', readAt: null, handledAt: null })
   })
 })
 
@@ -466,7 +580,7 @@ describe('reviewed cross-boundary invariants', () => {
     ledger.updateBinding(db, 'worker', 'closed', 'Confirmed execution ended')
     expect(() => ledger.retryTicket(db, 'T1', 'Agent asks for retry', worker)).toThrow('binding_closed')
     vi.advanceTimersByTime(60000)
-    expect(ledger.retryTicket(db, 'T1', 'Authorized retry after fix', project)).toMatchObject({ status: 'queued', failureReason: null, authorization: 'Only the assigned bug fix', startedAt: '2026-11-16T00:00:00.000Z' })
+    expect(ledger.retryTicket(db, 'T1', 'Authorized retry after fix', project)).toMatchObject({ status: 'queued', failureReason: 'Tests failed', authorization: 'Only the assigned bug fix', startedAt: '2026-11-16T00:00:00.000Z' })
     expect(ledger.list(db, 'ticket_transition').map(transition => transition.event)).toEqual(['dispatch', 'start', 'failed', 'retry'])
   })
 })

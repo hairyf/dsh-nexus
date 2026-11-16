@@ -51,6 +51,10 @@ model PolicyChange {
   ticket Ticket @relation(fields: [ticketId], references: [id])
 }
 model RoleBinding {
+  startedAt String?
+  executions Ticket[] @relation("TicketExecution")
+  failures Ticket[] @relation("TicketFailure")
+  acceptances Acceptance[] @relation("AcceptanceExecution")
   id String @id
   role String
   scope String
@@ -128,6 +132,8 @@ model Outbox {
   ask Ask? @relation(fields: [askId], references: [id])
 }
 model Acceptance {
+  executionBindingId String?
+  execution RoleBinding? @relation("AcceptanceExecution", fields: [executionBindingId], references: [id], onDelete: SetNull)
   id String @id
   ticketId String
   scope String

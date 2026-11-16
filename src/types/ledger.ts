@@ -71,6 +71,7 @@ export interface AnswerInput {
   verified?: boolean
 }
 export interface AcceptanceInput {
+  executionBindingId: string
   id: string
   ticketId: string
   scope: string

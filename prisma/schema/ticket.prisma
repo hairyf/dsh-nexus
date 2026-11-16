@@ -31,6 +31,10 @@ model Ticket {
   pauseActor String?
   pausedAt String?
   failureReason String?
+  failureBindingId String?
+  failedExecution RoleBinding? @relation("TicketFailure", fields: [failureBindingId], references: [id], onDelete: SetNull)
+  executionBindingId String?
+  execution RoleBinding? @relation("TicketExecution", fields: [executionBindingId], references: [id], onDelete: SetNull)
   deliveryTarget String?
   startedAt   String?
   endedAt     String?
