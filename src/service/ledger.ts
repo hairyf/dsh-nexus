@@ -319,12 +319,14 @@ export const ledger = defineService({
     ticketManager(database, actor, ticket)
     if (['done', 'cancelled'].includes(ticket.status))
       fail('ticket_closed')
+    if (ticket.executionAttention)
+      fail('execution_reconciliation_required')
     const binding = executionBinding(database, ticket, input.executionBindingId)
+    if (!executionMetadataVerified(database, ticket, binding))
+      fail('execution_metadata_unverified')
     const historicalMerged = ticket.status === 'review' && ticket.prState === 'merged' && !!ticket.deliveryTarget && binding.status === 'closed' && binding.repository === required(database, 'project', ticket.projectId).repository && load(database, 'worker', binding.sessionId)?.ticketId === ticket.id
     if (!binding.startedAt && !historicalMerged)
       fail('execution_not_started')
-    if (ticket.executionAttention)
-      fail('execution_reconciliation_required')
     if (input.verdict === 'accepted' && ticket.failureReason && ticket.failureBindingId === input.executionBindingId)
       fail('execution_failed')
     if (!input.scope.trim() || !input.basis.trim() || !input.evidence.length || input.evidence.some(item => !item.trim()))
@@ -409,9 +411,10 @@ export const ledger = defineService({
         fail('invalid_config')
       update(database, 'role_binding', bindingId, { status: 'closed', activeKey: null, closedAt: binding.closedAt ?? now(), recoveryReason: reason, updatedAt: now() })
       const unresolved = ['running', 'queued', 'waiting'].includes(ticket.status)
-      const status = unresolved ? 'waiting' : ticket.status
+      const merged = ticket.prState === 'merged'
+      const status = unresolved ? merged ? 'review' : 'waiting' : ticket.status
       if (unresolved)
-        update(database, 'ticket', ticketId, { status, executionAttention: null, failureReason: ticket.failureReason ?? reason, failureBindingId: ticket.failureBindingId ?? bindingId, updatedAt: now() })
+        update(database, 'ticket', ticketId, { status, executionAttention: ticket.executionAttention === 'legacy_execution_closed' ? null : ticket.executionAttention, ...(!merged ? { failureReason: ticket.failureReason ?? reason, failureBindingId: ticket.failureBindingId ?? bindingId } : {}), updatedAt: now() })
       recordTransition(database, ticket, 'execution_stopped', status, actor, reason, bindingId)
       return required(database, 'ticket', ticketId)
     })
@@ -993,7 +996,16 @@ function sameTarget(left: MergeTarget | undefined | null, right: MergeTarget | u
   return !!left && !!right && left.repository === right.repository && left.pullRequest === right.pullRequest && left.base === right.base && left.head === right.head
 }
 
+function executionMetadataVerified(database: NexusDatabase, ticket: Row<'ticket'>, binding: Row<'role_binding'> | null): boolean {
+  return !!binding && binding.role === 'worker' && binding.ticketId === ticket.id && !!binding.repository
+    && binding.repository === required(database, 'project', ticket.projectId).repository && !!binding.worktree?.trim() && !!binding.branch?.trim()
+}
+
 function accepted(database: NexusDatabase, ticket: Row<'ticket'>): Row<'acceptance'> {
+  if (ticket.executionAttention)
+    fail('execution_reconciliation_required')
+  if (ticket.executionBindingId && !executionMetadataVerified(database, ticket, load(database, 'role_binding', ticket.executionBindingId)))
+    fail('execution_metadata_unverified')
   const acceptance = latestAcceptance(database, ticket)
   if (!acceptance || acceptance.verdict !== 'accepted' || !(JSON.parse(acceptance.evidence) as string[]).length)
     fail('acceptance_evidence_required')
@@ -1026,7 +1038,7 @@ function validDecision(database: NexusDatabase, ask: Row<'ask'>, target: MergeTa
   const ticket = tickets[0]
   const project = required(database, 'project', ticket.projectId)
   const acceptance = latestAcceptance(database, ticket)
-  if (!project.enabled || !project.available || ticket.paused || ticket.failureReason || ticket.executionAttention || !ticket.executionBindingId || ['done', 'cancelled'].includes(ticket.status) || acceptance?.verdict !== 'accepted')
+  if (!project.enabled || !project.available || ticket.paused || ticket.failureReason || ticket.executionAttention || !ticket.executionBindingId || ['done', 'cancelled'].includes(ticket.status) || acceptance?.verdict !== 'accepted' || !executionMetadataVerified(database, ticket, load(database, 'role_binding', ticket.executionBindingId)))
     return false
   return ask.decisionType === 'merge' && ask.status === 'answered' && ask.answer === 'allow_merge' && !!ask.verified
     && sameTarget(target, parseTarget(ask.target)) && tickets.length === 1 && sameTarget(target, parseTarget(tickets[0].deliveryTarget))

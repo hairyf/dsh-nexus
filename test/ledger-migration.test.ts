@@ -137,7 +137,7 @@ it('distinguishes unavailable storage, relative config, future schema and closed
   await expect(openDatabase(directory)).rejects.toMatchObject({ code: 'migration_failed' })
 })
 
-async function verifiedLegacyExecution(startedAt: string | null, options: { ended?: boolean, merged?: boolean, ambiguous?: boolean, conflicting?: boolean } = {}) {
+async function verifiedLegacyExecution(startedAt: string | null, options: { ended?: boolean, merged?: boolean, ambiguous?: boolean, conflicting?: boolean, conflictStatus?: 'running' | 'queued' | 'waiting', absentMetadata?: boolean } = {}) {
   const old = baseline()
   old.exec('INSERT INTO channel (id, name, createdAt) VALUES (\'legacy-channel\', \'GitHub\', \'old\'); INSERT INTO project (id, channelId, name, workspaceId, directory, createdAt, updatedAt) VALUES (\'legacy-p\', \'legacy-channel\', \'Repo\', \'legacy-workspace\', \'/legacy/repo\', \'old\', \'old\'); INSERT INTO setting (id, updatedAt) VALUES (\'global\', \'old\')')
   old.prepare('INSERT INTO ticket (id, projectId, channelId, title, status, createdAt, updatedAt, startedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run('legacy-T', 'legacy-p', 'legacy-channel', 'Historical work', 'running', 'old', 'old', startedAt)
@@ -148,6 +148,10 @@ async function verifiedLegacyExecution(startedAt: string | null, options: { ende
     old.exec('UPDATE ticket SET status = \'review\', prState = \'merged\', prUrl = \'https://github.com/org/legacy/pull/1\' WHERE id = \'legacy-T\'')
   if (options.conflicting)
     old.exec('UPDATE ticket SET status = \'running\' WHERE id = \'legacy-T\'')
+  if (options.conflictStatus)
+    old.prepare('UPDATE ticket SET status = ? WHERE id = ?').run(options.conflictStatus, 'legacy-T')
+  if (options.absentMetadata)
+    old.exec('UPDATE worker SET worktree = NULL, branch = NULL WHERE id = \'legacy-worker\'')
   if (options.ambiguous) {
     old.exec('INSERT INTO worker (id, ticketId, status, createdAt, endedAt) VALUES (\'other-ended-worker\', \'legacy-T\', \'ended\', \'old\', \'2026-11-13T00:20:00Z\'); INSERT INTO ticket (id, projectId, channelId, title, status, createdAt, updatedAt) VALUES (\'unrelated-T\', \'legacy-p\', \'legacy-channel\', \'Other work\', \'review\', \'old\', \'old\'); INSERT INTO worker (id, ticketId, status, createdAt, endedAt) VALUES (\'unrelated-worker\', \'unrelated-T\', \'ended\', \'old\', \'2026-11-13T00:10:00Z\')')
   }
@@ -256,6 +260,91 @@ it('keeps a conflicting historical running-and-merged state manual until audited
   expect(ledger.reconcileLegacyExecution(database, 'legacy-T', bindingId, metadata, 'Verified historical merge needs current delivery judgment', actor)).toMatchObject({ status: 'review', prState: 'merged', executionAttention: null })
   expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('acceptance_evidence_required')
   expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ status: 'closed', startedAt: null })
+})
+
+function verifyMergedLegacyDelivery(database: NexusDatabase, actor: Actor, bindingId: string) {
+  const target = { repository: 'github.com/org/legacy', pullRequest: 'https://github.com/org/legacy/pull/1', base: 'main', head: 'verified-merged-head' }
+  ledger.verifyExecutionMetadata(database, 'legacy-T', bindingId, { repository: target.repository, worktree: '/verified/legacy', branch: 'legacy/branch' }, 'Verified current execution repository and worktree', actor)
+  ledger.setDeliveryTarget(database, 'legacy-T', target, actor)
+  ledger.recordPullRequest(database, 'legacy-T', target, 'merged')
+  ledger.recordAcceptance(database, { id: 'current-legacy-evidence', ticketId: 'legacy-T', executionBindingId: bindingId, scope: 'Existing merged delivery', basis: 'Current provider head and criteria verified', evidence: ['Current regression passes'], verdict: 'accepted' }, actor)
+  return target
+}
+
+it.each(['running', 'queued', 'waiting'] as const)('preserves delivery reconciliation after confirming a historical %s execution stopped', async (conflictStatus) => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null, { ended: true, merged: true, conflictStatus })
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  expect(ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Observed historical execution is stopped', actor)).toMatchObject({ status: 'review', prState: 'merged', executionAttention: 'legacy_delivery_requires_reconciliation', failureReason: null })
+  const before = ledger.load(database, 'ticket', 'legacy-T')
+  const audit = ledger.list(database, 'ticket_transition')
+  expect(() => ledger.retryTicket(database, 'legacy-T', 'Cannot erase pending delivery', actor)).toThrow('execution_reconciliation_required')
+  expect(() => ledger.dispatchTicket(database, 'legacy-T', actor)).toThrow('execution_reconciliation_required')
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('execution_reconciliation_required')
+  expect(ledger.load(database, 'ticket', 'legacy-T')).toEqual(before)
+  expect(ledger.list(database, 'ticket_transition')).toEqual(audit)
+  ledger.confirmExecutionStopped(database, 'legacy-T', bindingId, 'Repeated observation does not erase delivery attention', actor)
+  ledger.reconcileLegacyExecution(database, 'legacy-T', bindingId, { repository: 'github.com/org/legacy', worktree: '/verified/legacy', branch: 'legacy/branch' }, 'Reconcile the already merged delivery', actor)
+  const target = verifyMergedLegacyDelivery(database, actor, bindingId)
+  const question = ledger.createAsk(database, { id: 'stopped-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Confirm verified external delivery', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  ledger.answerAsk(database, { askId: question.id, policyBasis: question.policyBasis, answer: 'allow_merge', target, verified: true }, human)
+  expect(ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toMatchObject({ status: 'done', prState: 'merged' })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt: null })
+})
+
+it('requires execution metadata for historical acceptance and delivery even when the real start time is present', async () => {
+  const startedAt = '2026-11-13T00:00:00Z'
+  const { database, actor, bindingId } = await verifiedLegacyExecution(startedAt, { ended: true, merged: true, absentMetadata: true })
+  const target = { repository: 'github.com/org/legacy', pullRequest: 'https://github.com/org/legacy/pull/1', base: 'main', head: 'verified-merged-head' }
+  ledger.setDeliveryTarget(database, 'legacy-T', target, actor)
+  ledger.recordPullRequest(database, 'legacy-T', target, 'merged')
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt, repository: null, worktree: null, branch: null })
+  expect(() => ledger.recordAcceptance(database, { id: 'unverified-metadata', ticketId: 'legacy-T', executionBindingId: bindingId, scope: 'Existing delivery', basis: 'A start time is not repository proof', evidence: ['Claimed passing tests'], verdict: 'accepted' }, actor)).toThrow('execution_metadata_unverified')
+  expect(() => ledger.createAsk(database, { id: 'unverified-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Cannot approve unverified execution metadata', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)).toThrow('execution_metadata_unverified')
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('execution_metadata_unverified')
+  expect(ledger.list(database, 'acceptance')).toEqual([])
+  expect(ledger.list(database, 'ticket_transition')).toEqual([])
+  verifyMergedLegacyDelivery(database, actor, bindingId)
+  expect(ledger.list(database, 'ticket_transition')).toMatchObject([{ event: 'verify_execution', bindingId }])
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('delivery_decision_required')
+  const question = ledger.createAsk(database, { id: 'verified-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Verify the known repository result', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  ledger.answerAsk(database, { askId: question.id, policyBasis: question.policyBasis, answer: 'allow_merge', target, verified: true }, { kind: 'web', authenticated: true, userId: 'host-user' })
+  expect(ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toMatchObject({ status: 'done' })
+  expect(ledger.load(database, 'role_binding', bindingId)).toMatchObject({ startedAt })
+})
+
+it('uses the current explicit automatic merge policy for historical delivery without fabricating a human answer', async () => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null, { ended: true, merged: true })
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.bindRole(database, { id: 'legacy-main', role: 'main', sessionId: 'legacy-main-session' })
+  const main: Actor = { kind: 'agent', sessionId: 'legacy-main-session' }
+  const target = verifyMergedLegacyDelivery(database, actor, bindingId)
+  const question = ledger.createAsk(database, { id: 'policy-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Current delivery decision', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  expect(question.handler).toBe('human')
+  ledger.setPolicy(database, 'legacy-T', { questionLevel: 'detailed', mergePolicy: 'automatic_allowed' }, 'Human explicitly delegates this current merge decision', human)
+  const rerouted = ledger.load(database, 'ask', question.id)!
+  expect(rerouted).toMatchObject({ status: 'pending', handler: 'legacy-main', answer: null })
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('delivery_decision_required')
+  const settled = ledger.answerAsk(database, { askId: question.id, policyBasis: rerouted.policyBasis, answer: 'allow_merge', target, verified: true }, main)
+  expect(JSON.parse(settled.answerActor!)).toEqual(main)
+  expect(ledger.resolveMerge(database, question.id, target, true)).toBe(false)
+  expect(ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toMatchObject({ status: 'done' })
+})
+
+it('invalidates a delegated historical delivery answer when the current policy is tightened before completion', async () => {
+  const { database, actor, bindingId } = await verifiedLegacyExecution(null, { ended: true, merged: true })
+  const human: Actor = { kind: 'web', authenticated: true, userId: 'host-user' }
+  ledger.bindRole(database, { id: 'legacy-main', role: 'main', sessionId: 'legacy-main-session' })
+  const main: Actor = { kind: 'agent', sessionId: 'legacy-main-session' }
+  const target = verifyMergedLegacyDelivery(database, actor, bindingId)
+  ledger.setPolicy(database, 'legacy-T', { questionLevel: 'detailed', mergePolicy: 'automatic_allowed' }, 'Human delegates current verification', human)
+  const question = ledger.createAsk(database, { id: 'delegated-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Verify delivery', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  ledger.answerAsk(database, { askId: question.id, policyBasis: question.policyBasis, answer: 'allow_merge', target, verified: true }, main)
+  ledger.setPolicy(database, 'legacy-T', { questionLevel: 'detailed', mergePolicy: 'human_required' }, 'Human takes back the unfulfilled decision', human)
+  expect(() => ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toThrow('delivery_decision_required')
+  const fresh = ledger.createAsk(database, { id: 'human-delivery', ticketIds: ['legacy-T'], source: 'provider:merged', content: 'Current human decision required', decisionType: 'merge', withinAuthorization: true, options: ['allow_merge', 'deny_merge'], target }, actor)
+  expect(() => ledger.answerAsk(database, { askId: fresh.id, policyBasis: fresh.policyBasis, answer: 'allow_merge', target, verified: true }, main)).toThrow('human_required')
+  ledger.answerAsk(database, { askId: fresh.id, policyBasis: fresh.policyBasis, answer: 'allow_merge', target, verified: true }, human)
+  expect(ledger.advanceTicket(database, 'legacy-T', 'complete', actor)).toMatchObject({ status: 'done' })
 })
 
 it('does not turn a preserved historical ended pointer into permission to add acceptance to a terminal ticket', async () => {
