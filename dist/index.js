@@ -4663,6 +4663,11 @@ const server = defineWebServer((app) => {
 });
 // src/runtime/worktree.ts
 const execute$1 = promisify(execFile);
+function samePath(left, right) {
+	const a = resolve(left);
+	const b = resolve(right);
+	return process.platform === "win32" ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
 async function git(cwd, args, signal) {
 	checkInterrupt(signal);
 	try {
@@ -4678,7 +4683,7 @@ async function git(cwd, args, signal) {
 async function planWorkspace(root, remoteUrl, directory, identity, signal) {
 	if (!isAbsolute(root) || !isAbsolute(directory)) throw new LedgerError("workspace_conflict");
 	const canonical = await realpath(root);
-	if (await git(root, ["rev-parse", "--show-toplevel"], signal) !== canonical || await git(root, [
+	if (!samePath(await realpath(await git(root, ["rev-parse", "--show-toplevel"], signal)), canonical) || await git(root, [
 		"remote",
 		"get-url",
 		"origin"
@@ -4731,11 +4736,11 @@ async function verifyWorkspace(workspace, signal) {
 			"list",
 			"--porcelain",
 			"-z"
-		], signal)).split("\0\0").find((entry) => entry.split("\0").includes(`worktree ${workspace.path}`));
-		if (!registered || registered.split("\0").some((field) => field === "locked" || field.startsWith("locked "))) throw new LedgerError("workspace_conflict", "Workspace registration is absent or locked");
+		], signal)).split("\0\0").map((entry) => entry.split("\0")).find((fields) => fields.some((field) => field.startsWith("worktree ") && samePath(field.slice(9), actualPath)));
+		if (!registered || registered.some((field) => field === "locked" || field.startsWith("locked "))) throw new LedgerError("workspace_conflict", "Workspace registration is absent or locked");
 		const common = await git(workspace.path, ["rev-parse", "--git-common-dir"], signal);
 		const rootCommon = await git(root, ["rev-parse", "--git-common-dir"], signal);
-		if (actualPath !== workspace.path || resolve(workspace.path, common) !== resolve(root, rootCommon)) throw new LedgerError("workspace_conflict");
+		if (!samePath(actualPath, workspace.path) || !samePath(resolve(workspace.path, common), resolve(root, rootCommon))) throw new LedgerError("workspace_conflict");
 		if (await git(workspace.path, ["branch", "--show-current"], signal) !== workspace.branch) throw new LedgerError("workspace_conflict");
 		const admin = await git(workspace.path, ["rev-parse", "--absolute-git-dir"], signal);
 		const owner = JSON.parse(await readFile(join(admin, "nexus-owner.json"), "utf8"));
