@@ -31,7 +31,7 @@ export interface MessageInput {
 
 export type FormalAnswer = AnswerInput
 
-export type RuntimePort = Pick<ReturnType<typeof runtime.create>, 'resolve' | 'suspend' | 'deliver'>
+export type RuntimePort = Pick<ReturnType<typeof runtime.create>, 'resolve' | 'suspend' | 'deliver' | 'readMailbox' | 'handleMail'>
 export type MergeVerifier = (ask: Row<'ask'>, actor: Actor, signal?: AbortSignal) => Promise<{ target: MergeTarget, verified: boolean }>
 export type Communication = ReturnType<typeof import('./communication').communication.create>
 

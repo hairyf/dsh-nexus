@@ -73,29 +73,29 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true })
 })
 
-it('delivers actionable question identity and form through the real gateway without changing the public question text', async () => {
+it('notifies with only a count and exposes the original form on explicit mailbox read', async () => {
   const ask = await service.ask('s-worker', { requestId: 'visible-form', question: 'Which runtimes?', title: 'Targets', detail: 'Keep both compatible', options: ['node', 'bun'], multiSelect: true, decisionType: 'ordinary' })
-  const request = inputs.get('s-project')![0]
-  expect(request.content).toHaveLength(2)
-  expect(JSON.parse(request.content[0].text)).toMatchObject({ kind: 'nexus_context', messageId: `ask:${ask.askId}`, askId: ask.askId, ticketId: 'T1', facts: null, question: { question: 'Which runtimes?', title: 'Targets', detail: 'Keep both compatible', multiSelect: true, options: ['node', 'bun'], policyBasis: ask.policyBasis, state: 'pending', target: null } })
-  expect(request.content[1]).toEqual({ type: 'text', text: 'Which runtimes?' })
-  expect(ledger.load(db, 'message', `ask:${ask.askId}`)).toMatchObject({ content: 'Which runtimes?' })
-  expect(request.source).toMatchObject({ kind: 'nexus', messageId: `ask:${ask.askId}` })
-  await service.ask('s-project', { askId: ask.askId })
-  expect(JSON.parse(inputs.get('s-main')![0].content[0].text)).toMatchObject({ askId: ask.askId, question: { title: 'Targets', detail: 'Keep both compatible', multiSelect: true, options: ['node', 'bun'] } })
+  const notice = inputs.get('s-project')![0]
+  expect(notice.content).toHaveLength(1)
+  expect(JSON.parse(notice.content[0].text)).toMatchObject({ kind: 'nexus_mailbox', pendingCount: 1 })
+  expect(notice.content[0].text).not.toContain('Which runtimes?')
+  expect(notice.source).toMatchObject({ kind: 'nexus', source: 'nexus:mailbox' })
+  const box = await service.readMailbox('s-project')
+  expect(box.messages).toMatchObject([{ id: `ask:${ask.askId}`, content: 'Which runtimes?', recipient: 'nexus:project:p', readAt: expect.any(String), handledAt: null }])
+  expect(box.questions).toMatchObject([{ askId: ask.askId, question: 'Which runtimes?', title: 'Targets', detail: 'Keep both compatible', options: ['node', 'bun'], multiSelect: true, ticketIds: ['T1'], state: 'pending' }])
+  expect(db.connection.prepare('SELECT content FROM message WHERE id = ?').get(`ask:${ask.askId}`)).toEqual({ content: '' })
 })
 
-it('prepends original question association to a formal answer while preserving its public text and complete selections', async () => {
+it('keeps a formal answer and selections associated with its original question without delivering the body', async () => {
   const ask = await service.ask('s-worker', { requestId: 'visible-answer', question: 'Which runtimes?', options: ['node', 'bun'], multiSelect: true, decisionType: 'ordinary' })
   await service.sendMessage('s-project', 'answer', { askId: ask.askId, policyBasis: ask.policyBasis, message: 'Both runtimes', selections: ['node', 'bun'] })
-  const answer = inputs.get('s-worker')![0]
-  expect(answer.content).toHaveLength(2)
-  expect(JSON.parse(answer.content[0].text)).toMatchObject({ messageId: `answer:${ask.askId}`, askId: ask.askId, ticketId: 'T1', question: { question: 'Which runtimes?', options: ['node', 'bun'], state: 'answered', selections: ['node', 'bun'] } })
-  expect(answer.content[1]).toEqual({ type: 'text', text: 'Both runtimes' })
-  expect(ledger.load(db, 'message', `answer:${ask.askId}`)).toMatchObject({ content: 'Both runtimes' })
+  expect(inputs.get('s-worker')![0].content[0].text).not.toContain('Both runtimes')
+  const box = await service.readMailbox('s-worker')
+  expect(box.messages).toMatchObject([{ id: `answer:${ask.askId}`, content: 'Both runtimes', askId: ask.askId }])
+  expect(box.questions).toMatchObject([{ askId: ask.askId, state: 'answered', answer: 'Both runtimes', selections: ['node', 'bun'] }])
 })
 
-it('projects the current policy and precise merge target at delivery time rather than persisting a stale form snapshot', async () => {
+it('reads the current policy and exact merge target instead of a stale delivery snapshot', async () => {
   const target = { repository: 'github.com/org/p', pullRequest: 'https://github.com/org/p/pull/7', base: 'main', head: 'head-one' }
   ledger.setPolicy(db, 'T1', { questionLevel: 'automatic', mergePolicy: 'automatic_allowed' }, 'Allow project handling', human)
   ledger.setDeliveryTarget(db, 'T1', target, project)
@@ -104,30 +104,26 @@ it('projects the current policy and precise merge target at delivery time rather
   ledger.setPolicy(db, 'T1', { questionLevel: 'important', mergePolicy: 'automatic_allowed' }, 'New policy revision, same handler', human)
   const current = ledger.load(db, 'ask', ask.id)!
   expect(current.policyBasis).not.toBe(ask.policyBasis)
-  await run.deliver(`ask:${ask.id}`)
-  const message = inputs.get('s-project')![0]
-  expect(message.content).toHaveLength(2)
-  expect(JSON.parse(message.content[0].text)).toMatchObject({ askId: ask.id, question: { policyBasis: current.policyBasis, options: ['allow_merge', 'deny_merge'], title: 'Merge', detail: 'Verified regression evidence', target } })
-  expect(message.content[1].text).toBe('Merge exact target?')
-  expect(ledger.load(db, 'message', `ask:${ask.id}`)).toMatchObject({ content: 'Merge exact target?' })
+  const box = await service.readMailbox('s-project')
+  expect(box.questions).toMatchObject([{ askId: ask.id, policyBasis: current.policyBasis, title: 'Merge', target }])
 })
 
-it('carries structured ordinary progress facts alongside unchanged text without inventing an ask or approval', async () => {
+it('stores ordinary report text only in Inbox and keeps structured facts in the business adapter', async () => {
   const facts = { state: 'ready' as const, summary: 'PR ready', evidence: ['regression passed'], acceptanceCriteria: 'regression passes' }
   const result = await service.sendMessage('s-worker', 'visible-report', { to: 'role:project', message: '实现已完成，等待验收。', facts })
-  const report = inputs.get('s-project')![0]
-  expect(report.content).toHaveLength(2)
-  expect(JSON.parse(report.content[0].text)).toMatchObject({ messageId: result.messageId, askId: null, ticketId: 'T1', question: null, facts })
-  expect(report.content[1]).toEqual({ type: 'text', text: '实现已完成，等待验收。' })
-  expect(ledger.load(db, 'message', result.messageId)).toMatchObject({ content: '实现已完成，等待验收。', facts: JSON.stringify(facts) })
+  expect(inputs.get('s-project')![0].content[0].text).not.toContain('实现已完成')
+  const box = await service.readMailbox('s-project')
+  expect(box.messages).toMatchObject([{ id: result.messageId, content: '实现已完成，等待验收。', kind: 'message' }])
+  expect(db.connection.prepare('SELECT content, facts FROM message WHERE id = ?').get(result.messageId)).toEqual({ content: '', facts: JSON.stringify(facts) })
   expect(ledger.load(db, 'ticket', 'T1')).toMatchObject({ status: 'running' })
   expect(service.list()).toEqual([])
 })
 
-it('preserves every affected ticket in a manager question instead of showing only the first delivery partition', async () => {
+it('preserves every affected ticket in the question adapter while the envelope stays generic', async () => {
   ledger.createTicket(db, { id: 'T2', projectId: 'p', channelId: 'test', title: 'Second bug', authorization: 'fix second bug', acceptanceCriteria: 'second regression passes' }, human)
   const ask = await service.ask('s-project', { requestId: 'multi-ticket', question: 'Coordinate both fixes?', ticketIds: ['T1', 'T2'], decisionType: 'ordinary' })
-  const request = inputs.get('s-main')![0]
-  expect(JSON.parse(request.content[0].text)).toMatchObject({ askId: ask.askId, ticketId: 'T1', question: { ticketIds: ['T1', 'T2'] } })
-  expect(request.content[1].text).toBe('Coordinate both fixes?')
+  const box = await service.readMailbox('s-main')
+  expect(box.questions).toMatchObject([{ askId: ask.askId, ticketIds: ['T1', 'T2'] }])
+  expect(box.messages).toMatchObject([{ content: 'Coordinate both fixes?', recipient: 'nexus:main:global' }])
+  expect(box.messages[0]).not.toHaveProperty('ticketId')
 })

@@ -1,14 +1,10 @@
 import type { ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { usePanel } from '../../hooks/use-panel'
-import { useActions } from '../../hooks/use-store'
 import { Filters, TicketRows } from '../ticket/page'
 import { Graph } from './components/graph'
 
 export function Overview(): ReactNode {
   const { data } = usePanel()
-
-  const { go } = useActions()
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
@@ -20,7 +16,6 @@ export function Overview(): ReactNode {
           </div>
         ))}
       </div>
-      <Button size="sm" variant="outline" onClick={() => go('inbox')}>处理信箱</Button>
       <Filters />
       <Graph />
       <TicketRows />

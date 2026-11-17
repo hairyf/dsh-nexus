@@ -395,6 +395,7 @@ it('re-arms stagnation reminders only for newly delivered evidence-bearing progr
   for (let step = 1; step <= 5; step++) {
     await timers.advance(540000)
     await service.sendMessage(worker.sessionId, `healthy-${step}`, { to: 'binding:manager-p', message: 'verified continuation', facts: { state: 'progress', summary: `completed chunk ${step}`, evidence: [`chunk-${step}: regression passed`] } })
+    await service.readMailbox('s-p')
     expect(ledger.load(db, 'attention', id)).toMatchObject({ progressAt: new Date().toISOString(), waitingFor: `completed chunk ${step}`, escalatedAt: null })
   }
   expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder')).toHaveLength(0)
@@ -469,6 +470,7 @@ it('does not let manager evidence for a task ask refresh the worker execution or
   const fault = ledger.load(db, 'attention', `runtime:${worker.id}:fault`)!
   vi.setSystemTime(new Date('2026-11-16T01:05:00Z'))
   await service.sendMessage('s-p', 'ask-only-evidence', { to: 'binding:main', ticketId: 'P', message: 'Owner review confirmed', facts: { state: 'progress', summary: 'Wait for owner review', evidence: ['Owner review scheduled at 02:00'] } })
+  await service.readMailbox('s-main')
   expect(ledger.load(db, 'attention', `ask:${ask.askId}`)).toMatchObject({ progressAt: '2026-11-16T01:05:00.000Z', waitingFor: 'Wait for owner review' })
   expect(ledger.load(db, 'attention', id)).toEqual(original)
   expect(ledger.load(db, 'attention', `runtime:${worker.id}:fault`)).toEqual(fault)
@@ -497,6 +499,8 @@ it('does not count an undelivered progress report or its later duplicate as fres
   expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:00:00.000Z')
   release.resolve()
   const sent = await pending
+  expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:00:00.000Z')
+  await service.readMailbox('s-p')
   expect(ledger.load(db, 'attention', id)!.progressAt).toBe('2026-11-16T01:05:00.000Z')
   await timers.advance(60000)
   await run.deliver(sent.messageId)
@@ -514,6 +518,7 @@ it('re-arms an unchanged ask only after its responsible manager records an evide
   const first = ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)
   expect(first).toMatchObject([{ recipient: 'manager-p' }])
   await service.sendMessage('s-p', 'wait-disposition', { to: 'binding:main', ticketId: 'P', message: 'Continue waiting for scheduled decision', facts: { state: 'progress', summary: 'Waiting for scheduled owner review', evidence: ['Owner review scheduled at 02:00'] } })
+  await service.readMailbox('s-main')
   expect(ledger.load(db, 'attention', `ask:${ask.askId}`)).toMatchObject({ progressAt: '2026-11-16T01:10:00.000Z', escalatedAt: null, waitingFor: 'Waiting for scheduled owner review' })
   await timers.advance(540000)
   expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:reminder' && item.askId === ask.askId)).toHaveLength(1)
@@ -538,6 +543,7 @@ it.each(['progress', 'answer'] as const)('retires undelivered stale ask reminder
   sessions.sessions.set('s-p', manager)
   if (disposition === 'progress') {
     await service.sendMessage('s-p', 'reconciled-wait', { to: 'binding:main', ticketId: 'P', message: 'Owner review scheduled', facts: { state: 'progress', summary: 'Scheduled review confirmed', evidence: ['Review confirmed for 02:00'] } })
+    await service.readMailbox('s-main')
   }
   else {
     await service.answer({ askId: ask.askId, answer: 'decided', policyBasis: ask.policyBasis }, human)
@@ -548,7 +554,7 @@ it.each(['progress', 'answer'] as const)('retires undelivered stale ask reminder
   expect(sessions.deliveries).not.toContain(reminder.id)
 })
 
-it('skips a reminder retired by an earlier progress report in the same durable mailbox batch', async () => {
+it('retires a stale reminder only after the manager explicitly reads the stored progress report', async () => {
   const { run, sessions } = await fixture()
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-11-16T01:00:00Z'))
@@ -563,7 +569,10 @@ it('skips a reminder retired by an earlier progress report in the same durable m
   const reminder = ledger.list(db, 'message').find(item => item.kind === 'runtime:reminder')!
   sessions.sessions.set('s-p', manager)
   vi.setSystemTime(Date.now() + 2000)
-  await expect(run.deliver(report.id)).resolves.toMatchObject({ deliveryState: 'delivered' })
+  await expect(run.deliver(report.id)).resolves.toMatchObject({ deliveryState: 'pending' })
+  expect(ledger.load(db, 'message', reminder.id)!.supersededAt).toBeNull()
+  await run.readMailbox('s-p')
+  expect(ledger.load(db, 'message', report.id)!.deliveryState).toBe('delivered')
   expect(sessions.deliveries).not.toContain(reminder.id)
   expect(ledger.load(db, 'message', reminder.id)).toMatchObject({ deliveryState: 'superseded' })
 })
@@ -647,7 +656,7 @@ it('records interrupted session events without closing execution or fabricating 
   expect(ledger.load(db, 'ticket', 'P')).toMatchObject({ status: 'running', executionBindingId: worker.id })
   expect(ledger.load(db, 'role_binding', worker.id)!.status).not.toBe('closed')
   expect(ledger.list(db, 'message').filter(item => item.kind === 'runtime:session')).toMatchObject([{ id: 'turn-end:12', recipient: 'manager-p', readAt: null }])
-  expect(sessions.deliveries.filter(id => id === 'turn-end:12')).toHaveLength(1)
+  expect(sessions.deliveries.filter(id => id === 'turn-end:12')).toHaveLength(0)
   expect(await run.observe('native-helper', 'helper:12', 'completed')).toEqual({ bound: false })
 })
 

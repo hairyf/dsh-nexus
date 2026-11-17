@@ -88,14 +88,14 @@ it.each([false, true])('upgrades the real immutable baseline preserving history 
   expect(ledger.load(database, 'role_binding', 'migrated:worker:old-worker')).toMatchObject({ sessionId: 'old-worker', ticketId: 'T1', status: 'unavailable', startedAt: null, activeKey: 'worker:T1', worktree: '/old/worktree', recoveryReason: 'migration_requires_session_verification' })
   expect(() => ledger.advanceTicket(database, 'T1', 'ready', { kind: 'web', authenticated: true, userId: 'host-user' }, '', 'migrated:worker:old-worker')).toThrow('execution_not_started')
   expect(ledger.load(database, 'message', 'answered-old')).toMatchObject({ deliveryState: 'superseded', readAt: null, handledAt: null })
-  expect(database.connection.prepare('SELECT count(*) AS count FROM sqlite_master WHERE type = \'table\' AND name = \'inbox\'').get()).toEqual({ count: 0 })
+  expect(database.connection.prepare('SELECT count(*) AS count FROM sqlite_master WHERE type = \'table\' AND name = \'inbox\'').get()).toEqual({ count: 1 })
   expect(database.connection.prepare('PRAGMA foreign_key_check').all()).toEqual([])
   expect(database.connection.prepare('PRAGMA integrity_check').get()).toEqual({ integrity_check: 'ok' })
   database.close()
   const reopened = await open()
   expect(ledger.list(reopened, 'ticket')).toHaveLength(3)
   expect(ledger.list(reopened, 'ask')).toHaveLength(2)
-  expect(reopened.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 4 })
+  expect(reopened.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 5 })
 })
 
 it('produces the same actual schema from empty installation and old baseline upgrade', async () => {

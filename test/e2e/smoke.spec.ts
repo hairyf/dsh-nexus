@@ -33,10 +33,10 @@ describe('nexus in the authenticated real DSH shell', () => {
 
   it.each([
     ['sidebar', 'exposes the installed Nexus entry'],
-    ['tabs', 'exposes all six named sections'],
+    ['tabs', 'exposes all five named sections without an inbox tab'],
     ['switch', 'navigates to every associated tab panel'],
-    ['inbox', 'reads the real ledger into the inbox'],
-    ['empty', 'shows an actionable empty inbox rather than hiding a read failure'],
+    ['inbox', 'reads the real ledger into the overview'],
+    ['empty', 'shows an actionable empty ledger rather than hiding a read failure'],
     ['keyboard', 'supports the tab keyboard map'],
     ['theme', 'renders distinct light and dark system themes'],
   ] as const)('%s: %s', async (probe, _behavior) => {

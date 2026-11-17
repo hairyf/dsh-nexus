@@ -14,6 +14,6 @@ describe('real Nexus read failure', () => {
     expect(result.ok, result.detail).toBe(true)
     const errors = await commands.getDshErrors()
     expect(errors).toHaveLength(3)
-    expect(errors).toEqual(expect.arrayContaining(['401 /api/nexus/panel', 'Failed to load resource: the server responded with a status of 401 ()', 'Error: owner_required']))
+    expect(errors).toEqual(expect.arrayContaining(['401 /api/nexus/dispatch', 'Failed to load resource: the server responded with a status of 401 ()', 'Error: owner_required']))
   })
 })

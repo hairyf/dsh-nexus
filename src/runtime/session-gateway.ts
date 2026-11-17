@@ -3,6 +3,7 @@ import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@deepseek-ai/dsh-session-query'
+import type {} from '@deepseek-ai/dsh-workspace'
 import type { SessionGateway } from './types'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -30,6 +31,7 @@ export function createSessionGateway(ctx: Context, retireWriters: (sessionId: st
     get reasoningEffort() { return defaults.currentSelection().reasoningEffort },
   }
   return {
+    isArchived: sessionId => ctx.get('workspaceRegistry')?.archivedSessionIds.includes(SessionId(sessionId)) ?? false,
     async dispose() {
       for (const handle of handles.values())
         handle.agent.cancel({ kind: 'hook', reason: 'nexus_unloaded' }, { keepInbox: true })
@@ -40,11 +42,15 @@ export function createSessionGateway(ctx: Context, retireWriters: (sessionId: st
     },
     async inspect(sessionId, signal) {
       checkInterrupt(signal)
+      if (ctx.get('workspaceRegistry')?.archivedSessionIds.includes(SessionId(sessionId)))
+        return { state: 'closed', archived: true }
       const agent = agents.get(SessionId(sessionId)) ?? preparing.get(sessionId)
       if (agent)
         return { state: agent.status, cwd: agent.session.header.cwd, origin: agent.session.header.origin, parentSession: agent.session.header.parentSession }
       try {
         const { session } = await query.readSession(SessionId(sessionId))
+        if (ctx.get('workspaceRegistry')?.archivedSessionIds.includes(SessionId(sessionId)))
+          return { state: 'closed', archived: true }
         return { state: 'resumable', cwd: session.cwd, origin: session.origin, parentSession: session.parentSession }
       }
       catch (error) {
@@ -103,6 +109,10 @@ export function createSessionGateway(ctx: Context, retireWriters: (sessionId: st
         throw new LedgerError('closed_session')
       if (retiring.has(sessionId))
         throw new LedgerError('execution_stop_pending')
+      if (ctx.get('workspaceRegistry')?.archivedSessionIds.includes(SessionId(sessionId)))
+        throw new LedgerError('archived_session')
+      if (item.source === 'nexus:mailbox' && agent.status !== 'idle')
+        throw new LedgerError('delivery_pending')
       const content = [{ type: 'text' as const, text: item.content }]
       if (item.askId || item.ticketId || item.facts) {
         const question = item.question

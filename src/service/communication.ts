@@ -43,13 +43,15 @@ export const communication = defineService({
       if (message.error === 'initiator_requires_recovery')
         return { state: 'failed', error: message.error, cause: null }
       try {
-        await host.deliver(message.id, signal)
-        return { state: 'accepted', error: null, cause: null }
+        const delivered = await host.deliver(message.id, signal)
+        return { state: delivered.deliveredAt ? 'accepted' : 'pending', error: null, cause: null }
       }
       catch (error) {
         checkInterrupt(signal)
         if (error instanceof LedgerError && error.code === 'interrupted_tool')
           throw error
+        if (error instanceof LedgerError && error.code === 'delivery_pending')
+          return { state: 'pending', error: null, cause: null }
         return { state: 'failed', error: 'delivery_failed', cause: error instanceof LedgerError ? error.code : error instanceof Error ? error.message : String(error) }
       }
     }
@@ -174,7 +176,10 @@ export const communication = defineService({
       return ledger.list(database, 'ask').map(state)
     }
 
-    return { resolve, ask, sendMessage, answer, cancel, list }
+    return { resolve, ask, sendMessage, answer, cancel, list, readMailbox: async (sessionId: string, signal?: AbortSignal) => {
+      const box = await host.readMailbox(sessionId, signal)
+      return { ...box, questions: list().filter(question => box.messages.some(message => message.askId === question.askId)) }
+    }, handleMail: host.handleMail }
   },
 })
 

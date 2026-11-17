@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
+import { AskCard } from '../../components/ask-card'
 import { usePanel } from '../../hooks/use-panel'
 import { useActions, useStore } from '../../hooks/use-store'
 
@@ -71,9 +72,17 @@ export function TicketRows(): ReactNode {
   )
 }
 export function Ticket(): ReactNode {
+  const { data } = usePanel()
+
   return (
     <section className="flex flex-col gap-4">
       <h2 className="m-0 text-base font-medium">工单目标与进展</h2>
+      {data.inbox.pending.length > 0 && (
+        <section className="flex flex-col gap-3" aria-label="待本人决定">
+          <h3 className="m-0 text-sm font-medium">待本人决定</h3>
+          {data.inbox.pending.map(ask => <AskCard key={ask.id} ask={ask} />)}
+        </section>
+      )}
       <Filters />
       <TicketRows />
     </section>

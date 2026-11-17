@@ -1,14 +1,17 @@
 import type { NexusDatabase } from '../database'
 import type { HostTimers, RecoveryResult, SessionGateway, SessionSnapshot, StartResult, StopResult, Workspace } from '../runtime/types'
 import type { Actor, AttentionInput, BindingInput, Row, RuntimeEventInput } from '../types/ledger'
+import type { MailboxModel } from '../types/web'
 import { randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { LedgerError } from '../database'
 import { checkInterrupt, interruptible } from '../runtime/interrupt'
 import { createWorkspace, planWorkspace, verifyWorkspace } from '../runtime/worktree'
+import { mailAddress } from '../utils/mail-address'
 import { defineService } from '../utils/service'
 import { ledger } from './ledger'
+import { mailbox as mailStore } from './mailbox'
 
 const operations = new Map<string, Promise<unknown>>()
 const mailboxes = new Map<string, Promise<unknown>>()
@@ -38,6 +41,10 @@ export const runtime = defineService({
       const session = await interruptible(() => gateway.inspect(sessionId, signal), signal)
       if (session.origin === 'subagent' || session.parentSession)
         throw new LedgerError('unknown_binding')
+      if (ledger.load(database, 'role_binding', binding.id)?.status === 'closed')
+        throw new LedgerError('closed_session')
+      if (session.archived || gateway.isArchived?.(sessionId))
+        throw new LedgerError('archived_session')
       if (session.state === 'closed')
         throw new LedgerError('closed_session')
       return { binding, session }
@@ -70,8 +77,6 @@ export const runtime = defineService({
           return reserved
         }
         const binding = ledger.bindRole(database, input, actor)
-        if (input.previousBindingId)
-          ledger.transferMessages(database, input.previousBindingId, binding.id)
         const cwd = join(managerDirectory, binding.id)
         try {
           await mkdir(cwd, { recursive: true })
@@ -268,8 +273,18 @@ export const runtime = defineService({
       const requested = ledger.load(database, 'message', messageId)
       if (!requested)
         throw new LedgerError('not_found')
+      const letter = mailStore.load(database, messageId)
+      if (requested.kind === 'runtime:session')
+        return requested
+      if (letter) {
+        const target = ledger.list(database, 'role_binding').find(binding => binding.status !== 'closed' && mailAddress(binding.role, binding.scope) === letter.recipient)
+        if (target && !letter.handledAt && !letter.supersededAt)
+          await notifyMailbox(target.sessionId, signal)
+        return ledger.load(database, 'message', messageId)!
+      }
       await interruptible(() => serializeMailbox(`${requested.recipient}:${requested.ticketId}`, async () => {
-        const messages = ledger.list(database, 'message').filter(item => item.recipient === requested.recipient && item.ticketId === requested.ticketId && !item.readAt && !item.supersededAt).sort((a, b) => a.seq - b.seq)
+        const mail = new Set(ledger.listMail(database, requested.recipient).map(message => message.id))
+        const messages = ledger.list(database, 'message').filter(item => item.recipient === requested.recipient && item.ticketId === requested.ticketId && !item.readAt && !item.supersededAt && item.kind !== 'runtime:session' && !mail.has(item.id)).sort((a, b) => a.seq - b.seq)
         for (const message of messages) {
           checkInterrupt(signal)
           if (ledger.load(database, 'message', message.id)!.supersededAt)
@@ -328,6 +343,87 @@ export const runtime = defineService({
         }
       }), signal)
       return ledger.load(database, 'message', messageId)!
+    }
+
+    async function mailbox(sessionId: string, signal?: AbortSignal): Promise<MailboxModel> {
+      const binding = ledger.list(database, 'role_binding').find(item => item.sessionId === sessionId)
+      const empty: MailboxModel = { sessionId, bindingId: null, role: null, scope: null, active: false, pendingCount: 0, messages: [] }
+      if (!binding || binding.status === 'closed')
+        return empty
+      const session = await gateway.inspect(sessionId, signal)
+      if (ledger.load(database, 'role_binding', binding.id)?.status === 'closed' || gateway.isArchived?.(sessionId) || session.archived || ['closed', 'missing'].includes(session.state) || session.origin === 'subagent' || session.parentSession)
+        return empty
+      const messages = ledger.listMail(database, binding.id)
+      return { sessionId, bindingId: binding.id, role: binding.role, scope: binding.scope, active: true, pendingCount: messages.length, messages }
+    }
+
+    function assertMailboxOwner(binding: Row<'role_binding'>): void {
+      if (ledger.load(database, 'role_binding', binding.id)?.status === 'closed')
+        throw new LedgerError('closed_session')
+      if (gateway.isArchived?.(binding.sessionId))
+        throw new LedgerError('archived_session')
+    }
+
+    async function readMailbox(sessionId: string, signal?: AbortSignal): Promise<MailboxModel> {
+      const { binding } = await resolve(sessionId, signal)
+      assertMailboxOwner(binding)
+      const letters = mailStore.read(database, mailAddress(binding.role, binding.scope))
+      for (const letter of letters) {
+        const link = ledger.load(database, 'inbox_message', letter.id)
+        if (!link)
+          continue
+        const message = ledger.load(database, 'message', link.messageId)!
+        if (!message.deliveredAt)
+          ledger.updateMessage(database, message.id, 'delivered')
+        ledger.updateMessage(database, message.id, 'read')
+        for (const item of ledger.list(database, 'attention').filter(item => item.ticketId === message.ticketId))
+          armAttention(item)
+      }
+      return mailbox(sessionId, signal)
+    }
+
+    async function handleMail(sessionId: string, messageId: string, signal?: AbortSignal): Promise<Row<'inbox'>> {
+      const { binding } = await resolve(sessionId, signal)
+      assertMailboxOwner(binding)
+      const letter = mailStore.load(database, messageId)
+      if (!letter || letter.recipient !== mailAddress(binding.role, binding.scope))
+        throw new LedgerError('scope_denied')
+      const link = ledger.load(database, 'inbox_message', messageId)
+      if (link)
+        ledger.updateMessage(database, link.messageId, 'handled')
+      else
+        mailStore.handle(database, letter.recipient, messageId)
+      return mailStore.load(database, messageId)!
+    }
+
+    async function notifyMailbox(sessionId: string, signal?: AbortSignal): Promise<void> {
+      await serializeMailbox(`notice:${sessionId}`, async () => {
+        const box = await mailbox(sessionId, signal)
+        if (!box.active)
+          return
+        const { binding, session } = await resolve(sessionId, signal)
+        if (session.state !== 'idle')
+          return
+        const messages = ledger.listMail(database, binding.id)
+        if (!messages.length)
+          return
+        const through = mailStore.list(database, mailAddress(binding.role, binding.scope), false).at(-1)!.seq
+        const id = `mailbox:${binding.id}:${through}`
+        const receipt = await gateway.receipt(sessionId, id, signal)
+        if (receipt === 'unknown')
+          throw new LedgerError('unknown_remote_result')
+        if (receipt === 'absent') {
+          try {
+            await gateway.deliver(sessionId, { id, source: 'nexus:mailbox', content: JSON.stringify({ kind: 'nexus_mailbox', pendingCount: messages.length, instruction: '使用 read_mailbox 读取信件，处理后使用 handle_mail 确认。通知和阅读均不代表已处理。' }) }, 'wake', signal)
+          }
+          catch (error) {
+            if (error instanceof LedgerError && ['delivery_pending', 'archived_session', 'closed_session'].includes(error.code))
+              return
+            throw error
+          }
+        }
+        ledger.notifyMail(database, binding.id, through)
+      })
     }
 
     function messageRecipient(message: Row<'message'>): string {
@@ -437,6 +533,7 @@ export const runtime = defineService({
             await interruptible(() => gateway.resume(binding.sessionId, presets[binding.role as keyof typeof presets], signal), signal)
           if (binding.role !== 'worker' && binding.status === 'unavailable')
             ledger.updateBinding(database, binding.id, 'idle', 'session reconciled')
+          await notifyMailbox(binding.sessionId, signal)
           const messages = ledger.list(database, 'message').filter(message => message.recipient === binding.id && !message.readAt && !message.supersededAt)
           await Promise.all([...new Map(messages.map(message => [message.ticketId, message])).values()].map(message => deliver(message.id, signal)))
           if (binding.role === 'worker') {
@@ -705,6 +802,6 @@ export const runtime = defineService({
       cancellations.clear()
     }
 
-    return { bind, resolve, dispatch, start, retire: stop, pause, cancel, retry, intake, deliver, read, handled, suspend, recover, boot, flush, startQueued, closeSupervisor, observe, projectChanged, watch, progress, settleAttention, remind, dispose }
+    return { mailbox, readMailbox, handleMail, notifyMailbox, bind, resolve, dispatch, start, retire: stop, pause, cancel, retry, intake, deliver, read, handled, suspend, recover, boot, flush, startQueued, closeSupervisor, observe, projectChanged, watch, progress, settleAttention, remind, dispose }
   },
 })

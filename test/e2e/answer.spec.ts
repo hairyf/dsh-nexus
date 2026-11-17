@@ -14,7 +14,7 @@ describe('model-backed Nexus Web answer', () => {
     expect(result.ok, result.detail).toBe(true)
     expect(await commands.getDshErrors()).toEqual([])
   })
-  it('answers a real Flash main question through the inbox form exactly once', async () => {
+  it('answers a real Flash main question through the decision form exactly once', async () => {
     const result = await commands.inDsh('answer')
     expect(result.ok, result.detail).toBe(true)
     expect(await commands.getDshErrors()).toEqual([])

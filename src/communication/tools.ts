@@ -16,6 +16,26 @@ export function createCommunicationTools(service: Communication, sessionId: stri
   }
   return [
     defineTool({
+      name: 'read_mailbox',
+      description: '读取当前角色信箱的未处理信件。阅读不会标为已处理，先完成信件要求，再用 handle_mail 确认；ask 的正式答复仍用 send_message。',
+      parameters: {},
+      output,
+      execute: async (_args, exec) => {
+        caller(exec)
+        return await service.readMailbox(sessionId, exec.signal) as unknown as Record<string, JsonValue>
+      },
+    }),
+    defineTool({
+      name: 'handle_mail',
+      description: '明确确认一封信件已处理，不会回答问题、批准决定或改变工单状态。仅能处理当前角色信箱的信件。',
+      parameters: { messageId: { type: 'string', required: true, description: 'read_mailbox 返回的信件 ID。' } },
+      output,
+      execute: async (args, exec) => {
+        caller(exec)
+        return await service.handleMail(sessionId, args.messageId as string, exec.signal) as unknown as Record<string, JsonValue>
+      },
+    }),
+    defineTool({
       name: 'ask',
       description: '创建持久问题或用 askId 上交同一问题。requestId 对同一个决定保持不变，重启/重试复用。pending 不代表批准，受影响工作线停止，其他已授权工单可继续。',
       parameters: {

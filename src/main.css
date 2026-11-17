@@ -6,3 +6,157 @@
 body:has([data-slot='conversation.hero.agentPreset'] [aria-haspopup='menu'][aria-expanded='true']) > [role='menu'] {
   max-height: 330px;
 }
+
+.nexus-mailbox-root {
+  box-sizing: border-box;
+  flex: none;
+  overflow: hidden;
+  margin: 0 auto;
+  width: calc(
+    100% -
+    var(--dsh-composer-side-clearance) -
+    var(--dsh-composer-side-clearance) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset)
+  );
+  max-width: calc(
+    var(--dsh-composer-card-max-width) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset) -
+    var(--dsh-composer-dock-inset)
+  );
+  border: 0;
+  --dsw-elevation-stroke-color: var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-specific-menu);
+  backdrop-filter: var(--dsw-menu-backdrop-filter);
+  box-shadow: var(--dsw-elevation-panel);
+
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.nexus-mailbox-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.nexus-mailbox-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nexus-mailbox-lead {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.nexus-mailbox-title {
+  flex: none;
+  font-size: 13px;
+  line-height: 24px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.nexus-mailbox-progress {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--dsw-alias-label-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-mailbox-chevron {
+  display: grid;
+  flex: none;
+  place-items: center;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.nexus-mailbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.nexus-mailbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.nexus-mailbox-glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.nexus-mailbox-content {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-mailbox-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.nexus-mailbox-header:focus-visible,
+.nexus-mailbox-message:focus-visible {
+  outline: 2px solid var(--dsw-alias-label-primary);
+  outline-offset: 2px;
+}
+
+.nexus-mailbox-message:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.nexus-mailbox-letter {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 20px;
+}

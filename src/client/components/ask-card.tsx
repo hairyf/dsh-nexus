@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
-import type { InboxAsk } from '../../../types/web'
+import type { InboxAsk } from '../../types/web'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useRef, useState } from 'react'
-import { nexus } from '../../apis/nexus'
-import { SourceLink } from '../../components/source-link'
-import { SourceSession } from '../../components/source-session'
-import { usePanel } from '../../hooks/use-panel'
-import { useActions, useStore } from '../../hooks/use-store'
+import { nexus } from '../apis/nexus'
+import { usePanel } from '../hooks/use-panel'
+import { useActions, useStore } from '../hooks/use-store'
+import { SourceLink } from './source-link'
+import { SourceSession } from './source-session'
 
 export function AskCard({ ask: initial, onSettled }: {
   ask: InboxAsk
@@ -206,89 +206,5 @@ export function AskCard({ ask: initial, onSettled }: {
         </p>
       ))}
     </article>
-  )
-}
-export function Inbox(): ReactNode {
-  const { data } = usePanel()
-
-  const { openTicket, go } = useActions()
-
-  const heading = useRef<HTMLHeadingElement>(null)
-
-  const inbox = data.inbox
-  const [showResolved, setShowResolved] = useState(false)
-  const syncProblems = inbox.resolved.filter(ask => ask.publications.some(item => item.syncProblem || item.state === 'failed' || item.state === 'unknown'))
-
-  return (
-    <section className="flex min-w-0 flex-col gap-4">
-      <h2 ref={heading} tabIndex={-1} className="m-0 text-base font-medium">
-        本人信箱 ·
-        {inbox.pending.length}
-        {' '}
-        个待答问题
-      </h2>
-      <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary)]">只显示需要本人处理的决定。打开侧聊不会回答问题，也不会解除人工暂停。</p>
-      {!inbox.pending.length && !inbox.blocked.length && !inbox.reminders.length && (
-        <div className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-5">
-          <p className="mt-0">目前没有需要本人回答或处置的事项。</p>
-          <Button size="sm" variant="outline" onClick={() => go('overview')}>查看目标与进展</Button>
-        </div>
-      )}
-      {inbox.pending.map(ask => <AskCard key={ask.id} ask={ask} onSettled={() => heading.current?.focus()} />)}
-      {inbox.blocked.map(item => (
-        <article key={item.ticket.id} className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
-          <h3 className="m-0 text-sm">
-            人工暂停 ·
-            {item.ticket.title}
-          </h3>
-          <p className="text-xs">
-            {item.reason}
-            {' '}
-            ·
-            {' '}
-            {item.since}
-            {' '}
-            · 等待本人明确处置，普通留言不恢复执行。
-          </p>
-          <Button size="sm" variant="outline" onClick={() => openTicket(item.ticket.id)}>查看工单并管理</Button>
-        </article>
-      ))}
-      {inbox.reminders.map(item => (
-        <article key={item.id} className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
-          <h3 className="m-0 text-sm">
-            待本人处置 ·
-            {item.reason}
-          </h3>
-          <p className="text-xs">
-            等待
-            {item.waitingFor}
-            {' '}
-            · 自
-            {item.progressAt}
-            {' '}
-            · 提醒
-            {item.remindedAt ?? item.dueAt}
-            {' '}
-            ·
-            {item.deliveryError ?? item.deliveryState}
-          </p>
-          {item.ticketId && <Button size="sm" variant="outline" onClick={() => openTicket(item.ticketId!)}>查看工单</Button>}
-        </article>
-      ))}
-      {!!syncProblems.length && (
-        <p role="status" className="m-0 text-xs text-[var(--dsw-alias-state-warn-primary)]">
-          {syncProblems.length}
-          {' '}
-          个已答问题有 GitHub 同步问题，无需重答。
-          <Button size="sm" variant="ghost" onClick={() => setShowResolved(true)}>查看同步结果</Button>
-        </p>
-      )}
-      {!!inbox.resolved.length && (
-        <details open={showResolved} onToggle={event => setShowResolved(event.currentTarget.open)}>
-          <summary className="cursor-pointer">最近生效答案、目标撤销与同步结果（最多 50 条）</summary>
-          <div className="mt-3 flex flex-col gap-3">{showResolved && inbox.resolved.map(ask => <AskCard key={ask.id} ask={ask} />)}</div>
-        </details>
-      )}
-    </section>
   )
 }

@@ -9,14 +9,22 @@ import { server } from '../src/server'
 
 it('registers and disposes real H3 routes through the existing host WebServer', () => {
   const routes = new Map<string, unknown>()
-  const dispose = server({ webServer: { register: (route: { path: string }) => {
+  const carrierRoutes = new Set<string>()
+  const dispose = server({ connection: { fetch: { register: (route: { path: string }) => {
+    carrierRoutes.add(route.path)
+    return async () => {
+      carrierRoutes.delete(route.path)
+    }
+  } } }, webServer: { register: (route: { path: string }) => {
     routes.set(route.path, route)
     return () => routes.delete(route.path)
   } } } as never, { panel: {} as never, owner: () => null })
+  expect(carrierRoutes.has('/api/nexus/dispatch')).toBe(true)
   expect(routes.has('/api/nexus/panel')).toBe(true)
   expect(routes.has('/api/nexus/asks')).toBe(true)
   dispose()
   expect(routes.size).toBe(0)
+  expect(carrierRoutes.size).toBe(0)
 })
 
 it('fails initialization visibly before registering presets, routes, listeners or dispatch', async () => {

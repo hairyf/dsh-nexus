@@ -444,7 +444,25 @@ export type Worker = {
     backgroundUntil: string | null;
     recoveryNote: string | null;
 };
+export type Inbox = {
+    id: string;
+    seq: number;
+    recipient: string;
+    sender: string;
+    kind: string;
+    title: string | null;
+    content: string;
+    askId: string | null;
+    acceptedAt: string;
+    readAt: string | null;
+    handledAt: string | null;
+    notifiedAt: string | null;
+    supersededAt: string | null;
+};
+export type InboxMessage = { id: string; messageId: string };
 export type DB = {
+    inbox: Inbox;
+    inbox_message: InboxMessage;
     acceptance: Acceptance;
     ask: Ask;
     ask_ticket: AskTicket;

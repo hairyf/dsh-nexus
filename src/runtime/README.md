@@ -27,4 +27,4 @@ Spec 02 不激活宿主、不打开默认数据库，也不注册公共通信工
 
 暂停/取消先落管理事实，再请求完整停止。只有 gateway 的正向停止证明才能写 execution_stopped；未确认仍占据旧执行责任。暂停保留原上下文与工作区，解除人工暂停不会自动重试；需要新执行时必须显式 retry 并核对已有交付与副作用。
 
-宿主 session/agent 的 turn end、idle、disposal 都不是工单完成。`observe` 只记录事件、核对真实读入和继续已有停止核对；正式 ready/failed/complete 仍走 Spec 01 的 advanceTicket 与验收/交付策略。
+宿主 session/agent 的 turn end、idle、disposal 都不是工单完成。`observe` 只记录事件、核对真实读入和继续已有停止核对；runtime:session 回执仅留审计，不唤醒上级、不注入其运行步骤，避免数量提醒回合生成新的会话回执唤醒链；正式 ready/failed/complete 仍走 Spec 01 的 advanceTicket 与验收/交付策略。

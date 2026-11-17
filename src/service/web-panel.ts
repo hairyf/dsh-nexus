@@ -204,6 +204,6 @@ export const webPanel = defineService({
       return ledger.setPolicy(database, id, policy, reason, actor)
     }
 
-    return { resolve, overview, inbox, ticket, topics, channels, settings, refreshProjects, setProject, command, answer, context, setSettings, setPolicy }
+    return { mailbox: ports.runtime.mailbox, handleMail: ports.runtime.handleMail, resolve, overview, inbox, ticket, topics, channels, settings, refreshProjects, setProject, command, answer, context, setSettings, setPolicy }
   },
 })
