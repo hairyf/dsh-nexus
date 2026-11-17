@@ -36,7 +36,8 @@ it('references an explicitly selected credential file without copying its conten
   cleanups.push(isolation.close)
   expect(isolation.env.DSH_E2E_CREDENTIALS_FILE).toBe(import.meta.filename)
   expect(await readdir(isolation.home)).not.toContain('.credentials.yaml')
-  expect(await readFile(isolation.patch, 'utf8')).toContain(import.meta.filename)
+  const patch = JSON.parse(await readFile(isolation.patch, 'utf8')) as { id: string, config?: { path?: string } }[]
+  expect(patch.find(entry => entry.id === 'credentials')?.config?.path).toBe(import.meta.filename)
 })
 
 it('rejects actual storage symlinks escaping the temporary home', async () => {

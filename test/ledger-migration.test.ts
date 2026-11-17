@@ -104,7 +104,7 @@ it('produces the same actual schema from empty installation and old baseline upg
   old.close()
   const upgraded = await open()
   const fresh = await open(join(directory, 'fresh'))
-  const schema = (database: NexusDatabase) => database.connection.prepare('SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE \'sqlite_%\' ORDER BY name').all()
+  const schema = (database: NexusDatabase) => database.connection.prepare('SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE \'sqlite_%\' ORDER BY name').all().map(row => ({ ...row, sql: typeof row.sql === 'string' ? row.sql.replaceAll('\r\n', '\n') : row.sql }))
   expect(schema(upgraded)).toEqual(schema(fresh))
   expect(ledger.getSettings(fresh)).toMatchObject({ maxWorkers: 4, defaultQuestionLevel: 'important', defaultMergePolicy: 'follow_question_level' })
 })

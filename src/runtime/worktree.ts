@@ -2,11 +2,18 @@ import type { Workspace } from './types'
 import { execFile } from 'node:child_process'
 import { lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
+import process from 'node:process'
 import { promisify } from 'node:util'
 import { LedgerError } from '../database'
 import { checkInterrupt } from './interrupt'
 
 const execute = promisify(execFile)
+
+function samePath(left: string, right: string): boolean {
+  const a = resolve(left)
+  const b = resolve(right)
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
+}
 
 async function git(cwd: string, args: string[], signal?: AbortSignal): Promise<string> {
   checkInterrupt(signal)
@@ -24,7 +31,7 @@ export async function planWorkspace(root: string, remoteUrl: string, directory: 
   if (!isAbsolute(root) || !isAbsolute(directory))
     throw new LedgerError('workspace_conflict')
   const canonical = await realpath(root)
-  if (await git(root, ['rev-parse', '--show-toplevel'], signal) !== canonical || await git(root, ['remote', 'get-url', 'origin'], signal) !== remoteUrl)
+  if (!samePath(await realpath(await git(root, ['rev-parse', '--show-toplevel'], signal)), canonical) || await git(root, ['remote', 'get-url', 'origin'], signal) !== remoteUrl)
     throw new LedgerError('workspace_conflict')
   return { ...identity, root: canonical, remoteUrl, path: join(directory, identity.bindingId), branch: `nexus/${identity.bindingId}`, baseCommit: await git(root, ['rev-parse', 'HEAD'], signal) }
 }
@@ -54,12 +61,12 @@ export async function verifyWorkspace(workspace: Workspace, signal?: AbortSignal
     const actualPath = await realpath(workspace.path)
     if (await git(root, ['remote', 'get-url', 'origin'], signal) !== workspace.remoteUrl)
       throw new LedgerError('workspace_conflict')
-    const registered = (await git(root, ['worktree', 'list', '--porcelain', '-z'], signal)).split('\0\0').find(entry => entry.split('\0').includes(`worktree ${workspace.path}`))
-    if (!registered || registered.split('\0').some(field => field === 'locked' || field.startsWith('locked ')))
+    const registered = (await git(root, ['worktree', 'list', '--porcelain', '-z'], signal)).split('\0\0').map(entry => entry.split('\0')).find(fields => fields.some(field => field.startsWith('worktree ') && samePath(field.slice('worktree '.length), actualPath)))
+    if (!registered || registered.some(field => field === 'locked' || field.startsWith('locked ')))
       throw new LedgerError('workspace_conflict', 'Workspace registration is absent or locked')
     const common = await git(workspace.path, ['rev-parse', '--git-common-dir'], signal)
     const rootCommon = await git(root, ['rev-parse', '--git-common-dir'], signal)
-    if (actualPath !== workspace.path || resolve(workspace.path, common) !== resolve(root, rootCommon))
+    if (!samePath(actualPath, workspace.path) || !samePath(resolve(workspace.path, common), resolve(root, rootCommon)))
       throw new LedgerError('workspace_conflict')
     if (await git(workspace.path, ['branch', '--show-current'], signal) !== workspace.branch)
       throw new LedgerError('workspace_conflict')
