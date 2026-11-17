@@ -1,47 +1,47 @@
 import type { ReactNode } from 'react'
 import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
-import { ArrowLeftIcon, FeishuIcon, GitHubIcon, GitLabIcon } from '../../../components/icons'
-import { OVERVIEW_CHANNEL_LABELS } from '../../../constants'
+import { usePanel } from '../../../hooks/use-panel'
 import { useActions, useStore } from '../../../hooks/use-store'
-import { useTranslation } from '../../../hooks/use-translation'
-import { Configuration } from './components/configuration'
 
 export function ChannelDetail(): ReactNode {
-  const { t } = useTranslation()
+  const { data } = usePanel()
+
   const { go } = useActions()
-  const kind = useStore(state => state.channel.selected)
-  const Icon = kind ? { github: GitHubIcon, gitlab: GitLabIcon, feishu: FeishuIcon }[kind] : null
+
+  const id = useStore(state => state.channel.selected)
+
+  const channel = data.channels.find(item => item.projectId === id)
+
   return (
-    <section className="@container flex min-w-0 flex-col gap-5 pb-10">
-      <div><Button size="sm" variant="ghost" icon={<ArrowLeftIcon width={16} height={16} />} onClick={() => go('channel')}>{t('channelBack')}</Button></div>
-      {!kind || !Icon
-        ? <p className="text-sm text-[var(--dsw-alias-label-secondary)]">{t('channelMissing')}</p>
-        : (
+    <section className="flex min-w-0 flex-col gap-4">
+      <div><Button size="sm" variant="ghost" onClick={() => go('channel')}>返回渠道</Button></div>
+      {channel
+        ? (
             <>
-              <header className="flex flex-wrap items-center gap-3">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-[var(--dsw-alias-card-fill)]"><Icon width={27} height={27} /></span>
-                <div className="flex flex-col gap-1">
-                  <h2 className="m-0 text-base font-medium">{OVERVIEW_CHANNEL_LABELS[kind]}</h2>
-                  <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary)]">{t('channelSettings')}</p>
-                </div>
-                <Tag tone={kind === 'feishu' ? 'quiet' : 'warning'}>{t(kind === 'feishu' ? 'channelUnsupported' : 'channelPreview')}</Tag>
-              </header>
-              {kind === 'feishu'
-                ? (
-                    <div className="rounded-2xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-bg-layer-1)] p-6">
-                      <h3 className="m-0 text-sm font-medium">{t('channelUnsupported')}</h3>
-                      <p className="mb-0 mt-2 text-[13px] leading-5 text-[var(--dsw-alias-label-secondary)]">{t('channelFeishuUnavailable')}</p>
-                    </div>
-                  )
-                : (
-                    <>
-                      <p className="m-0 rounded-xl border border-[var(--dsw-alias-border-l3)] bg-[var(--dsw-alias-card-fill)] px-4 py-3 text-xs leading-5 text-[var(--dsw-alias-label-secondary)]">{t('channelUnavailable')}</p>
-                      <p className="m-0 text-xs text-[var(--dsw-alias-label-secondary)]">{t('channelSingleAccount')}</p>
-                      <Configuration key={kind} kind={kind} />
-                    </>
-                  )}
+              <h2 className="m-0 text-lg font-medium">
+                GitHub ·
+                {channel.name}
+              </h2>
+              <Tag tone={channel.available ? 'success' : 'warning'}>{channel.available ? '最近核验可用' : channel.reason}</Tag>
+              <p className="m-0 text-xs">
+                仓库：
+                {channel.repository ?? '待核验'}
+                。不可用时请在宿主修复 gh 环境或项目范围，再由宿主重新核验。刷新本页只读取事实，不伪造连接。
+              </p>
+              {channel.facts.map(fact => (
+                <article key={fact.name} className="rounded-xl border border-[var(--dsw-alias-border-l3)] p-4">
+                  <h3 className="m-0 break-all text-sm font-medium">{fact.name}</h3>
+                  <p className="text-xs text-[var(--dsw-alias-label-secondary)]">
+                    观测时间
+                    {fact.updatedAt}
+                  </p>
+                  <pre className="m-0 whitespace-pre-wrap break-all text-xs">{JSON.stringify(fact.value, null, 2)}</pre>
+                </article>
+              ))}
+              {!channel.facts.length && <p>尚无环境核验或采集事实；请通过宿主完成环境选择与核验。</p>}
             </>
-          )}
+          )
+        : <p>项目渠道未找到，请返回列表刷新。</p>}
     </section>
   )
 }

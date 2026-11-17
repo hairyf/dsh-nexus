@@ -13,7 +13,7 @@ export default defineConfig({
     fetch.ts.generate,
     fetch.ts.dest,
   ),
-  input: './src/host/server/index.ts',
+  input: './src/server/index.ts',
   output: {
     main: 'src/client/apis/index.ts',
     type: 'src/client/apis/index.type.ts',

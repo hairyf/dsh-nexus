@@ -9,4 +9,11 @@ import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
  * merging in one program would resolve it to the Host `SessionStore`. The
  * client face is restored explicitly here.
  */
-export type ClientContext = Omit<Context, 'sessions'> & { sessions: ISessions }
+export type ClientContext = Omit<Context, 'sessions'> & {
+  sessions: ISessions
+  betterSidebar?: {
+    getTab: (id: string) => unknown
+    isTabEnabled: (id: string) => boolean
+    openTab: (seed: { type: string }, scope: { sessionId: string }) => void
+  }
+}

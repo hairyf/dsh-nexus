@@ -1,0 +1,201 @@
+model Ask {
+  id String @id
+  source String
+  initiatorRole String
+  initiatorBinding String?
+  responseRecipient String?
+  handler String
+  decisionType String
+  withinAuthorization Boolean
+  policyBasis String
+  content String
+  options String
+  presentation String?
+  status String @default("pending")
+  answer String?
+  selections String?
+  answerActor String?
+  answerSource String?
+  answeredAt String?
+  answerPolicy String?
+  target String?
+  verified Boolean @default(false)
+  createdAt String
+  cancelledAt String?
+  cancelReason String?
+  supersedesId String?
+  escalations Int @default(0)
+  lastEscalatedAt String?
+  @@map("ask")
+  tickets AskTicket[]
+  messages Message[]
+  outbox Outbox[]
+  acceptances Acceptance[]
+  attention Attention[]
+}
+model AskTicket {
+  askId String
+  ticketId String
+  @@id([askId, ticketId])
+  @@map("ask_ticket")
+  ask Ask @relation(fields: [askId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+}
+model PolicyChange {
+  id String @id
+  ticketId String
+  actor String
+  at String
+  previous String
+  current String
+  reason String
+  @@map("policy_change")
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+}
+model RoleBinding {
+  baseCommit String?
+  startedAt String?
+  executions Ticket[] @relation("TicketExecution")
+  failures Ticket[] @relation("TicketFailure")
+  acceptances Acceptance[] @relation("AcceptanceExecution")
+  id String @id
+  role String
+  scope String
+  sessionId String @unique
+  projectId String?
+  ticketId String?
+  supervisorId String?
+  status String @default("idle")
+  activeKey String? @unique
+  worktree String?
+  branch String?
+  repository String?
+  recoveryReason String?
+  previousBindingId String?
+  createdAt String
+  updatedAt String
+  closedAt String?
+  @@map("role_binding")
+  project Project? @relation(fields: [projectId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  supervisor Supervisor? @relation(fields: [supervisorId], references: [id])
+  attention Attention[]
+}
+model Message {
+  facts String?
+  triggerId String?
+  threadId String?
+  title String?
+  source String?
+  supersededAt String?
+  trigger Trigger? @relation(fields: [triggerId], references: [id], onDelete: SetNull)
+  thread Thread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  id String @id
+  seq Int @unique
+  ticketId String?
+  recipient String
+  sender String
+  kind String
+  content String
+  askId String?
+  acceptedAt String
+  deliveredAt String?
+  readAt String?
+  handledAt String?
+  deliveryState String @default("pending")
+  attempts Int @default(0)
+  error String?
+  nextRetryAt String?
+  @@index([ticketId, recipient, seq])
+  @@map("message")
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  ask Ask? @relation(fields: [askId], references: [id])
+  outbox Outbox[]
+}
+model Outbox {
+  supersededAt String?
+  id String @id
+  messageId String
+  ticketId String?
+  recipient String
+  seq Int @unique
+  content String
+  askId String?
+  state String @default("pending")
+  attempts Int @default(0)
+  error String?
+  nextRetryAt String?
+  remoteId String?
+  remoteUrl String?
+  createdAt String
+  sentAt String?
+  @@unique([messageId, recipient])
+  @@index([ticketId, recipient, seq])
+  @@map("outbox")
+  message Message @relation(fields: [messageId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  ask Ask? @relation(fields: [askId], references: [id])
+}
+model Acceptance {
+  executionBindingId String?
+  execution RoleBinding? @relation("AcceptanceExecution", fields: [executionBindingId], references: [id], onDelete: SetNull)
+  id String @id
+  ticketId String
+  scope String
+  criteria String
+  evidence String
+  judge String
+  basis String
+  verdict String
+  askId String?
+  target String?
+  createdAt String
+  @@map("acceptance")
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  ask Ask? @relation(fields: [askId], references: [id])
+}
+model Wakeup {
+  id String @id
+  ticketId String
+  relatedId String
+  reason String
+  createdAt String
+  handledAt String?
+  @@map("wakeup")
+  ticket Ticket @relation("WakeupOwner", fields: [ticketId], references: [id])
+  related Ticket @relation("WakeupRelated", fields: [relatedId], references: [id])
+}
+model Attention {
+  id String @id
+  ticketId String?
+  askId String?
+  bindingId String?
+  reason String
+  waitingFor String
+  progressAt String
+  dueAt String
+  remindedAt String?
+  recipient String
+  deliveryState String @default("pending")
+  deliveryError String?
+  escalatedAt String?
+  handledAt String?
+  resolution String?
+  @@map("attention")
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+  ask Ask? @relation(fields: [askId], references: [id])
+  binding RoleBinding? @relation(fields: [bindingId], references: [id])
+}
+model TicketTransition {
+  id String @id
+  ticketId String
+  event String
+  fromStatus String
+  toStatus String
+  actor String
+  reason String
+  bindingId String?
+  at String
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  @@map("ticket_transition")
+}

@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-16T21:30:12.565Z",
+  "issues": [
+    "https://github.com/omdsh-dev/dsh-nexus/issues/3",
+    "https://github.com/omdsh-dev/dsh-nexus/issues/4",
+    "https://github.com/omdsh-dev/dsh-nexus/issues/6",
+    "https://github.com/omdsh-dev/dsh-nexus/issues/7"
+  ],
+  "pulls": [
+    {
+      "url": "https://github.com/omdsh-dev/dsh-nexus/pull/5",
+      "state": "closed",
+      "merged": true,
+      "providerMergeCommitSha": "b5b6ace061c484250620160d025b0087a594eb21"
+    },
+    {
+      "url": "https://github.com/omdsh-dev/dsh-nexus/pull/8",
+      "state": "closed",
+      "merged": false,
+      "providerMergeCommitSha": "01d28b7f919f17ee033f49c4c645249139a0aefb"
+    },
+    {
+      "url": "https://github.com/omdsh-dev/dsh-nexus/pull/9",
+      "state": "closed",
+      "merged": true,
+      "providerMergeCommitSha": "8ed568bf4d3149aee932e86f893de815083cc1d4"
+    }
+  ],
+  "deleted": [
+    [
+      "nexus-test/base-spec06-20261116-1647",
+      "8ed568bf4d3149aee932e86f893de815083cc1d4"
+    ],
+    [
+      "nexus-test/work-spec06-20261116-1647",
+      "5dc16bb527c73cff543dca9960771945aab36531"
+    ],
+    [
+      "nexus-test/control-spec06-20261116-1647",
+      "3443918c698d72b2bcd0e639d3be4ef1c1cae1e8"
+    ],
+    [
+      "nexus-test/external-spec06-20261116-1647",
+      "6655701243e96fc203b8e776a5f635fc827c2831"
+    ]
+  ],
+  "remaining": [],
+  "mainBefore": "cef1d6ca86214d263f68d6610c8d629398f8acee",
+  "mainAfter": "cef1d6ca86214d263f68d6610c8d629398f8acee",
+  "note": "GitHub may expose a test merge commit SHA on an unmerged PR; merged=false is authoritative"
+}

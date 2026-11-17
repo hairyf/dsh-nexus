@@ -1,0 +1,363 @@
+{
+  "observedAt": "2026-11-16T21:14:15.501Z",
+  "ticket": {
+    "id": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+    "projectId": "16884f02-b7fb-4fd9-b8cb-822608fd4883",
+    "channelId": "nexus",
+    "title": "[spec06-20261116-1647-control] PR #8 只读核验：base/head、diff、head-control 文件与真实 CI 事实",
+    "description": "Native owner 只读控制验收（spec06-20261116-1647-control）。目标：只读核验现有 PR #8（https://github.com/omdsh-dev/dsh-nexus/pull/8）——base/head、diff、根目录 nexus-test-head-control.txt 的真实内容（预期 control-head-A + 单个换行）、以及真实 CI 事实。禁止任何写操作：不文件修改、不提交、不推送、不新建 PR、不合并、不伪造检查。项目编排派真实 Worker（Flash/max 路由），只读证据齐全后从渠道收集实际 target、记录真实验收，再发 allow_merge/deny_merge 的正式合并 ask 并保持 pending 停住该线；本票 human_required，main 不代答、不执行 merge。本票用于后续 Owner 受控暂停、策略严格化、head 变化/CI 失败与未合并关闭的负例，PR #8 本身不构成合并授权。",
+    "status": "review",
+    "createdAt": "2026-11-16T20:42:51.538Z",
+    "updatedAt": "2026-11-16T21:12:41.827Z",
+    "acceptanceCriteria": "1) 真实命令输出：PR #8 的 base/head（gh pr view 精确字段）、diff（真实 diff 输出/文件清单）、nexus-test-head-control.txt 的真实内容（读取并逐字节比对预期 'control-head-A\\n'）、以及渠道采集的真实 CI 事实（状态与来源，不得伪造或推测）；2) 只读执行并以结构化 ready 汇报，证据为真实命令与输出，不接受自报；3) 全程零写：未改文件、未提交、未推送、未新建 PR、未合并；4) project 从渠道收集实际 target（repository/pullRequest/base/head），记录真实验收；5) 随后发 allow_merge/deny_merge 的正式合并 ask 并保持 pending，停止该工作线；本票策略 human_required，main/supervisor 不得代答，任何人不得执行 merge；6) 后续 head 变化、CI 失败或事实变化不得自动解除暂停、不得自动 retry 或替代执行、不得再建票；只有明确指示才可为新 target 建新问题，不把旧决定用于新 head。",
+    "authorization": "来源：当前 Native owner 用户消息（nativeSource.messageId=4d61ba5a-dd6f-467c-b788-1fc543c502ff，rpcId=spec06-control-20261116-2040）。GitHub 白名单为空，PR #8 本身不构成新授权。授权范围仅限：由真实 Worker 只读核验现有 https://github.com/omdsh-dev/dsh-nexus/pull/8 的 base/head、diff、nexus-test-head-control.txt 内容（当前预期 control-head-A 加一个换行）以及真实 CI 事实。Worker 与 project 一律禁止改文件、提交、推送、新建 PR、合并或伪造检查。没有给出任何真实合并授权。",
+    "questionLevel": "detailed",
+    "mergePolicy": "human_required",
+    "policyRevision": 1,
+    "pauseReason": "spec06 head负例：仅测试旧head许可必须拒绝，不授权重试/合并",
+    "pauseActor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+    "pausedAt": "2026-11-16T21:00:06.509Z",
+    "failureReason": null,
+    "failureBindingId": null,
+    "executionBindingId": "2809c08b-ffef-4d4c-9ce2-8853c115d2d9",
+    "executionAttention": null,
+    "deliveryTarget": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"3443918c698d72b2bcd0e639d3be4ef1c1cae1e8\"}",
+    "startedAt": "2026-11-16T20:43:01.642Z",
+    "endedAt": null,
+    "prUrl": "https://github.com/omdsh-dev/dsh-nexus/pull/8",
+    "prState": "closed",
+    "ciState": "failing",
+    "paused": 0,
+    "prepareError": null
+  },
+  "pull": {
+    "url": "https://github.com/omdsh-dev/dsh-nexus/pull/8",
+    "state": "closed",
+    "merged": false,
+    "mergedAt": null,
+    "head": "3443918c698d72b2bcd0e639d3be4ef1c1cae1e8",
+    "base": "nexus-test/base-spec06-20261116-1647"
+  },
+  "policy": [
+    {
+      "id": "d7a6b30f-2356-4b57-8e01-da8477b6ac73",
+      "ticketId": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "actor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+      "at": "2026-11-16T20:48:20.016Z",
+      "previous": "{\"questionLevel\":\"important\",\"mergePolicy\":\"human_required\"}",
+      "current": "{\"questionLevel\":\"detailed\",\"mergePolicy\":\"human_required\"}",
+      "reason": "spec06本票严格化：旧revision决定不得继续履行"
+    }
+  ],
+  "asks": [
+    {
+      "id": "ask-1cb15d8657db0b9a4ba6fd91d56d7c53",
+      "source": "communication:merge-ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "initiatorRole": "project",
+      "initiatorBinding": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "responseRecipient": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "handler": "human",
+      "decisionType": "merge",
+      "withinAuthorization": 1,
+      "policyBasis": "[{\"id\":\"ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712\",\"questionLevel\":\"important\",\"mergePolicy\":\"human_required\",\"revision\":0,\"executionBindingId\":\"2809c08b-ffef-4d4c-9ce2-8853c115d2d9\"}]",
+      "content": "PR #8 https://github.com/omdsh-dev/dsh-nexus/pull/8 只读核验通过：base=nexus-test/base-spec06-20261116-1647@60d54d7，head=nexus-test/control-spec06-20261116-1647@0972c2f56963d05ce0f3d70714f0fa588aff41b7；diff 仅新增 nexus-test-head-control.txt（内容 control-head-A\\n，14 字节，blob 71c5916）；渠道 CI 事实 ciState=passing（check content-control pass），mergeable=MERGEABLE/CLEAN。请给出正式合并决定：allow_merge（允许由 Nexus merge_pull_request 合并到该 test base）或 deny_merge（不合并）。",
+      "options": "[\"allow_merge\",\"deny_merge\"]",
+      "status": "answered",
+      "answer": "allow_merge",
+      "answerActor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+      "answerSource": "web",
+      "answeredAt": "2026-11-16T20:48:19.884Z",
+      "answerPolicy": "[{\"id\":\"ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712\",\"questionLevel\":\"important\",\"mergePolicy\":\"human_required\",\"revision\":0,\"executionBindingId\":\"2809c08b-ffef-4d4c-9ce2-8853c115d2d9\"}]",
+      "target": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"0972c2f56963d05ce0f3d70714f0fa588aff41b7\"}",
+      "verified": 1,
+      "createdAt": "2026-11-16T20:44:35.224Z",
+      "cancelledAt": null,
+      "cancelReason": null,
+      "supersedesId": null,
+      "escalations": 0,
+      "lastEscalatedAt": null,
+      "presentation": "{\"title\":\"合并决定：PR #8 (spec06-20261116-1647 control) → nexus-test/base-spec06-20261116-1647\",\"detail\":\"工单 ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712，来源 Native owner 消息 4d61ba5a-…（PR #8 本身不构成新授权，bot 评论亦非授权）。本票 human_required：只由本人作答，main/supervisor 不代答；未获 allow_merge 前不合并。后续 head 变化/CI 失败/事实变化不会自动解除暂停或重试，也不为新 head 复用本决定。\",\"multiSelect\":false}",
+      "selections": null
+    },
+    {
+      "id": "ask-8c4aad161e254f95f72f0cff3dbc5110",
+      "source": "communication:merge-rev1-ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "initiatorRole": "project",
+      "initiatorBinding": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "responseRecipient": "5b4f55c6-47c9-4e2f-9768-ddf04c30c93d",
+      "handler": "human",
+      "decisionType": "merge",
+      "withinAuthorization": 1,
+      "policyBasis": "[{\"id\":\"ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712\",\"questionLevel\":\"detailed\",\"mergePolicy\":\"human_required\",\"revision\":1,\"executionBindingId\":\"2809c08b-ffef-4d4c-9ce2-8853c115d2d9\"}]",
+      "content": "PR #8 https://github.com/omdsh-dev/dsh-nexus/pull/8 只读复核（当前策略 revision 1）：base=nexus-test/base-spec06-20261116-1647@60d54d7，head=nexus-test/control-spec06-20261116-1647@0972c2f56963d05ce0f3d70714f0fa588aff41b7；diff 仅新增 nexus-test-head-control.txt；head 文件真实内容为 control-head-A + LF，共 15 字节（xxd: 636f6e74726f6c2d686561642d410a；blob 71c5916；更正此前 14 字节的误记）；渠道 CI 事实 ciState=passing（check content-control pass），mergeable=MERGEABLE/CLEAN。请给出正式合并决定：allow_merge（允许由 Nexus merge_pull_request 合并到该 test base）或 deny_merge（不合并）。",
+      "options": "[\"allow_merge\",\"deny_merge\"]",
+      "status": "answered",
+      "answer": "allow_merge",
+      "answerActor": "{\"kind\":\"web\",\"authenticated\":true,\"userId\":\"owner\"}",
+      "answerSource": "web",
+      "answeredAt": "2026-11-16T20:58:30.914Z",
+      "answerPolicy": "[{\"id\":\"ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712\",\"questionLevel\":\"detailed\",\"mergePolicy\":\"human_required\",\"revision\":1,\"executionBindingId\":\"2809c08b-ffef-4d4c-9ce2-8853c115d2d9\"}]",
+      "target": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"0972c2f56963d05ce0f3d70714f0fa588aff41b7\"}",
+      "verified": 1,
+      "createdAt": "2026-11-16T20:55:48.267Z",
+      "cancelledAt": null,
+      "cancelReason": null,
+      "supersedesId": null,
+      "escalations": 0,
+      "lastEscalatedAt": null,
+      "presentation": "{\"title\":\"合并决定（revision 1）：PR #8 (spec06-20261116-1647 control) → nexus-test/base-spec06-20261116-1647\",\"detail\":\"工单 ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712，当前 policyRevision=1（questionLevel=detailed，mergePolicy=human_required），票保持 paused=1。旧 revision0 的 ask ask-1cb15d8657db0b9a4ba6fd91d56d7c53 已被账本以 decision_invalid 拒绝且不履行；本问题为同一 head 在新 revision 下的独立正式问题（独立 requestId），不改写旧 ask。仅建立 pending，不解除暂停、不执行合并。\",\"multiSelect\":false}",
+      "selections": null
+    }
+  ],
+  "acceptance": [
+    {
+      "executionBindingId": "2809c08b-ffef-4d4c-9ce2-8853c115d2d9",
+      "id": "acceptance-a91373daddf883bd6484a4ceaa092597063347f53a7af3eeba757eb2bb4c9ce9",
+      "ticketId": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "scope": "PR #8 只读控制核验：base=nexus-test/base-spec06-20261116-1647@60d54d7676b869b6fcb6b0733801235d68190e30，head=nexus-test/control-spec06-20261116-1647@0972c2f56963d05ce0f3d70714f0fa588aff41b7；diff 仅新增 nexus-test-head-control.txt；head 内容逐字节 control-head-A\\n（14 字节）；渠道采集 CI=passing。零写：未改文件/未提交/未推送/未建 PR/未合并。",
+      "criteria": "1) 真实命令输出：PR #8 的 base/head（gh pr view 精确字段）、diff（真实 diff 输出/文件清单）、nexus-test-head-control.txt 的真实内容（读取并逐字节比对预期 'control-head-A\\n'）、以及渠道采集的真实 CI 事实（状态与来源，不得伪造或推测）；2) 只读执行并以结构化 ready 汇报，证据为真实命令与输出，不接受自报；3) 全程零写：未改文件、未提交、未推送、未新建 PR、未合并；4) project 从渠道收集实际 target（repository/pullRequest/base/head），记录真实验收；5) 随后发 allow_merge/deny_merge 的正式合并 ask 并保持 pending，停止该工作线；本票策略 human_required，main/supervisor 不得代答，任何人不得执行 merge；6) 后续 head 变化、CI 失败或事实变化不得自动解除暂停、不得自动 retry 或替代执行、不得再建票；只有明确指示才可为新 target 建新问题，不把旧决定用于新 head。",
+      "evidence": "[\"编排独立复跑 gh pr view 8：state=OPEN, baseRefOid=60d54d7…, headRefOid=0972c2f…, mergeable=MERGEABLE, mergeStateStatus=CLEAN\",\"编排独立复跑 gh pr diff 8：仅 'nexus-test-head-control.txt'，new file mode 100644，+1 行 'control-head-A'，index 0000000..71c5916\",\"编排独立复跑 head 内容：gh api contents?ref=0972c2f… | base64 -d | xxd => 636f6e74726f6c2d686561642d410a（14 字节，= 'control-head-A\\\\n'）；printf 'control-head-A\\\\n' | git hash-object --stdin => 71c5916884888728da22404587e02aa5790a29f5（与 diff index 一致）\",\"渠道 CI 事实：ledger 由 GitHub 渠道实时采集 deliveryTarget{repository github.com/omdsh-dev/dsh-nexus, pullRequest pull/8, base nexus-test/base-spec06-20261116-1647, head 0972c2f…}, prState=open, ciState=passing；编排复跑 gh pr checks 8 => content-control pass（run 43952387757）\",\"只读性：Worker worktree 会话前后 clean；编排侧未在工作区/远端做任何写操作；gh 仅读命令\",\"来源边界：PR #8 上 github-actions bot 评论声明仅为真实 bot 上下文、不构成新授权；本票授权来自 Native owner 消息 4d61ba5a-…\"]",
+      "judge": "{\"kind\":\"agent\",\"sessionId\":\"d48b360f-20d3-45f0-a54a-7d5b265efaa0\"}",
+      "basis": "对照本票 acceptanceCriteria 1–4：base/head/diff/文件逐字节/CI 均有真实命令输出且经编排独立复跑一致；零写成立；交付目标由渠道实时采集并写入账本。第 5–6 条：随后发 allow_merge/deny_merge 正式合并 ask 并保持 pending，本票 human_required，我不代答、不执行 merge，head/CI 变化不自动解除暂停。",
+      "verdict": "accepted",
+      "askId": null,
+      "target": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"0972c2f56963d05ce0f3d70714f0fa588aff41b7\"}",
+      "createdAt": "2026-11-16T20:44:30.747Z"
+    },
+    {
+      "executionBindingId": "2809c08b-ffef-4d4c-9ce2-8853c115d2d9",
+      "id": "acceptance-df41ecf313040eaca92d1b24fa66d19f7852575732acd4ec087db9b1b32ee2ba",
+      "ticketId": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "scope": "PR #8 只读复核（当前 revision 1，票保持 paused）：同一 head 0972c2f56963d05ce0f3d70714f0fa588aff41b7，base nexus-test/base-spec06-20261116-1647@60d54d7676b869b6fcb6b0733801235d68190e30；diff 仅新增 nexus-test-head-control.txt；head 内容逐字节 control-head-A + LF = 15 字节（更正前文 14 字节的误记）；渠道 CI=passing。只读复核，无任何写/提交/推送/新建PR/合并。",
+      "criteria": "1) 真实命令输出：PR #8 的 base/head（gh pr view 精确字段）、diff（真实 diff 输出/文件清单）、nexus-test-head-control.txt 的真实内容（读取并逐字节比对预期 'control-head-A\\n'）、以及渠道采集的真实 CI 事实（状态与来源，不得伪造或推测）；2) 只读执行并以结构化 ready 汇报，证据为真实命令与输出，不接受自报；3) 全程零写：未改文件、未提交、未推送、未新建 PR、未合并；4) project 从渠道收集实际 target（repository/pullRequest/base/head），记录真实验收；5) 随后发 allow_merge/deny_merge 的正式合并 ask 并保持 pending，停止该工作线；本票策略 human_required，main/supervisor 不得代答，任何人不得执行 merge；6) 后续 head 变化、CI 失败或事实变化不得自动解除暂停、不得自动 retry 或替代执行、不得再建票；只有明确指示才可为新 target 建新问题，不把旧决定用于新 head。",
+      "evidence": "[\"编排只读复跑 gh pr view 8：state=OPEN, headRefOid=0972c2f56963d05ce0f3d70714f0fa588aff41b7, baseRefOid=60d54d7676b869b6fcb6b0733801235d68190e30, mergeable=MERGEABLE, mergeStateStatus=CLEAN\",\"编排只读复跑 gh pr checks 8：content-control pass（run 43952387757）\",\"编排只读读取 head 文件：gh api contents?ref=0972c2f… | base64 -d > 文件；wc -c => 15；xxd => 636f 6e74 726f 6c2d 6865 6164 2d41 0a（'control-head-A' 14 字符 + LF = 15 字节）\",\"printf 'control-head-A\\\\n' | git hash-object --stdin => 71c5916884888728da22404587e02aa5790a29f5（与 PR diff index 71c5916 一致）\",\"账本交付目标未变：repository=github.com/omdsh-dev/dsh-nexus, pullRequest=pull/8, base=nexus-test/base-spec06-20261116-1647, head=0972c2f…；prState=open, ciState=passing（渠道采集）\",\"此前记录中的『14 字节』为编排放行错误，本次以真实 wc -c/xxd 输出更正为 15 字节\"]",
+      "judge": "{\"kind\":\"agent\",\"sessionId\":\"d48b360f-20d3-45f0-a54a-7d5b265efaa0\"}",
+      "basis": "按当前 revision 1（questionLevel=detailed, mergePolicy=human_required）保留真实验收：head/base/diff/逐字节内容/CI 均有真实命令输出且编排独立复跑一致；字节数按真实读取更正为 15。票保持 paused，合并决定留待新 revision 的正式 ask 由本人作答；旧 revision0 ask 不履行。",
+      "verdict": "accepted",
+      "askId": null,
+      "target": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"0972c2f56963d05ce0f3d70714f0fa588aff41b7\"}",
+      "createdAt": "2026-11-16T20:55:43.726Z"
+    },
+    {
+      "executionBindingId": "2809c08b-ffef-4d4c-9ce2-8853c115d2d9",
+      "id": "acceptance-a62dcca7aa11b52ddba5e318d0f4e5dde59ab343b1b90b7f002af285ee89400d",
+      "ticketId": "ticket-8ebc68afe9755c19c636567505e094d8698da451d5dd7ab77e4a93e480df3712",
+      "scope": "PR #8 当前 head 3443918c698d72b2bcd0e639d3be4ef1c1cae1e8（base nexus-test/base-spec06-20261116-1647@60d54d7）复核：渠道 CI= failing；head 内容为 control-head-B\\n（15 字节），已不是 control-head-A；本记录为**未通过验收**（rejected），不记录 accepted。",
+      "criteria": "1) 真实命令输出：PR #8 的 base/head（gh pr view 精确字段）、diff（真实 diff 输出/文件清单）、nexus-test-head-control.txt 的真实内容（读取并逐字节比对预期 'control-head-A\\n'）、以及渠道采集的真实 CI 事实（状态与来源，不得伪造或推测）；2) 只读执行并以结构化 ready 汇报，证据为真实命令与输出，不接受自报；3) 全程零写：未改文件、未提交、未推送、未新建 PR、未合并；4) project 从渠道收集实际 target（repository/pullRequest/base/head），记录真实验收；5) 随后发 allow_merge/deny_merge 的正式合并 ask 并保持 pending，停止该工作线；本票策略 human_required，main/supervisor 不得代答，任何人不得执行 merge；6) 后续 head 变化、CI 失败或事实变化不得自动解除暂停、不得自动 retry 或替代执行、不得再建票；只有明确指示才可为新 target 建新问题，不把旧决定用于新 head。",
+      "evidence": "[\"gh pr view 8：state=OPEN, headRefOid=3443918c698d72b2bcd0e639d3be4ef1c1cae1e8, baseRefOid=60d54d7676b869b6fcb6b0733801235d68190e30, mergedAt=null\",\"gh pr checks 8：content-control fail（run 43955282068）\",\"渠道采集：set_delivery_target 后 ticket deliveryTarget head=3443918c…, ciState=failing, prState=open\",\"head 文件内容实测：gh api contents?ref=3443918c… | base64 -d | xxd => 636f6e74726f6c2d686561642d42 0a（control-head-B + LF，15 字节）\",\"上一 accepted 验收 acceptance-df41ecf3… 绑定旧 head 0972c2f…，不适用于当前 head（决定已被 head_changed 拒绝）\"]",
+      "judge": "{\"kind\":\"agent\",\"sessionId\":\"d48b360f-20d3-45f0-a54a-7d5b265efaa0\"}",
+      "basis": "当前 head 的 CI 真实失败且内容已变为 control-head-B，不满足本票验收要求（原目标为 control-head-A 且 CI 需通过）；故本票当前 head 验收结论为 rejected，不记录 accepted。仅为测试 CI 门禁而建立该事实记录。",
+      "verdict": "rejected",
+      "askId": null,
+      "target": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/8\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"3443918c698d72b2bcd0e639d3be4ef1c1cae1e8\"}",
+      "createdAt": "2026-11-16T21:00:54.924Z"
+    }
+  ],
+  "states": [
+    {
+      "name": "github:github.com/omdsh-dev/dsh-nexus:answer_result:github.com/omdsh-dev/dsh-nexus:pull:8:github.com/omdsh-dev/dsh-nexus:comment:6928710124:e08b729bdaeb121c4bdf990bac93a350f3ed6fde41ecca16f29100a7b1b31060",
+      "value": []
+    },
+    {
+      "name": "github:github.com/omdsh-dev/dsh-nexus:merge_status:ask-1cb15d8657db0b9a4ba6fd91d56d7c53",
+      "value": {
+        "state": "failed",
+        "attempts": 0,
+        "reason": "decision_invalid",
+        "target": {
+          "repository": "github.com/omdsh-dev/dsh-nexus",
+          "pullRequest": "https://github.com/omdsh-dev/dsh-nexus/pull/8",
+          "base": "nexus-test/base-spec06-20261116-1647",
+          "head": "0972c2f56963d05ce0f3d70714f0fa588aff41b7"
+        },
+        "at": "2026-11-16T20:50:20.024Z",
+        "nextRetryAt": "2026-11-16T20:50:21.024Z"
+      }
+    },
+    {
+      "name": "github:github.com/omdsh-dev/dsh-nexus:answer_result:github.com/omdsh-dev/dsh-nexus:pull:8:github.com/omdsh-dev/dsh-nexus:comment:6928710124:08a5b6fa13c543c5d7a750f6e4593d6cdffe5c734bd3096c45a0d39ddeeff3a1",
+      "value": [
+        {
+          "askId": "ask-1cb15d8657db0b9a4ba6fd91d56d7c53",
+          "result": "automation"
+        }
+      ]
+    },
+    {
+      "name": "github:github.com/omdsh-dev/dsh-nexus:merge_status:ask-8c4aad161e254f95f72f0cff3dbc5110",
+      "value": {
+        "state": "failed",
+        "attempts": 0,
+        "reason": "head_changed",
+        "target": {
+          "repository": "github.com/omdsh-dev/dsh-nexus",
+          "pullRequest": "https://github.com/omdsh-dev/dsh-nexus/pull/8",
+          "base": "nexus-test/base-spec06-20261116-1647",
+          "head": "0972c2f56963d05ce0f3d70714f0fa588aff41b7"
+        },
+        "at": "2026-11-16T21:00:21.236Z",
+        "nextRetryAt": "2026-11-16T21:00:22.236Z"
+      }
+    }
+  ],
+  "jobs": {
+    "43952387757": [
+      {
+        "name": "content-control",
+        "conclusion": "success",
+        "url": "https://github.com/omdsh-dev/dsh-nexus/actions/runs/43952387757/job/133598004647",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify real control content",
+            "conclusion": "success"
+          },
+          {
+            "name": "Record real bot context without granting authority",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "43955282068": [
+      {
+        "name": "content-control",
+        "conclusion": "failure",
+        "url": "https://github.com/omdsh-dev/dsh-nexus/actions/runs/43955282068/job/133608099888",
+        "steps": [
+          {
+            "name": "Set up job",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify real control content",
+            "conclusion": "failure"
+          },
+          {
+            "name": "Record real bot context without granting authority",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "nativeProject": {
+    "selection": [],
+    "hasMore": true,
+    "dispatches": [
+      {
+        "name": "ask",
+        "isError": true,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: interrupted_tool"
+          }
+        ]
+      },
+      {
+        "name": "merge_pull_request",
+        "isError": false,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "{\"ok\":false,\"reason\":\"decision_invalid\"}"
+          }
+        ]
+      },
+      {
+        "name": "merge_pull_request",
+        "isError": false,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "{\"ok\":false,\"reason\":\"decision_invalid\"}"
+          }
+        ]
+      },
+      {
+        "name": "ask",
+        "isError": true,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: interrupted_tool"
+          }
+        ]
+      },
+      {
+        "name": "merge_pull_request",
+        "isError": false,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "{\"ok\":false,\"reason\":\"head_changed\"}"
+          }
+        ]
+      },
+      {
+        "name": "ask",
+        "isError": true,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: acceptance_evidence_required"
+          }
+        ]
+      },
+      {
+        "name": "ask",
+        "isError": true,
+        "receipt": [
+          {
+            "type": "text",
+            "text": "Error: acceptance_evidence_required"
+          }
+        ]
+      }
+    ]
+  },
+  "externalBeforeCancel": [
+    {
+      "id": "ticket-4cd983ae98efeb5cb2ea16a909c5279195381741be64757023f81a135a77dba2",
+      "status": "review",
+      "prState": "merged",
+      "executionBindingId": "b5073a51-3538-4127-8199-bf936f596df7",
+      "deliveryTarget": "{\"repository\":\"github.com/omdsh-dev/dsh-nexus\",\"pullRequest\":\"https://github.com/omdsh-dev/dsh-nexus/pull/9\",\"base\":\"nexus-test/base-spec06-20261116-1647\",\"head\":\"6655701243e96fc203b8e776a5f635fc827c2831\"}"
+    },
+    {
+      "id": "ticket-63fd4a707fec24e50526ff8f8f5ddee73490dbf0cec7c4982a0525226c2048d8",
+      "status": "waiting",
+      "prState": null,
+      "executionBindingId": null,
+      "deliveryTarget": null
+    }
+  ]
+}
