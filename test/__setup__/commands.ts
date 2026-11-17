@@ -74,12 +74,12 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
   if (!await tabs.isVisible())
     await entry.click()
   await expect(tabs).toBeVisible({ timeout: 60_000 })
-  const names = ['信箱', '概览', '工单', '来源', '渠道', '设置']
-  const english = ['Inbox', 'Overview', 'Tickets', 'Sources', 'Channels', 'Settings']
+  const names = ['概览', '工单', '来源', '渠道', '设置']
+  const english = ['Overview', 'Tickets', 'Sources', 'Channels', 'Settings']
   const labels = await tabs.getByRole('tab').allTextContents()
-  const expected = labels[0]?.trim() === 'Inbox' ? english : names
+  const expected = labels[0]?.trim() === 'Overview' ? english : names
   await expect(tabs.getByRole('tab')).toHaveText(expected)
-  const inbox = tabs.getByRole('tab', { name: expected[0], exact: true })
+  const overview = tabs.getByRole('tab', { name: expected[0], exact: true })
   if (probe === 'tabs')
     return { ok: true, detail: expected.join(', ') }
   if (probe === 'switch') {
@@ -89,28 +89,28 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
       await expect(tab).toHaveAttribute('aria-selected', 'true')
       await expect(page.getByRole('tabpanel', { name: label, exact: true })).toBeVisible()
     }
-    return { ok: true, detail: 'All six Nexus sections select their associated panel' }
+    return { ok: true, detail: 'All five Nexus sections select their associated panel' }
   }
   if (probe === 'keyboard') {
-    await inbox.click()
-    await inbox.focus()
+    await overview.click()
+    await overview.focus()
     await page.keyboard.press('ArrowRight')
     await expect(tabs.getByRole('tab', { name: expected[1], exact: true })).toBeFocused()
     await page.keyboard.press('End')
-    await expect(tabs.getByRole('tab', { name: expected[5], exact: true })).toBeFocused()
+    await expect(tabs.getByRole('tab', { name: expected[4], exact: true })).toBeFocused()
     await page.keyboard.press('Home')
-    await expect(inbox).toBeFocused()
+    await expect(overview).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(inbox).toHaveAttribute('aria-selected', 'true')
+    await expect(overview).toHaveAttribute('aria-selected', 'true')
     return { ok: true, detail: 'Arrow, End, Home and Enter keep keyboard navigation usable' }
   }
-  await inbox.click()
+  await overview.click()
   const panel = page.getByRole('tabpanel', { name: expected[0], exact: true })
-  await expect(panel.getByRole('heading', { name: /本人信箱/u })).toBeVisible({ timeout: 30_000 })
-  await expect(panel.getByText('只显示需要本人处理的决定。打开侧聊不会回答问题，也不会解除人工暂停。', { exact: true })).toBeVisible()
+  await expect(panel.getByText('项目', { exact: true }).first()).toBeVisible({ timeout: 30_000 })
+  await expect(tabs.getByRole('tab', { name: /^(?:信箱|Inbox)$/u })).toHaveCount(0)
   await expect(panel.getByRole('alert')).toHaveCount(0)
   if (probe === 'inbox')
-    return { ok: true, detail: 'Inbox read real ledger data without an error state' }
+    return { ok: true, detail: 'Overview read real ledger data without an error state' }
   if (probe === 'read-error') {
     expect(session.scaffold.cookie).not.toBeNull()
     await context.context.clearCookies()
@@ -167,7 +167,8 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
     }
     expect(question).toMatchObject({ handler: 'human', status: 'pending', content: '是否继续这次隔离验收？', options: ['继续', '停止'] })
     await page.getByRole('button', { name: '刷新服务端状态', exact: true }).click()
-    const card = panel.getByRole('article', { name: 'Spec06真实问答', exact: true })
+    await tabs.getByRole('tab', { name: expected[1], exact: true }).click()
+    const card = page.getByRole('tabpanel', { name: expected[1], exact: true }).getByRole('article', { name: 'Spec06真实问答', exact: true })
     await expect(card).toBeVisible()
     await expect(card.getByRole('button', { name: '打开来源侧聊', exact: true })).toBeEnabled()
     if (probe === 'sidechat' || probe === 'hot-reload') {
@@ -211,6 +212,7 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
       await expect(source.locator('[data-dsh-native-tab-host] [data-genui-surface="dsh-better-sidebar/sidechat"]')).toBeVisible()
       await entry.click()
       await expect(tabs).toBeVisible()
+      await tabs.getByRole('tab', { name: expected[1], exact: true }).click()
       await page.getByRole('button', { name: '刷新服务端状态', exact: true }).click()
       await expect(card).toBeVisible()
       await writeFile(join(session.scaffold.home, 'artifacts/nexus-reload.json'), JSON.stringify({ askId: question!.id, sessionId: main!.sessionId, entryId: plugin.entryId, disabled: disabled.application, enabled: enabled.application }))
@@ -223,14 +225,13 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
     expect((await read()).inbox.pending.some(ask => ask.id === question!.id)).toBe(false)
     await mkdir(join(session.scaffold.home, 'artifacts'), { recursive: true })
     await writeFile(join(session.scaffold.home, 'artifacts/nexus-ask.json'), JSON.stringify({ askId: settled.id, sessionId: main!.sessionId, source: settled.source, answer: settled.answer, answerSource: settled.answerSource }))
-    return { ok: true, detail: `Real model ask ${settled.id} was answered through the real inbox form` }
+    return { ok: true, detail: `Real model ask ${settled.id} was answered through the real decision form` }
   }
   if (probe === 'empty') {
-    await expect(panel.getByRole('heading', { name: /^本人信箱\s*·\s*0\s*个待答问题$/u })).toBeVisible()
-    await expect(panel.getByText('目前没有需要本人回答或处置的事项。', { exact: true })).toBeVisible()
-    await panel.getByRole('button', { name: '查看目标与进展', exact: true }).click()
-    await expect(tabs.getByRole('tab', { name: expected[1], exact: true })).toHaveAttribute('aria-selected', 'true')
-    return { ok: true, detail: 'Empty real inbox offers an actionable overview entry' }
+    await expect(panel.getByText('账本中尚无工单。启用可用 Git 项目后，由 main 根据来源目标分诊。', { exact: true })).toBeVisible()
+    await panel.getByRole('button', { name: '检查项目范围', exact: true }).click()
+    await expect(tabs.getByRole('tab', { name: expected[4], exact: true })).toHaveAttribute('aria-selected', 'true')
+    return { ok: true, detail: 'Empty real ledger offers an actionable project settings entry' }
   }
   if (probe === 'theme') {
     const artifacts = join(session.scaffold.home, 'artifacts')
@@ -241,7 +242,7 @@ export const inDsh: BrowserCommand<[DshProbe], { ok: boolean, detail: string }> 
         await page.emulateMedia({ colorScheme })
         await expect.poll(() => page.locator('body').evaluate(body => body.hasAttribute('data-ds-dark-theme'))).toBe(colorScheme === 'dark')
         backgrounds.push(await panel.evaluate(element => getComputedStyle(element).getPropertyValue('--dsw-alias-bg-layer-1').trim()))
-        await expect(panel.getByRole('heading', { name: /本人信箱/u })).toBeVisible()
+        await expect(panel.getByText('项目', { exact: true }).first()).toBeVisible()
         await page.screenshot({ path: join(artifacts, `nexus-${colorScheme}.png`), fullPage: true })
       }
       expect(backgrounds[0]).not.toBe('')

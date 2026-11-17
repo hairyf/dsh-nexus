@@ -1,36 +1,17 @@
-enum InboxTarget {
-  user
-  main
-  project
-  supervisor
-}
-
-enum InboxOrigin {
-  channel
-  main
-  project
-  worker
-  supervisor
-  system
-}
-
-enum InboxStatus {
-  pending
-  done
-  stalled
-}
-
-enum InboxKind {
-  trigger
-  ticket
-  ask
-  notice
-}
-
-enum InboxAnsweredBy {
-  user
-  main
-  project
-  supervisor
-  worker
+model Inbox {
+  id String @id
+  seq Int @unique
+  recipient String
+  sender String
+  kind String
+  title String?
+  content String
+  askId String?
+  acceptedAt String
+  readAt String?
+  handledAt String?
+  notifiedAt String?
+  supersededAt String?
+  @@index([recipient, handledAt, seq])
+  @@map("inbox")
 }

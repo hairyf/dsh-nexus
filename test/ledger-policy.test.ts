@@ -10,9 +10,9 @@ afterEach(async () => {
 it('opens an empty isolated state directory and reopens without duplicate migrations', async () => {
   await mkdir(stateDirectory, { recursive: true })
   const first = await openDatabase(stateDirectory)
-  expect(first.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 4 })
+  expect(first.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 5 })
   first.close()
   const second = await openDatabase(stateDirectory)
-  expect(second.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 4 })
+  expect(second.connection.prepare('SELECT count(*) AS count FROM kysely_migration').get()).toEqual({ count: 5 })
   second.close()
 })

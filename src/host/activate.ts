@@ -63,6 +63,14 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
     const original = agentCtx.tools.get('send_message', agent)
     if (original)
       native.set(agent, original)
+    if (binding) {
+      disposers.push(agentCtx.systemPrompt.context({ name: 'nexus-mailbox', order: 90, required: true, text: () => {
+        const current = ledger.load(database, 'role_binding', binding.id)
+        if (!current || current.status === 'closed' || ctx.get('workspaceRegistry')!.archivedSessionIds.includes(SessionId(agent.id)))
+          return ''
+        return JSON.stringify({ kind: 'nexus_mailbox', pendingCount: ledger.listMail(database, binding.id).length, instruction: '内部信件存于角色信箱，当前任务完成后用 read_mailbox 读取，处理后用 handle_mail 确认。' })
+      } }))
+    }
     const detach = await installer.attach(agentCtx, binding)
     if (detach)
       agentCtx.effect(() => detach, 'nexus:role-tools')
@@ -143,6 +151,10 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
   }
 
   async function responsibilities(): Promise<void> {
+    for (const binding of ledger.list(database, 'role_binding').filter(item => item.status !== 'closed')) {
+      if ((await gateway.inspect(binding.sessionId, signal)).archived)
+        ledger.updateBinding(database, binding.id, 'closed', 'session_archived')
+    }
     if (!ledger.list(database, 'role_binding').some(item => item.role === 'main' && item.status !== 'closed'))
       await run.bind({ id: randomUUID(), role: 'main', sessionId: randomUUID() }, undefined, signal)
     for (const project of ledger.list(database, 'project').filter(item => item.enabled && item.available)) {
@@ -161,7 +173,14 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
     await responsibilities()
     const bindings = ledger.list(database, 'role_binding').filter(item => item.status !== 'closed')
     for (const binding of bindings) {
-      const pending = ledger.list(database, 'message').filter(item => item.recipient === binding.id && !item.readAt && !item.supersededAt)
+      try {
+        await run.notifyMailbox(binding.sessionId, signal)
+      }
+      catch (error) {
+        if (!(error instanceof LedgerError && ['delivery_pending', 'closed_session', 'archived_session'].includes(error.code)))
+          report(error)
+      }
+      const pending = ledger.list(database, 'message').filter(item => item.recipient === binding.id && !item.readAt && !item.supersededAt && item.kind !== 'runtime:session' && !ledger.load(database, 'inbox_message', item.id))
       if (!pending.length)
         continue
       try {
@@ -254,9 +273,14 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
     const recovered = await run.boot(reconcileExternal, signal)
     for (const result of recovered.filter(item => item.state === 'requires_attention'))
       logger.warn('Nexus recovery requires attention: %s %s', result.bindingId, result.reason)
-    await collect()
+    try {
+      await collect()
+    }
+    finally {
+      if (!signal.aborted)
+        scheduleCollection()
+    }
     startup = { state: 'ready', reason: null }
-    scheduleCollection()
     logger.info('Nexus ready: %s; model=%j', database.stateDirectory, ctx.get('agentDefaultModel')!.currentSelection())
   }
 
@@ -279,6 +303,15 @@ export async function activate(ctx: Context, options: HostOptions): Promise<() =
       const admission = ctx.get('connection')!.admit({ headers: event.req.headers })
       return 'rejection' in admission || admission.peer.principal.kind !== 'owner' ? null : { kind: 'web', authenticated: true, userId: 'owner' }
     } }))
+    disposers.push(ctx.on('workspace/session-archived', ({ sessionId }) => {
+      const binding = ledger.list(database, 'role_binding').find(item => item.sessionId === sessionId && item.status !== 'closed')
+      if (binding)
+        ledger.updateBinding(database, binding.id, 'closed', 'session_archived')
+    }))
+    disposers.push(ctx.on('agent/status', ({ agent, status }) => {
+      if (!signal.aborted && status === 'idle' && ledger.list(database, 'role_binding').some(item => item.sessionId === agent.id && item.status !== 'closed'))
+        void track(run.notifyMailbox(agent.id, signal)).catch(report)
+    }))
     disposers.push(ctx.on('session/event', (session, event) => {
       if (signal.aborted || !ledger.list(database, 'role_binding').some(item => item.sessionId === session.id))
         return

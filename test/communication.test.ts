@@ -250,7 +250,7 @@ it('returns an answer arriving during request delivery without trying to suspend
   const original = sessions.deliver.bind(sessions)
   vi.spyOn(sessions, 'deliver').mockImplementation(async (sessionId, message, mode) => {
     await original(sessionId, message, mode)
-    if (message.id.startsWith('ask:')) {
+    if (message.id.startsWith('mailbox:project:')) {
       const [pending] = service.list()
       await service.answer({ askId: pending.askId, policyBasis: pending.policyBasis, answer: 'Use A' }, human)
     }

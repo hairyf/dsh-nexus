@@ -5,6 +5,15 @@ import type { runtime } from '../service/runtime'
 import type { webPanel } from '../service/web-panel'
 import type { Actor, MergeTarget, ProjectInput, Row } from './ledger'
 
+export interface MailboxModel {
+  sessionId: string
+  bindingId: string | null
+  role: string | null
+  scope: string | null
+  active: boolean
+  pendingCount: number
+  messages: Row<'inbox'>[]
+}
 export interface SourceContext {
   sessionId: string
   available: boolean
@@ -13,7 +22,7 @@ export interface SourceContext {
 }
 export interface WebPorts {
   startup: () => { state: 'starting' | 'ready' | 'failed', reason: string | null }
-  runtime: Pick<ReturnType<typeof runtime.create>, 'dispatch' | 'pause' | 'cancel' | 'retry' | 'projectChanged'>
+  runtime: Pick<ReturnType<typeof runtime.create>, 'dispatch' | 'pause' | 'cancel' | 'retry' | 'projectChanged' | 'mailbox' | 'handleMail'>
   communication: Pick<Communication, 'answer'>
   discoverProjects: () => Promise<ProjectInput[]>
   verifyMerge: MergeVerifier

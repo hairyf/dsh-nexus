@@ -18,7 +18,7 @@
 
 ## HTTP
 
-全部挂载在现有宿主的 `/api/nexus`：
+REST 路由挂载在现有宿主的 `/api/nexus`。客户端通过官方 Connection exact Fetch 入口 `POST /api/nexus/dispatch` 携带 `{ path, method, body }`，由相同 H3 路由处理；动态资源与 PATCH 无需为每个会话注册载体路由。身份由宿主认证，信封不能提供 actor 或身份信息。
 
 | 方法与资源 | 消费方与行为 |
 | --- | --- |
@@ -31,14 +31,16 @@
 | POST /projects/refresh | 空对象；核实发现并保留历史，不静默启用 |
 | PATCH /settings | 01 的全局默认、白名单、并发、后台/投递/提醒参数 |
 | GET /sessions/:id/context | 已登记来源会话的有界近期上下文 |
+| GET /sessions/:id/mailbox | 当前未归档角色会话的通用 Inbox 信件；未绑定或归档会话返回 inactive |
+| POST /sessions/:id/mailbox/:messageId/handled | 明确确认处理当前邮箱中的信件 |
 
 路由只解析/校验 DTO 并调用领域服务。未知字段拒绝，错误保留可区分的 HTTP 状态和领域 code；读取使用 no-store。唯一真源是 01 的账本和 04 既有持久状态；没有 Web 专用数据库、迁移或并行问答状态。
 
 ## 客户端
 
-沿用原 main/sidebar 席位、主题令牌、面板密度和详情导航。默认工作面是本人信箱；代理内部 pending 不自动成为本人待办，真正升级给人的提醒仍归原 askId。全局策略明确只影响新票；本票策略必须另行编辑。
+沿用 main/sidebar 席位、主题令牌、面板密度和详情导航。默认打开概览，面板不提供信箱 Tab；本人待答问题保留在工单页面。Agent 信箱注册在官方 `conversation.input.dock`，使用 TodoPanel 的布局与主题参数；展开和查看信件不确认处理。代理内部 pending 不自动成为本人待办，真正升级给人的提醒仍归原 askId。全局策略只影响新票；本票策略另行编辑。
 
-客户端通过同源 HTTP 读取。初次、手动刷新、焦点恢复、online 与宿主 connection/reset 都重新对账；可见且上次读取成功时每 15 秒更新当前事实，读取失败停止自动刷新并给出恢复操作。过期读响应不会覆盖较新的快照。所有请求 15 秒超时，不用无限 spinner 隐藏错误。表单提交有同步重复提交锁，失败保留草稿，服务器已生效答案使操作控件撤下。
+客户端通过同源相对地址读取，保留宿主挂载路径；桌面载体和 Web 使用相同 dispatch 入口。初次、手动刷新、焦点恢复、online 与宿主 connection/reset 都重新对账；可见且上次读取成功时每 15 秒更新当前事实，读取失败停止自动刷新并给出恢复操作。过期读响应不会覆盖较新的快照。所有请求 15 秒超时，不用无限 spinner 隐藏错误。表单提交有同步重复提交锁，失败保留草稿，服务器已生效答案使操作控件撤下。
 
 侧聊复用 [better-sidebar 0.32.0 的客户端 API](https://github.com/omdsh-dev/DSH-better-sidebar/blob/v0.32.0/src/client/service.ts)：先核对可选服务的 getTab/isTabEnabled，再用 uiWorkspace.openSession 打开来源，调用 openTab({ type: 'sidechat' }, { sessionId })。不使用当前焦点替代来源，不新增 preset/权限/同步协议，不回答或结清 Ask。该 API 返回 void，界面只宣称请求打开；来源不可用或入口失败显示原因，并提供原会话恢复入口。
 

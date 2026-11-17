@@ -10,8 +10,8 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { homedir } from "node:os";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { defineWebServer } from "dsh-h3";
-import { HTTPError, getRouterParam, readBody } from "h3";
 import { getServerOptions } from "dsh-h3/utils";
+import { HTTPError, getRouterParam, readBody } from "h3";
 // src/utils/agent.ts
 function definePreset(definition) {
 	const { tools, ...preset } = definition;
@@ -489,7 +489,8 @@ const migrations = {
 	"20261113135519": "-- CreateTable\nCREATE TABLE \"channel\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"name\" TEXT NOT NULL,\n    \"enabled\" BOOLEAN NOT NULL DEFAULT false,\n    \"host\" TEXT,\n    \"createdAt\" TEXT NOT NULL\n);\n\n-- CreateTable\nCREATE TABLE \"channel_account\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"role\" TEXT NOT NULL,\n    \"name\" TEXT NOT NULL,\n    \"avatar\" TEXT,\n    \"status\" TEXT NOT NULL DEFAULT 'offline',\n    \"createdAt\" TEXT NOT NULL,\n    CONSTRAINT \"channel_account_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"ci_watch\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"ref\" TEXT NOT NULL,\n    \"fingerprint\" TEXT NOT NULL,\n    \"revision\" INTEGER NOT NULL DEFAULT 0,\n    \"head\" TEXT,\n    \"updatedAt\" TEXT NOT NULL,\n    CONSTRAINT \"ci_watch_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"source_state\" (\n    \"channelId\" TEXT NOT NULL,\n    \"name\" TEXT NOT NULL,\n    \"value\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n\n    PRIMARY KEY (\"channelId\", \"name\"),\n    CONSTRAINT \"source_state_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"inbox\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"seq\" BIGINT NOT NULL,\n    \"type\" TEXT NOT NULL,\n    \"projectId\" TEXT,\n    \"supervisorId\" TEXT,\n    \"origin\" TEXT NOT NULL,\n    \"status\" TEXT NOT NULL DEFAULT 'pending',\n    \"kind\" TEXT NOT NULL,\n    \"title\" TEXT,\n    \"message\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n    \"doneAt\" TEXT,\n    \"deliveryAttempts\" INTEGER NOT NULL DEFAULT 0,\n    \"deliveryError\" TEXT,\n    \"nextRetryAt\" TEXT,\n    \"readAt\" TEXT,\n    \"escalations\" INTEGER NOT NULL DEFAULT 0,\n    \"lastEscalatedAt\" TEXT,\n    \"answer\" TEXT,\n    \"answeredBy\" TEXT,\n    \"answeredAt\" TEXT,\n    \"triggerId\" TEXT,\n    \"threadId\" TEXT,\n    \"ticketId\" TEXT,\n    \"workerId\" TEXT,\n    CONSTRAINT \"inbox_projectId_fkey\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"inbox_supervisorId_fkey\" FOREIGN KEY (\"supervisorId\") REFERENCES \"supervisor\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"inbox_triggerId_fkey\" FOREIGN KEY (\"triggerId\") REFERENCES \"trigger\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"inbox_threadId_fkey\" FOREIGN KEY (\"threadId\") REFERENCES \"thread\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"inbox_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"inbox_workerId_fkey\" FOREIGN KEY (\"workerId\") REFERENCES \"worker\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"project\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"name\" TEXT NOT NULL,\n    \"workspaceId\" TEXT NOT NULL,\n    \"directory\" TEXT NOT NULL,\n    \"orchestratorSessionId\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n    CONSTRAINT \"project_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"setting\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"maxWorkers\" INTEGER NOT NULL DEFAULT 4,\n    \"backgroundLimitMinutes\" INTEGER NOT NULL DEFAULT 30,\n    \"autoMerge\" BOOLEAN NOT NULL DEFAULT false,\n    \"autoMergeMaxLines\" INTEGER NOT NULL DEFAULT 200,\n    \"deliveryMaxAttempts\" INTEGER NOT NULL DEFAULT 3,\n    \"deliveryRetryCeilingSeconds\" INTEGER NOT NULL DEFAULT 60,\n    \"updatedAt\" TEXT NOT NULL\n);\n\n-- CreateTable\nCREATE TABLE \"supervisor\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"sessionId\" TEXT,\n    \"title\" TEXT NOT NULL,\n    \"reason\" TEXT NOT NULL,\n    \"status\" TEXT NOT NULL DEFAULT 'active',\n    \"createdAt\" TEXT NOT NULL,\n    \"closedAt\" TEXT\n);\n\n-- CreateTable\nCREATE TABLE \"supervisor_ticket\" (\n    \"supervisorId\" TEXT NOT NULL,\n    \"ticketId\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n\n    PRIMARY KEY (\"supervisorId\", \"ticketId\"),\n    CONSTRAINT \"supervisor_ticket_supervisorId_fkey\" FOREIGN KEY (\"supervisorId\") REFERENCES \"supervisor\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"supervisor_ticket_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"thread\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"projectId\" TEXT,\n    \"refId\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"title\" TEXT NOT NULL,\n    \"url\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n    \"triage\" TEXT NOT NULL DEFAULT 'pending',\n    \"triagedAt\" TEXT,\n    CONSTRAINT \"thread_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"thread_projectId_fkey\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"trigger\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"threadId\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"actorName\" TEXT,\n    \"human\" BOOLEAN NOT NULL DEFAULT true,\n    \"mentioned\" BOOLEAN NOT NULL DEFAULT false,\n    \"text\" TEXT NOT NULL,\n    \"url\" TEXT,\n    \"at\" TEXT NOT NULL,\n    \"ref\" TEXT,\n    CONSTRAINT \"trigger_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"trigger_threadId_fkey\" FOREIGN KEY (\"threadId\") REFERENCES \"thread\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"ticket\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"projectId\" TEXT NOT NULL,\n    \"channelId\" TEXT NOT NULL,\n    \"title\" TEXT NOT NULL,\n    \"description\" TEXT,\n    \"status\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n    \"startedAt\" TEXT,\n    \"endedAt\" TEXT,\n    \"prUrl\" TEXT,\n    \"prState\" TEXT,\n    \"ciState\" TEXT,\n    \"paused\" BOOLEAN NOT NULL DEFAULT false,\n    \"prepareError\" TEXT,\n    CONSTRAINT \"ticket_projectId_fkey\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"ticket_thread\" (\n    \"ticketId\" TEXT NOT NULL,\n    \"threadId\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n\n    PRIMARY KEY (\"ticketId\", \"threadId\"),\n    CONSTRAINT \"ticket_thread_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_thread_threadId_fkey\" FOREIGN KEY (\"threadId\") REFERENCES \"thread\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"ticket_link\" (\n    \"ticketId\" TEXT NOT NULL,\n    \"relatedId\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n\n    PRIMARY KEY (\"ticketId\", \"relatedId\", \"kind\"),\n    CONSTRAINT \"ticket_link_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_link_relatedId_fkey\" FOREIGN KEY (\"relatedId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateTable\nCREATE TABLE \"worker\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT NOT NULL,\n    \"status\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n    \"startedAt\" TEXT,\n    \"endedAt\" TEXT,\n    \"title\" TEXT,\n    \"endedReason\" TEXT,\n    \"branch\" TEXT,\n    \"worktree\" TEXT,\n    \"reportState\" TEXT,\n    \"report\" TEXT,\n    \"reportAt\" TEXT,\n    \"backgroundUntil\" TEXT,\n    \"recoveryNote\" TEXT,\n    CONSTRAINT \"worker_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\n\n-- CreateIndex\nCREATE INDEX \"channel_account_channelId_role_idx\" ON \"channel_account\"(\"channelId\", \"role\");\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"channel_account_channelId_role_name_key\" ON \"channel_account\"(\"channelId\", \"role\", \"name\");\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"ci_watch_channelId_kind_ref_key\" ON \"ci_watch\"(\"channelId\", \"kind\", \"ref\");\n\n-- CreateIndex\nCREATE INDEX \"source_state_updatedAt_idx\" ON \"source_state\"(\"updatedAt\");\n\n-- CreateIndex\nCREATE INDEX \"inbox_type_projectId_status_idx\" ON \"inbox\"(\"type\", \"projectId\", \"status\");\n\n-- CreateIndex\nCREATE INDEX \"inbox_type_status_createdAt_idx\" ON \"inbox\"(\"type\", \"status\", \"createdAt\");\n\n-- CreateIndex\nCREATE INDEX \"inbox_status_createdAt_idx\" ON \"inbox\"(\"status\", \"createdAt\");\n\n-- CreateIndex\nCREATE INDEX \"inbox_ticketId_seq_idx\" ON \"inbox\"(\"ticketId\", \"seq\");\n\n-- CreateIndex\nCREATE INDEX \"inbox_status_nextRetryAt_idx\" ON \"inbox\"(\"status\", \"nextRetryAt\");\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"project_workspaceId_key\" ON \"project\"(\"workspaceId\");\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"project_channelId_name_key\" ON \"project\"(\"channelId\", \"name\");\n\n-- CreateIndex\nCREATE INDEX \"supervisor_status_idx\" ON \"supervisor\"(\"status\");\n\n-- CreateIndex\nCREATE INDEX \"supervisor_ticket_ticketId_idx\" ON \"supervisor_ticket\"(\"ticketId\");\n\n-- CreateIndex\nCREATE INDEX \"thread_updatedAt_idx\" ON \"thread\"(\"updatedAt\");\n\n-- CreateIndex\nCREATE INDEX \"thread_projectId_idx\" ON \"thread\"(\"projectId\");\n\n-- CreateIndex\nCREATE INDEX \"thread_triage_idx\" ON \"thread\"(\"triage\");\n\n-- CreateIndex\nCREATE UNIQUE INDEX \"thread_channelId_refId_key\" ON \"thread\"(\"channelId\", \"refId\");\n\n-- CreateIndex\nCREATE INDEX \"trigger_threadId_at_idx\" ON \"trigger\"(\"threadId\", \"at\");\n\n-- CreateIndex\nCREATE INDEX \"trigger_channelId_at_idx\" ON \"trigger\"(\"channelId\", \"at\");\n\n-- CreateIndex\nCREATE INDEX \"trigger_at_idx\" ON \"trigger\"(\"at\");\n\n-- CreateIndex\nCREATE INDEX \"trigger_ref_idx\" ON \"trigger\"(\"ref\");\n\n-- CreateIndex\nCREATE INDEX \"ticket_projectId_status_idx\" ON \"ticket\"(\"projectId\", \"status\");\n\n-- CreateIndex\nCREATE INDEX \"ticket_status_updatedAt_idx\" ON \"ticket\"(\"status\", \"updatedAt\");\n\n-- CreateIndex\nCREATE INDEX \"ticket_thread_ticketId_createdAt_idx\" ON \"ticket_thread\"(\"ticketId\", \"createdAt\");\n\n-- CreateIndex\nCREATE INDEX \"ticket_thread_threadId_idx\" ON \"ticket_thread\"(\"threadId\");\n\n-- CreateIndex\nCREATE INDEX \"ticket_link_relatedId_idx\" ON \"ticket_link\"(\"relatedId\");\n\n-- CreateIndex\nCREATE INDEX \"worker_ticketId_createdAt_idx\" ON \"worker\"(\"ticketId\", \"createdAt\");\n\n-- CreateIndex\nCREATE INDEX \"worker_status_idx\" ON \"worker\"(\"status\");\n",
 	"20261116000100_ledger_policy": "CREATE TEMP TABLE nexus_old_project AS SELECT id, channelId FROM project;\nALTER TABLE thread ADD COLUMN repository TEXT;\nALTER TABLE thread ADD COLUMN attentionReason TEXT;\nUPDATE thread SET attentionReason = 'repository_identity_unverified';\nALTER TABLE \"ticket_link\" ADD COLUMN \"satisfiedAt\" TEXT;\nALTER TABLE \"ticket_link\" ADD COLUMN \"wakeupId\" TEXT;\n\nCREATE TABLE \"ticket_transition\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT NOT NULL,\n    \"event\" TEXT NOT NULL,\n    \"fromStatus\" TEXT NOT NULL,\n    \"toStatus\" TEXT NOT NULL,\n    \"actor\" TEXT NOT NULL,\n    \"reason\" TEXT NOT NULL,\n    \"bindingId\" TEXT,\n    \"at\" TEXT NOT NULL,\n    CONSTRAINT \"ticket_transition_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\nCREATE TABLE \"ask\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"source\" TEXT NOT NULL,\n    \"initiatorRole\" TEXT NOT NULL,\n    \"initiatorBinding\" TEXT,\n    \"responseRecipient\" TEXT,\n    \"handler\" TEXT NOT NULL,\n    \"decisionType\" TEXT NOT NULL,\n    \"withinAuthorization\" BOOLEAN NOT NULL,\n    \"policyBasis\" TEXT NOT NULL,\n    \"content\" TEXT NOT NULL,\n    \"options\" TEXT NOT NULL,\n    \"status\" TEXT NOT NULL DEFAULT 'pending',\n    \"answer\" TEXT,\n    \"answerActor\" TEXT,\n    \"answerSource\" TEXT,\n    \"answeredAt\" TEXT,\n    \"answerPolicy\" TEXT,\n    \"target\" TEXT,\n    \"verified\" BOOLEAN NOT NULL DEFAULT false,\n    \"createdAt\" TEXT NOT NULL,\n    \"cancelledAt\" TEXT,\n    \"cancelReason\" TEXT,\n    \"supersedesId\" TEXT,\n    \"escalations\" INTEGER NOT NULL DEFAULT 0,\n    \"lastEscalatedAt\" TEXT\n);\n\nCREATE TABLE \"ask_ticket\" (\n    \"askId\" TEXT NOT NULL,\n    \"ticketId\" TEXT NOT NULL,\n\n    PRIMARY KEY (\"askId\", \"ticketId\"),\n    CONSTRAINT \"ask_ticket_askId_fkey\" FOREIGN KEY (\"askId\") REFERENCES \"ask\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"ask_ticket_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\nCREATE TABLE \"policy_change\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT NOT NULL,\n    \"actor\" TEXT NOT NULL,\n    \"at\" TEXT NOT NULL,\n    \"previous\" TEXT NOT NULL,\n    \"current\" TEXT NOT NULL,\n    \"reason\" TEXT NOT NULL,\n    CONSTRAINT \"policy_change_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\nCREATE TABLE \"role_binding\" (\n    \"startedAt\" TEXT,\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"role\" TEXT NOT NULL,\n    \"scope\" TEXT NOT NULL,\n    \"sessionId\" TEXT NOT NULL,\n    \"projectId\" TEXT,\n    \"ticketId\" TEXT,\n    \"supervisorId\" TEXT,\n    \"status\" TEXT NOT NULL DEFAULT 'idle',\n    \"activeKey\" TEXT,\n    \"worktree\" TEXT,\n    \"branch\" TEXT,\n    \"repository\" TEXT,\n    \"recoveryReason\" TEXT,\n    \"previousBindingId\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n    \"closedAt\" TEXT,\n    CONSTRAINT \"role_binding_projectId_fkey\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"role_binding_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"role_binding_supervisorId_fkey\" FOREIGN KEY (\"supervisorId\") REFERENCES \"supervisor\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE TABLE \"message\" (\n    \"triggerId\" TEXT,\n    \"threadId\" TEXT,\n    \"title\" TEXT,\n    \"source\" TEXT,\n    \"supersededAt\" TEXT,\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"seq\" INTEGER NOT NULL,\n    \"ticketId\" TEXT,\n    \"recipient\" TEXT NOT NULL,\n    \"sender\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"content\" TEXT NOT NULL,\n    \"askId\" TEXT,\n    \"acceptedAt\" TEXT NOT NULL,\n    \"deliveredAt\" TEXT,\n    \"readAt\" TEXT,\n    \"handledAt\" TEXT,\n    \"deliveryState\" TEXT NOT NULL DEFAULT 'pending',\n    \"attempts\" INTEGER NOT NULL DEFAULT 0,\n    \"error\" TEXT,\n    \"nextRetryAt\" TEXT,\n    CONSTRAINT \"message_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"message_triggerId_fkey\" FOREIGN KEY (\"triggerId\") REFERENCES \"trigger\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"message_threadId_fkey\" FOREIGN KEY (\"threadId\") REFERENCES \"thread\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"message_askId_fkey\" FOREIGN KEY (\"askId\") REFERENCES \"ask\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE TABLE \"outbox\" (\n    \"supersededAt\" TEXT,\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"messageId\" TEXT NOT NULL,\n    \"ticketId\" TEXT,\n    \"recipient\" TEXT NOT NULL,\n    \"seq\" INTEGER NOT NULL,\n    \"content\" TEXT NOT NULL,\n    \"askId\" TEXT,\n    \"state\" TEXT NOT NULL DEFAULT 'pending',\n    \"attempts\" INTEGER NOT NULL DEFAULT 0,\n    \"error\" TEXT,\n    \"nextRetryAt\" TEXT,\n    \"remoteId\" TEXT,\n    \"remoteUrl\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    \"sentAt\" TEXT,\n    CONSTRAINT \"outbox_messageId_fkey\" FOREIGN KEY (\"messageId\") REFERENCES \"message\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"outbox_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"outbox_askId_fkey\" FOREIGN KEY (\"askId\") REFERENCES \"ask\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE TABLE \"acceptance\" (\n    \"executionBindingId\" TEXT,\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT NOT NULL,\n    \"scope\" TEXT NOT NULL,\n    \"criteria\" TEXT NOT NULL,\n    \"evidence\" TEXT NOT NULL,\n    \"judge\" TEXT NOT NULL,\n    \"basis\" TEXT NOT NULL,\n    \"verdict\" TEXT NOT NULL,\n    \"askId\" TEXT,\n    \"target\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    CONSTRAINT \"acceptance_executionBindingId_fkey\" FOREIGN KEY (\"executionBindingId\") REFERENCES \"role_binding\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"acceptance_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"acceptance_askId_fkey\" FOREIGN KEY (\"askId\") REFERENCES \"ask\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE TABLE \"wakeup\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT NOT NULL,\n    \"relatedId\" TEXT NOT NULL,\n    \"reason\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n    \"handledAt\" TEXT,\n    CONSTRAINT \"wakeup_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"wakeup_relatedId_fkey\" FOREIGN KEY (\"relatedId\") REFERENCES \"ticket\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\n\nCREATE TABLE \"attention\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"ticketId\" TEXT,\n    \"askId\" TEXT,\n    \"bindingId\" TEXT,\n    \"reason\" TEXT NOT NULL,\n    \"waitingFor\" TEXT NOT NULL,\n    \"progressAt\" TEXT NOT NULL,\n    \"dueAt\" TEXT NOT NULL,\n    \"remindedAt\" TEXT,\n    \"recipient\" TEXT NOT NULL,\n    \"deliveryState\" TEXT NOT NULL DEFAULT 'pending',\n    \"deliveryError\" TEXT,\n    \"escalatedAt\" TEXT,\n    \"handledAt\" TEXT,\n    \"resolution\" TEXT,\n    CONSTRAINT \"attention_ticketId_fkey\" FOREIGN KEY (\"ticketId\") REFERENCES \"ticket\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"attention_askId_fkey\" FOREIGN KEY (\"askId\") REFERENCES \"ask\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"attention_bindingId_fkey\" FOREIGN KEY (\"bindingId\") REFERENCES \"role_binding\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE\n);\n\nCREATE TABLE \"new_project\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"name\" TEXT NOT NULL,\n    \"workspaceId\" TEXT NOT NULL,\n    \"directory\" TEXT NOT NULL,\n    \"remoteUrl\" TEXT,\n    \"enabled\" BOOLEAN NOT NULL DEFAULT false,\n    \"available\" BOOLEAN NOT NULL DEFAULT false,\n    \"repository\" TEXT,\n    \"attentionReason\" TEXT,\n    \"identityEvidence\" TEXT,\n    \"orchestratorSessionId\" TEXT,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL\n);\nINSERT INTO \"new_project\" (\"createdAt\", \"directory\", \"id\", \"name\", \"orchestratorSessionId\", \"updatedAt\", \"workspaceId\") SELECT \"createdAt\", \"directory\", \"id\", \"name\", \"orchestratorSessionId\", \"updatedAt\", \"workspaceId\" FROM \"project\";\nDROP TABLE \"project\";\nALTER TABLE \"new_project\" RENAME TO \"project\";\nCREATE UNIQUE INDEX \"project_workspaceId_key\" ON \"project\"(\"workspaceId\");\nCREATE UNIQUE INDEX \"project_repository_key\" ON \"project\"(\"repository\");\nCREATE TABLE \"new_setting\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"maxWorkers\" INTEGER NOT NULL DEFAULT 4,\n    \"backgroundLimitMinutes\" INTEGER NOT NULL DEFAULT 30,\n    \"defaultQuestionLevel\" TEXT NOT NULL DEFAULT 'important',\n    \"defaultMergePolicy\" TEXT NOT NULL DEFAULT 'follow_question_level',\n    \"whitelist\" TEXT NOT NULL DEFAULT '[]',\n    \"reminderIntervalMinutes\" INTEGER NOT NULL DEFAULT 10,\n    \"deliveryMaxAttempts\" INTEGER NOT NULL DEFAULT 3,\n    \"deliveryRetryCeilingSeconds\" INTEGER NOT NULL DEFAULT 60,\n    \"updatedAt\" TEXT NOT NULL\n);\nINSERT INTO \"new_setting\" (\"backgroundLimitMinutes\", \"deliveryMaxAttempts\", \"deliveryRetryCeilingSeconds\", \"id\", \"maxWorkers\", \"updatedAt\") SELECT \"backgroundLimitMinutes\", \"deliveryMaxAttempts\", \"deliveryRetryCeilingSeconds\", \"id\", \"maxWorkers\", \"updatedAt\" FROM \"setting\";\nDROP TABLE \"setting\";\nALTER TABLE \"new_setting\" RENAME TO \"setting\";\nCREATE TABLE \"new_ticket\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"projectId\" TEXT NOT NULL,\n    \"channelId\" TEXT NOT NULL,\n    \"title\" TEXT NOT NULL,\n    \"description\" TEXT,\n    \"status\" TEXT NOT NULL,\n    \"createdAt\" TEXT NOT NULL,\n    \"updatedAt\" TEXT NOT NULL,\n    \"acceptanceCriteria\" TEXT NOT NULL DEFAULT '',\n    \"authorization\" TEXT NOT NULL DEFAULT '',\n    \"questionLevel\" TEXT NOT NULL DEFAULT 'important',\n    \"mergePolicy\" TEXT NOT NULL DEFAULT 'human_required',\n    \"policyRevision\" INTEGER NOT NULL DEFAULT 0,\n    \"pauseReason\" TEXT,\n    \"pauseActor\" TEXT,\n    \"pausedAt\" TEXT,\n    \"failureReason\" TEXT,\n    \"failureBindingId\" TEXT,\n    \"executionBindingId\" TEXT,\n    \"executionAttention\" TEXT,\n    \"deliveryTarget\" TEXT,\n    \"startedAt\" TEXT,\n    \"endedAt\" TEXT,\n    \"prUrl\" TEXT,\n    \"prState\" TEXT,\n    \"ciState\" TEXT,\n    \"paused\" BOOLEAN NOT NULL DEFAULT false,\n    \"prepareError\" TEXT,\n    CONSTRAINT \"ticket_failureBindingId_fkey\" FOREIGN KEY (\"failureBindingId\") REFERENCES \"role_binding\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_executionBindingId_fkey\" FOREIGN KEY (\"executionBindingId\") REFERENCES \"role_binding\" (\"id\") ON DELETE SET NULL ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_projectId_fkey\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE,\n    CONSTRAINT \"ticket_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE\n);\nINSERT INTO \"new_ticket\" (\"channelId\", \"ciState\", \"createdAt\", \"description\", \"endedAt\", \"id\", \"paused\", \"prState\", \"prUrl\", \"prepareError\", \"projectId\", \"startedAt\", \"status\", \"title\", \"updatedAt\") SELECT \"channelId\", \"ciState\", \"createdAt\", \"description\", \"endedAt\", \"id\", \"paused\", \"prState\", \"prUrl\", \"prepareError\", \"projectId\", \"startedAt\", \"status\", \"title\", \"updatedAt\" FROM \"ticket\";\nDROP TABLE \"ticket\";\nALTER TABLE \"new_ticket\" RENAME TO \"ticket\";\nCREATE INDEX \"ticket_projectId_status_idx\" ON \"ticket\"(\"projectId\", \"status\");\nCREATE INDEX \"ticket_status_updatedAt_idx\" ON \"ticket\"(\"status\", \"updatedAt\");\nCREATE TABLE \"new_trigger\" (\n    \"id\" TEXT NOT NULL PRIMARY KEY,\n    \"channelId\" TEXT NOT NULL,\n    \"threadId\" TEXT NOT NULL,\n    \"kind\" TEXT NOT NULL,\n    \"actorProviderId\" TEXT,\n    \"actorLogin\" TEXT,\n    \"actorSource\" TEXT,\n    \"outbound\" BOOLEAN NOT NULL DEFAULT false,\n    \"actorName\" TEXT,\n    \"human\" BOOLEAN NOT NULL DEFAULT true,\n    \"mentioned\" BOOLEAN NOT NULL DEFAULT false,\n    \"text\" TEXT NOT NULL,\n    \"url\" TEXT,\n    \"at\" TEXT NOT NULL,\n    \"ref\" TEXT,\n    CONSTRAINT \"trigger_channelId_fkey\" FOREIGN KEY (\"channelId\") REFERENCES \"channel\" (\"id\") ON DELETE RESTRICT ON UPDATE CASCADE,\n    CONSTRAINT \"trigger_threadId_fkey\" FOREIGN KEY (\"threadId\") REFERENCES \"thread\" (\"id\") ON DELETE CASCADE ON UPDATE CASCADE\n);\nINSERT INTO \"new_trigger\" (\"actorName\", \"at\", \"channelId\", \"human\", \"id\", \"kind\", \"mentioned\", \"ref\", \"text\", \"threadId\", \"url\") SELECT \"actorName\", \"at\", \"channelId\", \"human\", \"id\", \"kind\", \"mentioned\", \"ref\", \"text\", \"threadId\", \"url\" FROM \"trigger\";\nDROP TABLE \"trigger\";\nALTER TABLE \"new_trigger\" RENAME TO \"trigger\";\nCREATE INDEX \"trigger_threadId_at_idx\" ON \"trigger\"(\"threadId\", \"at\");\nCREATE INDEX \"trigger_channelId_at_idx\" ON \"trigger\"(\"channelId\", \"at\");\nCREATE INDEX \"trigger_at_idx\" ON \"trigger\"(\"at\");\nCREATE INDEX \"trigger_ref_idx\" ON \"trigger\"(\"ref\");\n\nCREATE UNIQUE INDEX \"role_binding_sessionId_key\" ON \"role_binding\"(\"sessionId\");\n\nCREATE UNIQUE INDEX \"role_binding_activeKey_key\" ON \"role_binding\"(\"activeKey\");\n\nCREATE UNIQUE INDEX \"message_seq_key\" ON \"message\"(\"seq\");\n\nCREATE INDEX \"message_ticketId_recipient_seq_idx\" ON \"message\"(\"ticketId\", \"recipient\", \"seq\");\n\nCREATE UNIQUE INDEX \"outbox_seq_key\" ON \"outbox\"(\"seq\");\n\nCREATE INDEX \"outbox_ticketId_recipient_seq_idx\" ON \"outbox\"(\"ticketId\", \"recipient\", \"seq\");\n\nCREATE UNIQUE INDEX \"outbox_messageId_recipient_key\" ON \"outbox\"(\"messageId\", \"recipient\");\nUPDATE project SET attentionReason = 'repository_identity_unverified', identityEvidence = (SELECT json_object('channelId', channelId) FROM nexus_old_project WHERE nexus_old_project.id = project.id);\nDROP TABLE nexus_old_project;\nUPDATE setting SET defaultMergePolicy = 'human_required';\nINSERT INTO ask (id, source, initiatorRole, handler, decisionType, withinAuthorization, policyBasis, content, options, status, answer, answerActor, answerSource, answeredAt, createdAt, escalations, lastEscalatedAt)\nSELECT id, json_object('inboxId', id, 'triggerId', triggerId, 'threadId', threadId, 'workerId', workerId, 'previousHandler', type, 'origin', origin), CASE WHEN origin IN ('main', 'project', 'supervisor', 'worker') THEN origin ELSE 'main' END, 'human', 'important', 0, CASE WHEN ticketId IS NULL THEN '[]' ELSE json_array(json_object('id', ticketId, 'questionLevel', 'important', 'mergePolicy', 'human_required', 'revision', 0)) END, message, '[]', CASE WHEN answer IS NOT NULL THEN 'answered' ELSE 'pending' END, answer, NULL, answeredBy, answeredAt, createdAt, escalations, lastEscalatedAt FROM inbox WHERE kind = 'ask';\nINSERT INTO ask_ticket SELECT id, ticketId FROM inbox WHERE kind = 'ask' AND ticketId IS NOT NULL;\nINSERT INTO message (id, seq, ticketId, recipient, sender, kind, content, askId, acceptedAt, deliveredAt, readAt, handledAt, deliveryState, attempts, error, nextRetryAt, triggerId, threadId, title, source)\nSELECT id, ROW_NUMBER() OVER (ORDER BY seq, createdAt, id), ticketId, CASE WHEN type = 'user' THEN 'human' ELSE 'unresolved:' || type || ':' || COALESCE(projectId, supervisorId, id) END, json_object('origin', origin, 'workerId', workerId), kind, message, CASE WHEN kind = 'ask' THEN id ELSE NULL END, createdAt, readAt, readAt, CASE WHEN kind != 'ask' AND status = 'done' THEN doneAt ELSE NULL END, CASE WHEN readAt IS NULL THEN 'failed' ELSE 'delivered' END, deliveryAttempts, COALESCE(deliveryError, 'recipient_binding_requires_verification'), nextRetryAt, triggerId, threadId, title, json_object('inboxId', id, 'seq', seq, 'type', type, 'projectId', projectId, 'supervisorId', supervisorId, 'origin', origin, 'status', status, 'title', title, 'triggerId', triggerId, 'threadId', threadId, 'workerId', workerId, 'escalations', escalations, 'lastEscalatedAt', lastEscalatedAt, 'doneAt', doneAt) FROM inbox;\nDROP TABLE inbox;\nINSERT INTO role_binding (id, role, scope, sessionId, projectId, ticketId, status, activeKey, worktree, branch, recoveryReason, createdAt, updatedAt, closedAt, startedAt)\nSELECT 'migrated:worker:' || w.id, 'worker', w.ticketId, w.id, t.projectId, w.ticketId, CASE WHEN w.status = 'ended' THEN 'closed' ELSE 'unavailable' END, CASE WHEN w.status != 'ended' AND (SELECT COUNT(*) FROM worker active WHERE active.ticketId = w.ticketId AND active.status != 'ended') = 1 THEN 'worker:' || w.ticketId ELSE NULL END, w.worktree, w.branch, 'migration_requires_session_verification', w.createdAt, COALESCE(w.endedAt, w.startedAt, w.createdAt), w.endedAt, w.startedAt FROM worker w JOIN ticket t ON t.id = w.ticketId;\nUPDATE ask SET initiatorBinding = (SELECT 'migrated:worker:' || worker.id FROM worker WHERE worker.id = json_extract(ask.source, '$.workerId')) WHERE initiatorRole = 'worker';\nUPDATE ask SET responseRecipient = initiatorBinding;\nUPDATE ticket SET executionBindingId = CASE\n  WHEN (SELECT COUNT(*) FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id AND status != 'closed') = 1 THEN (SELECT id FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id AND status != 'closed')\n  WHEN (SELECT COUNT(*) FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id) = 1 THEN (SELECT id FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id)\n  ELSE NULL END;\nUPDATE ticket SET executionAttention = CASE\n  WHEN executionBindingId IS NULL AND EXISTS (SELECT 1 FROM role_binding WHERE role = 'worker' AND ticketId = ticket.id) THEN 'legacy_execution_ambiguous'\n  WHEN executionBindingId IS NULL AND status IN ('running', 'review') THEN 'legacy_execution_missing'\n  WHEN prState = 'merged' AND status != 'review' THEN 'legacy_delivery_requires_reconciliation'\n  WHEN status IN ('running', 'queued') AND (SELECT status FROM role_binding WHERE id = ticket.executionBindingId) = 'closed' THEN 'legacy_execution_closed'\n  ELSE NULL END WHERE status NOT IN ('done', 'cancelled');\nUPDATE ask SET policyBasis = (SELECT json_group_array(json_object('id', ticket.id, 'questionLevel', ticket.questionLevel, 'mergePolicy', ticket.mergePolicy, 'revision', ticket.policyRevision, 'executionBindingId', ticket.executionBindingId)) FROM ask_ticket JOIN ticket ON ticket.id = ask_ticket.ticketId WHERE ask_ticket.askId = ask.id);\nUPDATE message SET supersededAt = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), deliveryState = 'superseded', error = NULL, nextRetryAt = NULL WHERE kind = 'ask' AND askId IN (SELECT id FROM ask WHERE status != 'pending');\n",
 	"20261116000200_runtime": "ALTER TABLE \"role_binding\" ADD COLUMN \"baseCommit\" TEXT;\n",
-	"20261116000400_communication": "ALTER TABLE \"ask\" ADD COLUMN \"presentation\" TEXT;\nALTER TABLE \"ask\" ADD COLUMN \"selections\" TEXT;\n\nALTER TABLE \"message\" ADD COLUMN \"facts\" TEXT;\n"
+	"20261116000400_communication": "ALTER TABLE \"ask\" ADD COLUMN \"presentation\" TEXT;\nALTER TABLE \"ask\" ADD COLUMN \"selections\" TEXT;\n\nALTER TABLE \"message\" ADD COLUMN \"facts\" TEXT;\n",
+	"20261117000100_mailbox": "CREATE TABLE inbox (\n  id TEXT NOT NULL PRIMARY KEY,\n  seq INTEGER NOT NULL UNIQUE,\n  recipient TEXT NOT NULL,\n  sender TEXT NOT NULL,\n  kind TEXT NOT NULL,\n  title TEXT,\n  content TEXT NOT NULL,\n  askId TEXT,\n  acceptedAt TEXT NOT NULL,\n  readAt TEXT,\n  handledAt TEXT,\n  notifiedAt TEXT,\n  supersededAt TEXT\n);\nCREATE INDEX inbox_recipient_handledAt_seq_idx ON inbox(recipient, handledAt, seq);\nCREATE TABLE inbox_message (id TEXT NOT NULL PRIMARY KEY REFERENCES inbox(id), messageId TEXT NOT NULL UNIQUE REFERENCES message(id));\nINSERT INTO inbox (id, seq, recipient, sender, kind, title, content, askId, acceptedAt, readAt, handledAt, supersededAt)\nSELECT m.id, m.seq, 'nexus:' || r.role || ':' || r.scope, COALESCE('nexus:' || s.role || ':' || s.scope, m.sender), m.kind, m.title, m.content, m.askId, m.acceptedAt, m.readAt, m.handledAt, m.supersededAt\nFROM message m JOIN role_binding r ON r.id = m.recipient\nLEFT JOIN role_binding s ON s.id = m.sender OR s.sessionId = m.sender\nWHERE m.kind = 'ask' OR (m.kind IN ('message', 'answer') AND s.id IS NOT NULL);\nINSERT INTO inbox_message SELECT id, id FROM inbox;\nUPDATE message SET content = '' WHERE id IN (SELECT messageId FROM inbox_message);\n"
 };
 // src/database/index.ts
 var LedgerError = class extends Error {
@@ -592,6 +593,43 @@ function checkInterrupt(signal) {
 function defineService(service) {
 	return service;
 }
+// src/utils/mail-address.ts
+function mailAddress(role, scope) {
+	return `nexus:${role}:${scope}`;
+}
+// src/service/mailbox.ts
+const mailbox = defineService({
+	list(database, recipient, pendingOnly = true) {
+		return requireDatabase(database).prepare("SELECT * FROM inbox WHERE recipient = ? AND (? = 0 OR (handledAt IS NULL AND supersededAt IS NULL)) ORDER BY seq").all(recipient, Number(pendingOnly));
+	},
+	load(database, id) {
+		return requireDatabase(database).prepare("SELECT * FROM inbox WHERE id = ?").get(id) ?? null;
+	},
+	save(database, input) {
+		if (!input.id.trim() || !input.recipient.trim() || !input.sender.trim() || !input.kind.trim() || !input.content.trim()) throw new LedgerError("invalid_mail");
+		const existing = mailbox.load(database, input.id);
+		if (existing) {
+			if (existing.recipient !== input.recipient || existing.sender !== input.sender || existing.kind !== input.kind || existing.content !== input.content || existing.title !== (input.title ?? null) || existing.askId !== (input.askId ?? null)) throw new LedgerError("identity_conflict");
+			return existing;
+		}
+		requireDatabase(database).prepare("INSERT INTO inbox (id, seq, recipient, sender, kind, title, content, askId, acceptedAt) VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM inbox), ?, ?, ?, ?, ?, ?, ?)").run(input.id, input.recipient, input.sender, input.kind, input.title ?? null, input.content, input.askId ?? null, (/* @__PURE__ */ new Date()).toISOString());
+		return mailbox.load(database, input.id);
+	},
+	read(database, recipient, id) {
+		requireDatabase(database).prepare("UPDATE inbox SET readAt = COALESCE(readAt, ?) WHERE recipient = ? AND (? IS NULL OR id = ?) AND handledAt IS NULL AND supersededAt IS NULL").run((/* @__PURE__ */ new Date()).toISOString(), recipient, id ?? null, id ?? null);
+		return mailbox.list(database, recipient);
+	},
+	handle(database, recipient, id) {
+		const message = mailbox.load(database, id);
+		if (!message || message.recipient !== recipient || message.supersededAt) throw new LedgerError("scope_denied");
+		if (!message.readAt) throw new LedgerError("not_read");
+		requireDatabase(database).prepare("UPDATE inbox SET handledAt = COALESCE(handledAt, ?) WHERE id = ?").run((/* @__PURE__ */ new Date()).toISOString(), id);
+		return mailbox.load(database, id);
+	},
+	notify(database, recipient, through) {
+		requireDatabase(database).prepare("UPDATE inbox SET notifiedAt = COALESCE(notifiedAt, ?) WHERE recipient = ? AND seq <= ? AND handledAt IS NULL AND supersededAt IS NULL").run((/* @__PURE__ */ new Date()).toISOString(), recipient, through);
+	}
+});
 // src/service/policy.ts
 const policy = defineService({
 	resolve(snapshot, initiator, decision, withinAuthorization, hasSupervisor = false) {
@@ -846,6 +884,7 @@ const ledger = defineService({
 				createdAt: now$1(),
 				updatedAt: now$1()
 			});
+			for (const previous of rows(database, "role_binding").filter((binding) => binding.status === "closed" && binding.role === input.role && binding.scope === scope)) transferMessages(database, previous.id, input.id);
 			return required(database, "role_binding", input.id);
 		});
 	},
@@ -1420,10 +1459,13 @@ const ledger = defineService({
 				nextRetryAt: new Date(Date.now() + Math.min(2 ** attempts, settings.deliveryRetryCeilingSeconds) * 1e3).toISOString()
 			});
 		} else {
-			if (rows(database, "message").some((item) => item.ticketId === message.ticketId && item.recipient === message.recipient && item.seq < message.seq && !item.supersededAt && !(event === "handled" ? item.handledAt : event === "read" ? item.readAt : item.deliveredAt))) fail("delivery_order");
+			if (rows(database, "message").some((item) => item.ticketId === message.ticketId && item.recipient === message.recipient && item.seq < message.seq && !item.supersededAt && item.kind !== "runtime:session" && mail(database, item) === mail(database, message) && !(event === "handled" ? item.handledAt : event === "read" ? item.readAt : item.deliveredAt)) && event !== "handled") fail("delivery_order");
 			if (event === "read" && !message.deliveredAt) fail("not_delivered");
 			if (event === "handled" && !message.readAt) fail("not_read");
-			update(database, "message", id, event === "delivered" ? {
+			const letter = mailbox.load(database, id);
+			if (letter && event === "read") mailbox.read(database, letter.recipient, id);
+			else if (letter && event === "handled") mailbox.handle(database, letter.recipient, id);
+			else update(database, "message", id, event === "delivered" ? {
 				deliveredAt: message.deliveredAt ?? now$1(),
 				deliveryState: "delivered",
 				error: null,
@@ -1447,19 +1489,16 @@ const ledger = defineService({
 		}
 		return required(database, "message", id);
 	},
+	listMail(database, bindingId) {
+		const binding = required(database, "role_binding", bindingId);
+		return mailbox.list(database, mailAddress(binding.role, binding.scope));
+	},
+	notifyMail(database, bindingId, through) {
+		const binding = required(database, "role_binding", bindingId);
+		mailbox.notify(database, mailAddress(binding.role, binding.scope), through);
+	},
 	transferMessages(database, previousBindingId, bindingId) {
-		transaction(database, () => {
-			const previous = required(database, "role_binding", previousBindingId);
-			const next = required(database, "role_binding", bindingId);
-			if (previous.status !== "closed" || !["idle", "running"].includes(next.status) || next.previousBindingId !== previous.id || previous.role !== next.role || previous.scope !== next.scope) fail("binding_conflict");
-			for (const ask of rows(database, "ask").filter((ask) => ask.handler === previousBindingId && ask.status === "pending")) {
-				rerouteAskDelivery(database, ask, bindingId);
-				update(database, "ask", ask.id, { handler: bindingId });
-			}
-			requireDatabase(database).prepare("UPDATE message SET recipient = ?, deliveredAt = NULL, deliveryState = ?, error = NULL, nextRetryAt = NULL WHERE recipient = ? AND readAt IS NULL AND supersededAt IS NULL").run(bindingId, "pending", previousBindingId);
-			requireDatabase(database).prepare("UPDATE attention SET recipient = ? WHERE recipient = ? AND handledAt IS NULL").run(bindingId, previousBindingId);
-			requireDatabase(database).prepare("UPDATE ask SET responseRecipient = ? WHERE COALESCE(responseRecipient, initiatorBinding) = ? AND status = 'pending'").run(bindingId, previousBindingId);
-		});
+		transaction(database, () => transferMessages(database, previousBindingId, bindingId));
 	},
 	saveChannel(database, id, name, enabled) {
 		if (!id || !name.trim()) fail("invalid_config");
@@ -1713,17 +1752,39 @@ const ledger = defineService({
 		};
 	}
 });
+function transferMessages(database, previousBindingId, bindingId) {
+	const previous = required(database, "role_binding", previousBindingId);
+	const next = required(database, "role_binding", bindingId);
+	if (previous.status !== "closed" || !["idle", "running"].includes(next.status) || previous.role !== next.role || previous.scope !== next.scope) fail("binding_conflict");
+	for (const ask of rows(database, "ask").filter((ask) => ask.handler === previousBindingId && ask.status === "pending")) update(database, "ask", ask.id, { handler: bindingId });
+	requireDatabase(database).prepare("UPDATE message SET recipient = ?, deliveredAt = NULL, deliveryState = 'pending', error = NULL, nextRetryAt = NULL WHERE recipient = ? AND readAt IS NULL AND supersededAt IS NULL AND id NOT IN (SELECT messageId FROM inbox_message)").run(bindingId, previousBindingId);
+	requireDatabase(database).prepare("UPDATE attention SET recipient = ? WHERE recipient = ? AND handledAt IS NULL").run(bindingId, previousBindingId);
+	requireDatabase(database).prepare("UPDATE ask SET responseRecipient = ? WHERE COALESCE(responseRecipient, initiatorBinding) = ? AND status = 'pending'").run(bindingId, previousBindingId);
+}
 function now$1() {
 	return (/* @__PURE__ */ new Date()).toISOString();
 }
 function fail(code) {
 	throw new LedgerError(code);
 }
+function hydrateMessage(database, message) {
+	const link = requireDatabase(database).prepare("SELECT id FROM inbox_message WHERE messageId = ?").get(message.id);
+	const letter = link ? mailbox.load(database, String(link.id)) : null;
+	return letter ? {
+		...message,
+		content: letter.content,
+		readAt: letter.readAt,
+		handledAt: letter.handledAt,
+		supersededAt: letter.supersededAt ?? message.supersededAt
+	} : message;
+}
 function rows(database, table) {
-	return requireDatabase(database).prepare(`SELECT * FROM "${table}"`).all();
+	const result = requireDatabase(database).prepare(`SELECT * FROM "${table}"`).all();
+	return table === "message" ? result.map((row) => hydrateMessage(database, row)) : result;
 }
 function load(database, table, id) {
-	return requireDatabase(database).prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) ?? null;
+	const result = requireDatabase(database).prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) ?? null;
+	return result && table === "message" ? hydrateMessage(database, result) : result;
 }
 function required(database, table, id) {
 	return load(database, table, id) ?? fail("not_found");
@@ -1741,6 +1802,9 @@ function isHuman(database, actor) {
 }
 function human(database, actor) {
 	if (!isHuman(database, actor)) fail("human_required");
+}
+function mail(database, message) {
+	return message.kind === "ask" || ["message", "answer"].includes(message.kind) && rows(database, "role_binding").some((binding) => binding.id === message.sender || binding.sessionId === message.sender);
 }
 function actorKey(actor) {
 	return actor.kind === "agent" ? actor.sessionId : actor.kind === "web" ? actor.userId : actor.providerId;
@@ -1850,6 +1914,7 @@ function retireAttentionReminders(database, item) {
 }
 function retireAskRequests(database, askId, settlement) {
 	if (settlement) for (const item of rows(database, "attention").filter((item) => item.askId === askId && item.reason === "pending_ask" && !item.handledAt)) ledger.updateAttention(database, item.id, "handled", settlement);
+	requireDatabase(database).prepare("UPDATE inbox SET supersededAt = ? WHERE askId = ? AND kind = 'ask' AND supersededAt IS NULL").run(now$1(), askId);
 	requireDatabase(database).prepare("UPDATE message SET supersededAt = ?, deliveryState = 'superseded', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = 'ask' AND supersededAt IS NULL").run(now$1(), askId);
 	requireDatabase(database).prepare("UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN ('pending', 'failed') THEN 'superseded' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = 'ask') AND supersededAt IS NULL").run(now$1(), askId);
 }
@@ -1929,10 +1994,26 @@ function enqueue(database, input) {
 		if (existing.recipient !== input.recipient || existing.ticketId !== input.ticketId || existing.content !== input.content || existing.sender !== input.sender || existing.kind !== input.kind || existing.facts !== (input.facts ?? null)) fail("identity_conflict");
 		return existing;
 	}
+	const receiver = load(database, "role_binding", input.recipient);
+	const sender = rows(database, "role_binding").find((binding) => binding.id === input.sender || binding.sessionId === input.sender);
+	const internal = receiver && (input.kind === "ask" || sender && ["message", "answer"].includes(input.kind));
+	if (internal) mailbox.save(database, {
+		id: input.id,
+		recipient: mailAddress(receiver.role, receiver.scope),
+		sender: sender ? mailAddress(sender.role, sender.scope) : input.sender,
+		kind: input.kind,
+		content: input.content,
+		askId: input.askId
+	});
 	insert(database, "message", {
 		...input,
+		content: internal ? "" : input.content,
 		seq: nextSeq(database, "message"),
 		acceptedAt: now$1()
+	});
+	if (internal) insert(database, "inbox_message", {
+		id: input.id,
+		messageId: input.id
 	});
 	return required(database, "message", input.id);
 }
@@ -2064,15 +2145,19 @@ const communication = defineService({
 				cause: null
 			};
 			try {
-				await host.deliver(message.id, signal);
 				return {
-					state: "accepted",
+					state: (await host.deliver(message.id, signal)).deliveredAt ? "accepted" : "pending",
 					error: null,
 					cause: null
 				};
 			} catch (error) {
 				checkInterrupt(signal);
 				if (error instanceof LedgerError && error.code === "interrupted_tool") throw error;
+				if (error instanceof LedgerError && error.code === "delivery_pending") return {
+					state: "pending",
+					error: null,
+					cause: null
+				};
 				return {
 					state: "failed",
 					error: "delivery_failed",
@@ -2247,7 +2332,15 @@ const communication = defineService({
 			sendMessage,
 			answer,
 			cancel,
-			list
+			list,
+			readMailbox: async (sessionId, signal) => {
+				const box = await host.readMailbox(sessionId, signal);
+				return {
+					...box,
+					questions: list().filter((question) => box.messages.some((message) => message.askId === question.askId))
+				};
+			},
+			handleMail: host.handleMail
 		};
 	}
 });
@@ -3493,169 +3586,196 @@ function createCommunicationTools(service, sessionId, nativeSend) {
 			text: JSON.stringify(value)
 		}]
 	};
-	return [defineTool({
-		name: "ask",
-		description: "创建持久问题或用 askId 上交同一问题。requestId 对同一个决定保持不变，重启/重试复用。pending 不代表批准，受影响工作线停止，其他已授权工单可继续。",
-		parameters: {
-			threadId: {
-				type: "string",
-				description: "main 无票分诊问题的已登记原话题；不用于改变工单范围。"
-			},
-			requestId: {
-				type: "string",
-				description: "新问题的稳定请求标识；重试必须复用。"
-			},
-			askId: {
-				type: "string",
-				description: "上交已有问题时只传 askId，不改原问题。"
-			},
-			question: {
-				type: "string",
-				description: "实际问题正文。"
-			},
-			options: {
-				type: "array",
-				items: { type: "string" },
-				description: "明确可选答案；不产生默认答案。"
-			},
-			multiSelect: {
-				type: "boolean",
-				description: "是否允许多选；正式答复通过 selections 保留选择。"
-			},
-			title: {
-				type: "string",
-				description: "问题标题。"
-			},
-			detail: {
-				type: "string",
-				description: "问题补充信息。"
-			},
-			ticketIds: {
-				type: "array",
-				items: { type: "string" },
-				description: "受影响工单；Worker 推导本票，project/supervisor 必须明确提供。"
-			},
-			decisionType: {
-				type: "string",
-				enum: [
-					"ordinary",
-					"important",
-					"final",
-					"merge",
-					"delivery"
-				],
-				description: "决定性质；默认 important，处理者始终由账本策略决定。"
-			},
-			target: {
-				type: "object",
-				additionalProperties: false,
-				properties: {
-					repository: {
-						type: "string",
-						required: true
-					},
-					pullRequest: {
-						type: "string",
-						required: true
-					},
-					base: {
-						type: "string",
-						required: true
-					},
-					head: {
-						type: "string",
-						required: true
-					}
-				},
-				description: "合并决定的精确目标；账本核对当前验收依据。"
+	return [
+		defineTool({
+			name: "read_mailbox",
+			description: "读取当前角色信箱的未处理信件。阅读不会标为已处理，先完成信件要求，再用 handle_mail 确认；ask 的正式答复仍用 send_message。",
+			parameters: {},
+			output,
+			execute: async (_args, exec) => {
+				caller(exec);
+				return await service.readMailbox(sessionId, exec.signal);
 			}
-		},
-		output,
-		execute: async (args, exec) => {
-			caller(exec);
-			return await service.ask(sessionId, args, exec.signal);
-		}
-	}), defineTool({
-		name: "send_message",
-		description: "互斥地址：agent_id 原生代理；to 显式 Nexus 地址；askId 正式答复且必须提供问题当前 policyBasis。仅返回受理，不代表已发送/已读/已处理。普通消息永不批准或改工单状态。",
-		parameters: {
-			message: {
+		}),
+		defineTool({
+			name: "handle_mail",
+			description: "明确确认一封信件已处理，不会回答问题、批准决定或改变工单状态。仅能处理当前角色信箱的信件。",
+			parameters: { messageId: {
 				type: "string",
 				required: true,
-				description: "公共消息/答案文本。"
-			},
-			agent_id: {
-				type: "string",
-				description: "原生 DSH helper 地址，沿用原生父子权限和 messageId 回执。"
-			},
-			to: {
-				type: "string",
-				description: "role:main/project/supervisor/worker、binding:登记ID、session:会话ID 或 channel:已登记话题ID；歧义地址报错。"
-			},
-			askId: {
-				type: "string",
-				description: "正式答复的唯一问题ID；收件者由原问题决定。"
-			},
-			policyBasis: {
-				type: "string",
-				description: "问题展示的策略版本；变化后需重新判断。"
-			},
-			selections: {
-				type: "array",
-				items: { type: "string" },
-				description: "多选问题的完整选项集合。"
-			},
-			ticketId: {
-				type: "string",
-				description: "普通消息关联工单，Worker 默认本票。"
-			},
-			facts: {
-				type: "object",
-				additionalProperties: false,
-				properties: {
-					state: {
-						type: "string",
-						enum: [
-							"progress",
-							"ready",
-							"failed",
-							"dropped"
-						],
-						required: true
-					},
-					summary: {
-						type: "string",
-						required: true
-					},
-					evidence: {
-						type: "array",
-						items: { type: "string" }
-					},
-					acceptanceCriteria: { type: "string" }
+				description: "read_mailbox 返回的信件 ID。"
+			} },
+			output,
+			execute: async (args, exec) => {
+				caller(exec);
+				return await service.handleMail(sessionId, args.messageId, exec.signal);
+			}
+		}),
+		defineTool({
+			name: "ask",
+			description: "创建持久问题或用 askId 上交同一问题。requestId 对同一个决定保持不变，重启/重试复用。pending 不代表批准，受影响工作线停止，其他已授权工单可继续。",
+			parameters: {
+				threadId: {
+					type: "string",
+					description: "main 无票分诊问题的已登记原话题；不用于改变工单范围。"
 				},
-				description: "普通消息结构化汇报与交付证据，不是验收或状态写入。"
+				requestId: {
+					type: "string",
+					description: "新问题的稳定请求标识；重试必须复用。"
+				},
+				askId: {
+					type: "string",
+					description: "上交已有问题时只传 askId，不改原问题。"
+				},
+				question: {
+					type: "string",
+					description: "实际问题正文。"
+				},
+				options: {
+					type: "array",
+					items: { type: "string" },
+					description: "明确可选答案；不产生默认答案。"
+				},
+				multiSelect: {
+					type: "boolean",
+					description: "是否允许多选；正式答复通过 selections 保留选择。"
+				},
+				title: {
+					type: "string",
+					description: "问题标题。"
+				},
+				detail: {
+					type: "string",
+					description: "问题补充信息。"
+				},
+				ticketIds: {
+					type: "array",
+					items: { type: "string" },
+					description: "受影响工单；Worker 推导本票，project/supervisor 必须明确提供。"
+				},
+				decisionType: {
+					type: "string",
+					enum: [
+						"ordinary",
+						"important",
+						"final",
+						"merge",
+						"delivery"
+					],
+					description: "决定性质；默认 important，处理者始终由账本策略决定。"
+				},
+				target: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						repository: {
+							type: "string",
+							required: true
+						},
+						pullRequest: {
+							type: "string",
+							required: true
+						},
+						base: {
+							type: "string",
+							required: true
+						},
+						head: {
+							type: "string",
+							required: true
+						}
+					},
+					description: "合并决定的精确目标；账本核对当前验收依据。"
+				}
+			},
+			output,
+			execute: async (args, exec) => {
+				caller(exec);
+				return await service.ask(sessionId, args, exec.signal);
 			}
-		},
-		output,
-		execute: async (args, exec) => {
-			caller(exec);
-			const input = args;
-			if ([
-				input.agent_id,
-				input.to,
-				input.askId
-			].filter((value) => value !== void 0).length !== 1) throw new LedgerError("address_conflict");
-			if (input.agent_id !== void 0) {
-				if (input.ticketId || input.facts || input.policyBasis || input.selections) throw new LedgerError("parameter_conflict");
-				await service.resolve(sessionId, exec.signal);
-				return nativeSend({
-					agent_id: input.agent_id,
-					message: input.message
-				}, exec);
+		}),
+		defineTool({
+			name: "send_message",
+			description: "互斥地址：agent_id 原生代理；to 显式 Nexus 地址；askId 正式答复且必须提供问题当前 policyBasis。仅返回受理，不代表已发送/已读/已处理。普通消息永不批准或改工单状态。",
+			parameters: {
+				message: {
+					type: "string",
+					required: true,
+					description: "公共消息/答案文本。"
+				},
+				agent_id: {
+					type: "string",
+					description: "原生 DSH helper 地址，沿用原生父子权限和 messageId 回执。"
+				},
+				to: {
+					type: "string",
+					description: "role:main/project/supervisor/worker、binding:登记ID、session:会话ID 或 channel:已登记话题ID；歧义地址报错。"
+				},
+				askId: {
+					type: "string",
+					description: "正式答复的唯一问题ID；收件者由原问题决定。"
+				},
+				policyBasis: {
+					type: "string",
+					description: "问题展示的策略版本；变化后需重新判断。"
+				},
+				selections: {
+					type: "array",
+					items: { type: "string" },
+					description: "多选问题的完整选项集合。"
+				},
+				ticketId: {
+					type: "string",
+					description: "普通消息关联工单，Worker 默认本票。"
+				},
+				facts: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						state: {
+							type: "string",
+							enum: [
+								"progress",
+								"ready",
+								"failed",
+								"dropped"
+							],
+							required: true
+						},
+						summary: {
+							type: "string",
+							required: true
+						},
+						evidence: {
+							type: "array",
+							items: { type: "string" }
+						},
+						acceptanceCriteria: { type: "string" }
+					},
+					description: "普通消息结构化汇报与交付证据，不是验收或状态写入。"
+				}
+			},
+			output,
+			execute: async (args, exec) => {
+				caller(exec);
+				const input = args;
+				if ([
+					input.agent_id,
+					input.to,
+					input.askId
+				].filter((value) => value !== void 0).length !== 1) throw new LedgerError("address_conflict");
+				if (input.agent_id !== void 0) {
+					if (input.ticketId || input.facts || input.policyBasis || input.selections) throw new LedgerError("parameter_conflict");
+					await service.resolve(sessionId, exec.signal);
+					return nativeSend({
+						agent_id: input.agent_id,
+						message: input.message
+					}, exec);
+				}
+				return await service.sendMessage(sessionId, exec.callId, input, exec.signal);
 			}
-			return await service.sendMessage(sessionId, exec.callId, input, exec.signal);
-		}
-	})];
+		})
+	];
 }
 // src/communication/install.ts
 function createCommunicationInstaller(service, nativeSend, management) {
@@ -4312,6 +4432,7 @@ function createSessionGateway(ctx, retireWriters, setup) {
 		}
 	};
 	return {
+		isArchived: (sessionId) => ctx.get("workspaceRegistry")?.archivedSessionIds.includes(SessionId(sessionId)) ?? false,
 		async dispose() {
 			for (const handle of handles.values()) handle.agent.cancel({
 				kind: "hook",
@@ -4323,6 +4444,10 @@ function createSessionGateway(ctx, retireWriters, setup) {
 		},
 		async inspect(sessionId, signal) {
 			checkInterrupt(signal);
+			if (ctx.get("workspaceRegistry")?.archivedSessionIds.includes(SessionId(sessionId))) return {
+				state: "closed",
+				archived: true
+			};
 			const agent = agents.get(SessionId(sessionId)) ?? preparing.get(sessionId);
 			if (agent) return {
 				state: agent.status,
@@ -4332,6 +4457,10 @@ function createSessionGateway(ctx, retireWriters, setup) {
 			};
 			try {
 				const { session } = await query.readSession(SessionId(sessionId));
+				if (ctx.get("workspaceRegistry")?.archivedSessionIds.includes(SessionId(sessionId))) return {
+					state: "closed",
+					archived: true
+				};
 				return {
 					state: "resumable",
 					cwd: session.cwd,
@@ -4400,6 +4529,8 @@ function createSessionGateway(ctx, retireWriters, setup) {
 			const agent = agents.get(SessionId(sessionId)) ?? preparing.get(sessionId);
 			if (!agent) throw new LedgerError("closed_session");
 			if (retiring.has(sessionId)) throw new LedgerError("execution_stop_pending");
+			if (ctx.get("workspaceRegistry")?.archivedSessionIds.includes(SessionId(sessionId))) throw new LedgerError("archived_session");
+			if (item.source === "nexus:mailbox" && agent.status !== "idle") throw new LedgerError("delivery_pending");
 			const content = [{
 				type: "text",
 				text: item.content
@@ -4576,6 +4707,14 @@ function postAnswer(event) {
 function getContext(event) {
 	return request(event, (panel) => panel.context(text(getRouterParam(event, "id", { decode: true }))));
 }
+// src/server/routes/mailbox.get.ts
+function getMailbox(event) {
+	return request(event, (panel) => panel.mailbox(text(getRouterParam(event, "id", { decode: true }))));
+}
+// src/server/routes/mailbox.post.ts
+function handleMail(event) {
+	return request(event, (panel) => panel.handleMail(text(getRouterParam(event, "id", { decode: true })), text(getRouterParam(event, "messageId", { decode: true }))));
+}
 // src/server/routes/panel.get.ts
 function getPanel(event) {
 	return request(event, (panel) => panel.resolve());
@@ -4649,18 +4788,112 @@ function postTicket(event) {
 		return panel.command(text(getRouterParam(event, "id", { decode: true })), action, text(body.reason), actor);
 	});
 }
+// src/server/transport.ts
+function createDispatch(app, trusted) {
+	return async (request) => {
+		let envelope;
+		try {
+			envelope = await request.json();
+		} catch {
+			return invalid();
+		}
+		if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return invalid();
+		const value = envelope;
+		if (Object.keys(value).some((key) => ![
+			"path",
+			"method",
+			"body"
+		].includes(key)) || typeof value.path !== "string" || typeof value.method !== "string") return invalid();
+		if (![
+			"GET",
+			"HEAD",
+			"POST",
+			"PATCH"
+		].includes(value.method) || !value.path || value.path.length > 4096) return invalid();
+		const segments = value.path.split("/");
+		if (segments.some((segment) => !segment || !/^(?:[\w.~-]|%[A-F0-9]{2})+$/iu.test(segment))) return invalid();
+		let decoded;
+		try {
+			decoded = segments.map((segment) => decodeURIComponent(segment));
+		} catch {
+			return invalid();
+		}
+		if (decoded[0] === "dispatch" || decoded.some((segment) => segment === "." || segment === ".." || [...segment].some((char) => char.charCodeAt(0) <= 32 || "/\\%".includes(char)))) return invalid();
+		if ((value.method === "GET" || value.method === "HEAD") && value.body !== void 0) return invalid();
+		const url = new URL(request.url);
+		url.pathname = `/api/nexus/${value.path}`;
+		url.search = "";
+		url.hash = "";
+		const headers = new Headers(request.headers);
+		headers.delete("content-length");
+		headers.delete("transfer-encoding");
+		if (value.body === void 0) headers.delete("content-type");
+		else headers.set("content-type", "application/json");
+		const forwarded = new Request(url, {
+			method: value.method,
+			headers,
+			body: value.body === void 0 ? void 0 : JSON.stringify(value.body),
+			signal: request.signal
+		});
+		trusted.add(forwarded);
+		try {
+			return await app.fetch(forwarded);
+		} finally {
+			trusted.delete(forwarded);
+		}
+	};
+}
+function invalid() {
+	return Response.json({
+		message: "invalid_dispatch",
+		data: { code: "invalid_dispatch" }
+	}, { status: 400 });
+}
 // src/server/index.ts
-const server = defineWebServer((app) => {
-	app.get("/api/nexus/panel", getPanel);
-	app.get("/api/nexus/tickets/:id", getTicket);
-	app.patch("/api/nexus/tickets/:id", patchTicket);
-	app.post("/api/nexus/tickets/:id/:action", postTicket);
-	app.post("/api/nexus/asks/:id/answers", postAnswer);
-	app.patch("/api/nexus/projects/:id", patchProject);
-	app.post("/api/nexus/projects/refresh", refreshProjects);
-	app.patch("/api/nexus/settings", patchSettings);
-	app.get("/api/nexus/sessions/:id/context", getContext);
-});
+function server(ctx, options) {
+	const trusted = /* @__PURE__ */ new WeakSet();
+	let dispatch;
+	const dispose = defineWebServer((app) => {
+		dispatch = createDispatch(app, trusted);
+		app.post("/api/nexus/dispatch", (event) => request(event, () => dispatch(event.req)));
+		app.get("/api/nexus/panel", getPanel);
+		app.get("/api/nexus/sessions/:id/mailbox", getMailbox);
+		app.post("/api/nexus/sessions/:id/mailbox/:messageId/handled", handleMail);
+		app.get("/api/nexus/tickets/:id", getTicket);
+		app.patch("/api/nexus/tickets/:id", patchTicket);
+		app.post("/api/nexus/tickets/:id/:action", postTicket);
+		app.post("/api/nexus/asks/:id/answers", postAnswer);
+		app.patch("/api/nexus/projects/:id", patchProject);
+		app.post("/api/nexus/projects/refresh", refreshProjects);
+		app.patch("/api/nexus/settings", patchSettings);
+		app.get("/api/nexus/sessions/:id/context", getContext);
+	})(ctx, {
+		...options,
+		owner: (event) => trusted.has(event.req) ? {
+			kind: "web",
+			authenticated: true,
+			userId: "owner"
+		} : options.owner(event)
+	});
+	try {
+		const detach = ctx.connection.fetch.register({
+			path: "/api/nexus/dispatch",
+			methods: ["POST"],
+			requestBody: "buffered",
+			fetch: (request) => dispatch(request)
+		});
+		let closed = false;
+		return async () => {
+			if (closed) return;
+			closed = true;
+			dispose();
+			await detach();
+		};
+	} catch (error) {
+		dispose();
+		throw error;
+	}
+}
 // src/runtime/worktree.ts
 const execute$1 = promisify(execFile);
 function samePath(left, right) {
@@ -4793,6 +5026,8 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		if (binding.status === "closed") throw new LedgerError("closed_session");
 		const session = await interruptible(() => gateway.inspect(sessionId, signal), signal);
 		if (session.origin === "subagent" || session.parentSession) throw new LedgerError("unknown_binding");
+		if (ledger.load(database, "role_binding", binding.id)?.status === "closed") throw new LedgerError("closed_session");
+		if (session.archived || gateway.isArchived?.(sessionId)) throw new LedgerError("archived_session");
 		if (session.state === "closed") throw new LedgerError("closed_session");
 		return {
 			binding,
@@ -4818,7 +5053,6 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 				return reserved;
 			}
 			const binding = ledger.bindRole(database, input, actor);
-			if (input.previousBindingId) ledger.transferMessages(database, input.previousBindingId, binding.id);
 			const cwd = join(managerDirectory, binding.id);
 			try {
 				await mkdir(cwd, { recursive: true });
@@ -5093,8 +5327,16 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		checkInterrupt(signal);
 		const requested = ledger.load(database, "message", messageId);
 		if (!requested) throw new LedgerError("not_found");
+		const letter = mailbox.load(database, messageId);
+		if (requested.kind === "runtime:session") return requested;
+		if (letter) {
+			const target = ledger.list(database, "role_binding").find((binding) => binding.status !== "closed" && mailAddress(binding.role, binding.scope) === letter.recipient);
+			if (target && !letter.handledAt && !letter.supersededAt) await notifyMailbox(target.sessionId, signal);
+			return ledger.load(database, "message", messageId);
+		}
 		await interruptible(() => serializeMailbox(`${requested.recipient}:${requested.ticketId}`, async () => {
-			const messages = ledger.list(database, "message").filter((item) => item.recipient === requested.recipient && item.ticketId === requested.ticketId && !item.readAt && !item.supersededAt).sort((a, b) => a.seq - b.seq);
+			const mail = new Set(ledger.listMail(database, requested.recipient).map((message) => message.id));
+			const messages = ledger.list(database, "message").filter((item) => item.recipient === requested.recipient && item.ticketId === requested.ticketId && !item.readAt && !item.supersededAt && item.kind !== "runtime:session" && !mail.has(item.id)).sort((a, b) => a.seq - b.seq);
 			for (const message of messages) {
 				checkInterrupt(signal);
 				if (ledger.load(database, "message", message.id).supersededAt) continue;
@@ -5146,6 +5388,91 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 			}
 		}), signal);
 		return ledger.load(database, "message", messageId);
+	}
+	async function mailbox$1(sessionId, signal) {
+		const binding = ledger.list(database, "role_binding").find((item) => item.sessionId === sessionId);
+		const empty = {
+			sessionId,
+			bindingId: null,
+			role: null,
+			scope: null,
+			active: false,
+			pendingCount: 0,
+			messages: []
+		};
+		if (!binding || binding.status === "closed") return empty;
+		const session = await gateway.inspect(sessionId, signal);
+		if (ledger.load(database, "role_binding", binding.id)?.status === "closed" || gateway.isArchived?.(sessionId) || session.archived || ["closed", "missing"].includes(session.state) || session.origin === "subagent" || session.parentSession) return empty;
+		const messages = ledger.listMail(database, binding.id);
+		return {
+			sessionId,
+			bindingId: binding.id,
+			role: binding.role,
+			scope: binding.scope,
+			active: true,
+			pendingCount: messages.length,
+			messages
+		};
+	}
+	function assertMailboxOwner(binding) {
+		if (ledger.load(database, "role_binding", binding.id)?.status === "closed") throw new LedgerError("closed_session");
+		if (gateway.isArchived?.(binding.sessionId)) throw new LedgerError("archived_session");
+	}
+	async function readMailbox(sessionId, signal) {
+		const { binding } = await resolve(sessionId, signal);
+		assertMailboxOwner(binding);
+		const letters = mailbox.read(database, mailAddress(binding.role, binding.scope));
+		for (const letter of letters) {
+			const link = ledger.load(database, "inbox_message", letter.id);
+			if (!link) continue;
+			const message = ledger.load(database, "message", link.messageId);
+			if (!message.deliveredAt) ledger.updateMessage(database, message.id, "delivered");
+			ledger.updateMessage(database, message.id, "read");
+			for (const item of ledger.list(database, "attention").filter((item) => item.ticketId === message.ticketId)) armAttention(item);
+		}
+		return mailbox$1(sessionId, signal);
+	}
+	async function handleMail(sessionId, messageId, signal) {
+		const { binding } = await resolve(sessionId, signal);
+		assertMailboxOwner(binding);
+		const letter = mailbox.load(database, messageId);
+		if (!letter || letter.recipient !== mailAddress(binding.role, binding.scope)) throw new LedgerError("scope_denied");
+		const link = ledger.load(database, "inbox_message", messageId);
+		if (link) ledger.updateMessage(database, link.messageId, "handled");
+		else mailbox.handle(database, letter.recipient, messageId);
+		return mailbox.load(database, messageId);
+	}
+	async function notifyMailbox(sessionId, signal) {
+		await serializeMailbox(`notice:${sessionId}`, async () => {
+			if (!(await mailbox$1(sessionId, signal)).active) return;
+			const { binding, session } = await resolve(sessionId, signal);
+			if (session.state !== "idle") return;
+			const messages = ledger.listMail(database, binding.id);
+			if (!messages.length) return;
+			const through = mailbox.list(database, mailAddress(binding.role, binding.scope), false).at(-1).seq;
+			const id = `mailbox:${binding.id}:${through}`;
+			const receipt = await gateway.receipt(sessionId, id, signal);
+			if (receipt === "unknown") throw new LedgerError("unknown_remote_result");
+			if (receipt === "absent") try {
+				await gateway.deliver(sessionId, {
+					id,
+					source: "nexus:mailbox",
+					content: JSON.stringify({
+						kind: "nexus_mailbox",
+						pendingCount: messages.length,
+						instruction: "使用 read_mailbox 读取信件，处理后使用 handle_mail 确认。通知和阅读均不代表已处理。"
+					})
+				}, "wake", signal);
+			} catch (error) {
+				if (error instanceof LedgerError && [
+					"delivery_pending",
+					"archived_session",
+					"closed_session"
+				].includes(error.code)) return;
+				throw error;
+			}
+			ledger.notifyMail(database, binding.id, through);
+		});
 	}
 	function messageRecipient(message) {
 		return bindingById(message.recipient).sessionId;
@@ -5243,6 +5570,7 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 				checkInterrupt(signal);
 				if (session.state === "resumable") await interruptible(() => gateway.resume(binding.sessionId, presets[binding.role], signal), signal);
 				if (binding.role !== "worker" && binding.status === "unavailable") ledger.updateBinding(database, binding.id, "idle", "session reconciled");
+				await notifyMailbox(binding.sessionId, signal);
 				const messages = ledger.list(database, "message").filter((message) => message.recipient === binding.id && !message.readAt && !message.supersededAt);
 				await Promise.all([...new Map(messages.map((message) => [message.ticketId, message])).values()].map((message) => deliver(message.id, signal)));
 				if (binding.role === "worker") {
@@ -5535,6 +5863,10 @@ const runtime = defineService({ create(database, gateway, timers, managerDirecto
 		cancellations.clear();
 	}
 	return {
+		mailbox: mailbox$1,
+		readMailbox,
+		handleMail,
+		notifyMailbox,
 		bind,
 		resolve,
 		dispatch,
@@ -5862,6 +6194,8 @@ const webPanel = defineService({ create(database, ports) {
 		return ledger.setPolicy(database, id, policy, reason, actor);
 	}
 	return {
+		mailbox: ports.runtime.mailbox,
+		handleMail: ports.runtime.handleMail,
 		resolve,
 		overview,
 		inbox,
@@ -5949,6 +6283,20 @@ async function activate(ctx, options) {
 		const binding = ledger.list(database, "role_binding").find((item) => item.sessionId === agent.id && item.status !== "closed");
 		const original = agentCtx.tools.get("send_message", agent);
 		if (original) native.set(agent, original);
+		if (binding) disposers.push(agentCtx.systemPrompt.context({
+			name: "nexus-mailbox",
+			order: 90,
+			required: true,
+			text: () => {
+				const current = ledger.load(database, "role_binding", binding.id);
+				if (!current || current.status === "closed" || ctx.get("workspaceRegistry").archivedSessionIds.includes(SessionId(agent.id))) return "";
+				return JSON.stringify({
+					kind: "nexus_mailbox",
+					pendingCount: ledger.listMail(database, binding.id).length,
+					instruction: "内部信件存于角色信箱，当前任务完成后用 read_mailbox 读取，处理后用 handle_mail 确认。"
+				});
+			}
+		}));
 		const detach = await installer.attach(agentCtx, binding);
 		if (detach) agentCtx.effect(() => detach, "nexus:role-tools");
 	});
@@ -6053,6 +6401,7 @@ async function activate(ctx, options) {
 		return github.status(ticket.projectId).some((item) => item.name.startsWith("merge_status:") && item.value.state === "unknown") && result.fact.state !== "merged" ? "unknown" : "verified";
 	}
 	async function responsibilities() {
+		for (const binding of ledger.list(database, "role_binding").filter((item) => item.status !== "closed")) if ((await gateway.inspect(binding.sessionId, signal)).archived) ledger.updateBinding(database, binding.id, "closed", "session_archived");
 		if (!ledger.list(database, "role_binding").some((item) => item.role === "main" && item.status !== "closed")) await run.bind({
 			id: randomUUID(),
 			role: "main",
@@ -6081,7 +6430,16 @@ async function activate(ctx, options) {
 		await responsibilities();
 		const bindings = ledger.list(database, "role_binding").filter((item) => item.status !== "closed");
 		for (const binding of bindings) {
-			const pending = ledger.list(database, "message").filter((item) => item.recipient === binding.id && !item.readAt && !item.supersededAt);
+			try {
+				await run.notifyMailbox(binding.sessionId, signal);
+			} catch (error) {
+				if (!(error instanceof LedgerError && [
+					"delivery_pending",
+					"closed_session",
+					"archived_session"
+				].includes(error.code))) report(error);
+			}
+			const pending = ledger.list(database, "message").filter((item) => item.recipient === binding.id && !item.readAt && !item.supersededAt && item.kind !== "runtime:session" && !ledger.load(database, "inbox_message", item.id));
 			if (!pending.length) continue;
 			try {
 				if ((await gateway.inspect(binding.sessionId, signal)).state === "resumable") await run.recover(binding.id, (currentSignal) => binding.ticketId ? reconcileExternal(binding.ticketId, currentSignal) : Promise.resolve("verified"), signal);
@@ -6163,12 +6521,15 @@ async function activate(ctx, options) {
 		await responsibilities();
 		const recovered = await run.boot(reconcileExternal, signal);
 		for (const result of recovered.filter((item) => item.state === "requires_attention")) logger.warn("Nexus recovery requires attention: %s %s", result.bindingId, result.reason);
-		await collect();
+		try {
+			await collect();
+		} finally {
+			if (!signal.aborted) scheduleCollection();
+		}
 		startup = {
 			state: "ready",
 			reason: null
 		};
-		scheduleCollection();
 		logger.info("Nexus ready: %s; model=%j", database.stateDirectory, ctx.get("agentDefaultModel").currentSelection());
 	}
 	async function dispose() {
@@ -6197,6 +6558,13 @@ async function activate(ctx, options) {
 					userId: "owner"
 				};
 			}
+		}));
+		disposers.push(ctx.on("workspace/session-archived", ({ sessionId }) => {
+			const binding = ledger.list(database, "role_binding").find((item) => item.sessionId === sessionId && item.status !== "closed");
+			if (binding) ledger.updateBinding(database, binding.id, "closed", "session_archived");
+		}));
+		disposers.push(ctx.on("agent/status", ({ agent, status }) => {
+			if (!signal.aborted && status === "idle" && ledger.list(database, "role_binding").some((item) => item.sessionId === agent.id && item.status !== "closed")) track(run.notifyMailbox(agent.id, signal)).catch(report);
 		}));
 		disposers.push(ctx.on("session/event", (session, event) => {
 			if (signal.aborted || !ledger.list(database, "role_binding").some((item) => item.sessionId === session.id)) return;

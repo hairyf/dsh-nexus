@@ -5,7 +5,9 @@ import type { AcceptanceInput, Actor, AnswerInput, AskInput, AttentionInput, Bin
 import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { LedgerError, requireDatabase, transaction } from '../database'
+import { mailAddress } from '../utils/mail-address'
 import { defineService } from '../utils/service'
+import { mailbox } from './mailbox'
 import { policy } from './policy'
 
 export const ledger = defineService({
@@ -177,6 +179,8 @@ export const ledger = defineService({
       if (rows(database, 'role_binding').some(binding => binding.activeKey === `${input.role}:${scope}`))
         fail('binding_conflict')
       insert(database, 'role_binding', { id: input.id, role: input.role, sessionId: input.sessionId, projectId: input.projectId, ticketId: input.ticketId, supervisorId: input.supervisorId, worktree: input.worktree, branch: input.branch, repository: input.repository, baseCommit: input.baseCommit, previousBindingId: input.previousBindingId, recoveryReason: input.recoveryReason, scope, status: 'idle', startedAt: null, activeKey: `${input.role}:${scope}`, createdAt: now(), updatedAt: now() })
+      for (const previous of rows(database, 'role_binding').filter(binding => binding.status === 'closed' && binding.role === input.role && binding.scope === scope))
+        transferMessages(database, previous.id, input.id)
       return required(database, 'role_binding', input.id)
     })
   },
@@ -650,14 +654,20 @@ export const ledger = defineService({
       update(database, 'message', id, { attempts, error, deliveryState: attempts >= settings.deliveryMaxAttempts ? 'failed' : 'pending', nextRetryAt: new Date(Date.now() + Math.min(2 ** attempts, settings.deliveryRetryCeilingSeconds) * 1000).toISOString() })
     }
     else {
-      const earlier = rows(database, 'message').some(item => item.ticketId === message.ticketId && item.recipient === message.recipient && item.seq < message.seq && !item.supersededAt && !(event === 'handled' ? item.handledAt : event === 'read' ? item.readAt : item.deliveredAt))
-      if (earlier)
+      const earlier = rows(database, 'message').some(item => item.ticketId === message.ticketId && item.recipient === message.recipient && item.seq < message.seq && !item.supersededAt && item.kind !== 'runtime:session' && (mail(database, item) === mail(database, message)) && !(event === 'handled' ? item.handledAt : event === 'read' ? item.readAt : item.deliveredAt))
+      if (earlier && event !== 'handled')
         fail('delivery_order')
       if (event === 'read' && !message.deliveredAt)
         fail('not_delivered')
       if (event === 'handled' && !message.readAt)
         fail('not_read')
-      update(database, 'message', id, event === 'delivered' ? { deliveredAt: message.deliveredAt ?? now(), deliveryState: 'delivered', error: null, nextRetryAt: null } : event === 'read' ? { readAt: message.readAt ?? now() } : { handledAt: message.handledAt ?? now() })
+      const letter = mailbox.load(database, id)
+      if (letter && event === 'read')
+        mailbox.read(database, letter.recipient, id)
+      else if (letter && event === 'handled')
+        mailbox.handle(database, letter.recipient, id)
+      else
+        update(database, 'message', id, event === 'delivered' ? { deliveredAt: message.deliveredAt ?? now(), deliveryState: 'delivered', error: null, nextRetryAt: null } : event === 'read' ? { readAt: message.readAt ?? now() } : { handledAt: message.handledAt ?? now() })
     }
     const ticket = message.ticketId ? load(database, 'ticket', message.ticketId) : null
     const facts = message.facts ? JSON.parse(message.facts) as MessageFacts : null
@@ -673,20 +683,16 @@ export const ledger = defineService({
     }
     return required(database, 'message', id)
   },
+  listMail(database: NexusDatabase, bindingId: string): Row<'inbox'>[] {
+    const binding = required(database, 'role_binding', bindingId)
+    return mailbox.list(database, mailAddress(binding.role, binding.scope))
+  },
+  notifyMail(database: NexusDatabase, bindingId: string, through: number): void {
+    const binding = required(database, 'role_binding', bindingId)
+    mailbox.notify(database, mailAddress(binding.role, binding.scope), through)
+  },
   transferMessages(database: NexusDatabase, previousBindingId: string, bindingId: string): void {
-    transaction(database, () => {
-      const previous = required(database, 'role_binding', previousBindingId)
-      const next = required(database, 'role_binding', bindingId)
-      if (previous.status !== 'closed' || !['idle', 'running'].includes(next.status) || next.previousBindingId !== previous.id || previous.role !== next.role || previous.scope !== next.scope)
-        fail('binding_conflict')
-      for (const ask of rows(database, 'ask').filter(ask => ask.handler === previousBindingId && ask.status === 'pending')) {
-        rerouteAskDelivery(database, ask, bindingId)
-        update(database, 'ask', ask.id, { handler: bindingId })
-      }
-      requireDatabase(database).prepare('UPDATE message SET recipient = ?, deliveredAt = NULL, deliveryState = ?, error = NULL, nextRetryAt = NULL WHERE recipient = ? AND readAt IS NULL AND supersededAt IS NULL').run(bindingId, 'pending', previousBindingId)
-      requireDatabase(database).prepare('UPDATE attention SET recipient = ? WHERE recipient = ? AND handledAt IS NULL').run(bindingId, previousBindingId)
-      requireDatabase(database).prepare('UPDATE ask SET responseRecipient = ? WHERE COALESCE(responseRecipient, initiatorBinding) = ? AND status = \'pending\'').run(bindingId, previousBindingId)
-    })
+    transaction(database, () => transferMessages(database, previousBindingId, bindingId))
   },
   saveChannel(database: NexusDatabase, id: string, name: string, enabled: boolean): Row<'channel'> {
     if (!id || !name.trim())
@@ -872,6 +878,19 @@ export const ledger = defineService({
   },
 })
 
+function transferMessages(database: NexusDatabase, previousBindingId: string, bindingId: string): void {
+  const previous = required(database, 'role_binding', previousBindingId)
+  const next = required(database, 'role_binding', bindingId)
+  if (previous.status !== 'closed' || !['idle', 'running'].includes(next.status) || previous.role !== next.role || previous.scope !== next.scope)
+    fail('binding_conflict')
+  for (const ask of rows(database, 'ask').filter(ask => ask.handler === previousBindingId && ask.status === 'pending')) {
+    update(database, 'ask', ask.id, { handler: bindingId })
+  }
+  requireDatabase(database).prepare('UPDATE message SET recipient = ?, deliveredAt = NULL, deliveryState = \'pending\', error = NULL, nextRetryAt = NULL WHERE recipient = ? AND readAt IS NULL AND supersededAt IS NULL AND id NOT IN (SELECT messageId FROM inbox_message)').run(bindingId, previousBindingId)
+  requireDatabase(database).prepare('UPDATE attention SET recipient = ? WHERE recipient = ? AND handledAt IS NULL').run(bindingId, previousBindingId)
+  requireDatabase(database).prepare('UPDATE ask SET responseRecipient = ? WHERE COALESCE(responseRecipient, initiatorBinding) = ? AND status = \'pending\'').run(bindingId, previousBindingId)
+}
+
 function now(): string {
   return new Date().toISOString()
 }
@@ -880,12 +899,20 @@ function fail(code: string): never {
   throw new LedgerError(code)
 }
 
+function hydrateMessage(database: NexusDatabase, message: Row<'message'>): Row<'message'> {
+  const link = requireDatabase(database).prepare('SELECT id FROM inbox_message WHERE messageId = ?').get(message.id)
+  const letter = link ? mailbox.load(database, String(link.id)) : null
+  return letter ? { ...message, content: letter.content, readAt: letter.readAt, handledAt: letter.handledAt, supersededAt: letter.supersededAt ?? message.supersededAt } : message
+}
+
 function rows<T extends keyof DB>(database: NexusDatabase, table: T): Row<T>[] {
-  return requireDatabase(database).prepare(`SELECT * FROM "${table}"`).all() as unknown as Row<T>[]
+  const result = requireDatabase(database).prepare(`SELECT * FROM "${table}"`).all() as unknown as Row<T>[]
+  return table === 'message' ? result.map(row => hydrateMessage(database, row as unknown as Row<'message'>)) as Row<T>[] : result
 }
 
 function load<T extends IdTable>(database: NexusDatabase, table: T, id: string): Row<T> | null {
-  return requireDatabase(database).prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as unknown as Row<T> ?? null
+  const result = requireDatabase(database).prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) as unknown as Row<T> ?? null
+  return result && table === 'message' ? hydrateMessage(database, result as unknown as Row<'message'>) as Row<T> : result
 }
 
 function required<T extends IdTable>(database: NexusDatabase, table: T, id: string): Row<T> {
@@ -909,6 +936,10 @@ function isHuman(database: NexusDatabase, actor: Actor): boolean {
 function human(database: NexusDatabase, actor: Actor): void {
   if (!isHuman(database, actor))
     fail('human_required')
+}
+
+function mail(database: NexusDatabase, message: Row<'message'>): boolean {
+  return message.kind === 'ask' || (['message', 'answer'].includes(message.kind) && rows(database, 'role_binding').some(binding => binding.id === message.sender || binding.sessionId === message.sender))
 }
 
 function actorKey(actor: Actor): string {
@@ -1050,6 +1081,7 @@ function retireAskRequests(database: NexusDatabase, askId: string, settlement?: 
     for (const item of rows(database, 'attention').filter(item => item.askId === askId && item.reason === 'pending_ask' && !item.handledAt))
       ledger.updateAttention(database, item.id, 'handled', settlement)
   }
+  requireDatabase(database).prepare('UPDATE inbox SET supersededAt = ? WHERE askId = ? AND kind = \'ask\' AND supersededAt IS NULL').run(now(), askId)
   requireDatabase(database).prepare('UPDATE message SET supersededAt = ?, deliveryState = \'superseded\', error = NULL, nextRetryAt = NULL WHERE askId = ? AND kind = \'ask\' AND supersededAt IS NULL').run(now(), askId)
   requireDatabase(database).prepare('UPDATE outbox SET supersededAt = ?, state = CASE WHEN state IN (\'pending\', \'failed\') THEN \'superseded\' ELSE state END, nextRetryAt = NULL WHERE messageId IN (SELECT id FROM message WHERE askId = ? AND kind = \'ask\') AND supersededAt IS NULL').run(now(), askId)
 }
@@ -1154,7 +1186,15 @@ function enqueue(database: NexusDatabase, input: { id: string, ticketId: string 
       fail('identity_conflict')
     return existing
   }
-  insert(database, 'message', { ...input, seq: nextSeq(database, 'message'), acceptedAt: now() })
+  const receiver = load(database, 'role_binding', input.recipient)
+  const sender = rows(database, 'role_binding').find(binding => binding.id === input.sender || binding.sessionId === input.sender)
+  const internal = receiver && (input.kind === 'ask' || (sender && ['message', 'answer'].includes(input.kind)))
+  if (internal) {
+    mailbox.save(database, { id: input.id, recipient: mailAddress(receiver.role, receiver.scope), sender: sender ? mailAddress(sender.role, sender.scope) : input.sender, kind: input.kind, content: input.content, askId: input.askId })
+  }
+  insert(database, 'message', { ...input, content: internal ? '' : input.content, seq: nextSeq(database, 'message'), acceptedAt: now() })
+  if (internal)
+    insert(database, 'inbox_message', { id: input.id, messageId: input.id })
   return required(database, 'message', input.id)
 }
 

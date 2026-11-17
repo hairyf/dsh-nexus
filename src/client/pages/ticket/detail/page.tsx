@@ -5,12 +5,12 @@ import { Button, Tag } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useAsyncState, useEventListener, useIntervalFn } from '@reause/core'
 import { useState } from 'react'
 import { nexus } from '../../../apis/nexus'
+import { AskCard } from '../../../components/ask-card'
 import { PolicyFields } from '../../../components/policy-fields'
 import { SourceLink } from '../../../components/source-link'
 import { SourceSession } from '../../../components/source-session'
 import { useCommand, usePanel } from '../../../hooks/use-panel'
 import { useActions, useStore } from '../../../hooks/use-store'
-import { AskCard } from '../../inbox/page'
 
 export function TicketDetail(): ReactNode {
   const id = useStore(state => state.navigation.ticketId)

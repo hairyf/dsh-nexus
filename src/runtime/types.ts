@@ -13,12 +13,14 @@ export interface RecoveryResult {
 
 export interface SessionSnapshot {
   state: 'idle' | 'running' | 'resumable' | 'closed' | 'missing' | 'unknown'
+  archived?: boolean
   cwd?: string
   origin?: string
   parentSession?: string
 }
 
 export interface SessionGateway {
+  isArchived?: (sessionId: string) => boolean
   inspect: (sessionId: string, signal?: AbortSignal) => Promise<SessionSnapshot>
   create: (sessionId: string, preset: string, cwd: string, signal?: AbortSignal) => Promise<void>
   resume: (sessionId: string, preset: string, signal?: AbortSignal) => Promise<void>

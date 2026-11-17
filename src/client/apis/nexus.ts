@@ -1,18 +1,34 @@
 import type { AnswerInput, PolicySnapshot, SettingsPatch } from '../../types/ledger'
-import type { PanelModel, SourceContext, TicketDetailModel, WebServerOptions } from '../../types/web'
+import type { MailboxModel, PanelModel, SourceContext, TicketDetailModel, WebServerOptions } from '../../types/web'
 
-export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const response = await fetch(`/api/nexus/${path}`, { method, credentials: 'same-origin', headers: body === undefined ? undefined : { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) })
+export async function request<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
+  const response = await fetch('api/nexus/dispatch', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, method, body }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000) })
 
-  const value = await response.json()
+  const text = await response.text()
+  let value: { data?: { code?: string }, message?: string } | null = null
 
-  if (!response.ok)
-    throw new Error(value.data?.code ?? value.message ?? `HTTP ${response.status}`)
+  try {
+    value = JSON.parse(text)
+  }
+  catch {
+    if (response.ok)
+      throw new Error('Nexus 服务返回了无效数据，请重试并检查宿主插件状态。')
+  }
+
+  if (!response.ok) {
+    if (response.status === 404 && !value?.data?.code && !value?.message)
+      throw new Error('Nexus 服务接口未就绪（HTTP 404），请确认宿主插件已启用并完成初始化。')
+    throw new Error(value?.data?.code ?? value?.message ?? `HTTP ${response.status}`)
+  }
+
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    throw new Error('Nexus 服务返回了无效数据，请重试并检查宿主插件状态。')
 
   return value as T
 }
 export const nexus = {
   read: () => request<PanelModel>('panel'),
+  mailbox: (id: string, signal?: AbortSignal) => request<MailboxModel>(`sessions/${encodeURIComponent(id)}/mailbox`, 'GET', undefined, signal),
   ticket: (id: string) => request<TicketDetailModel>(`tickets/${encodeURIComponent(id)}`),
   context: (id: string) => request<SourceContext>(`sessions/${encodeURIComponent(id)}/context`),
   answer: (input: AnswerInput) => {

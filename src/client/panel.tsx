@@ -13,7 +13,6 @@ import { useActions, useStore } from './hooks/use-store'
 import { useTranslation } from './hooks/use-translation'
 import { ChannelDetail } from './pages/channel/detail/page'
 import { Channel } from './pages/channel/page'
-import { Inbox } from './pages/inbox/page'
 import { Overview } from './pages/overview/page'
 import { Setting } from './pages/setting/page'
 import { TicketDetail } from './pages/ticket/detail/page'
@@ -125,7 +124,6 @@ export function Panel(): ReactNode {
           {!model && read.state === 'loading' && <p role="status">正在读取项目、信箱与运行事实；超过 15 秒将显示读取失败，可重试。</p>}
           {model && (
             <>
-              {page === 'inbox' && <Inbox />}
               {page === 'overview' && <Overview />}
               {page === 'ticket' && <Ticket />}
               {page === 'ticket/detail' && <TicketDetail />}

@@ -520,7 +520,7 @@ describe('reviewed cross-boundary invariants', () => {
     expect(ledger.load(db, 'ask', 'late')).toMatchObject({ initiatorBinding: 'worker', responseRecipient: 'worker-next', status: 'answered' })
     expect(ledger.load(db, 'message', 'answer:late')).toMatchObject({ recipient: 'worker-next', handledAt: null })
   })
-  it('preserves an answer with an explicit recovery delivery failure and later moves it without asking the human again', () => {
+  it('preserves a late answer in its stable mailbox across execution replacement without asking again', () => {
     ask('await-recovery')
     ledger.updateBinding(db, 'worker', 'closed', 'Original execution stopped')
     answer('await-recovery', 'first', project)
@@ -528,7 +528,8 @@ describe('reviewed cross-boundary invariants', () => {
     expect(ledger.load(db, 'message', 'answer:await-recovery')).toMatchObject({ recipient: 'worker', deliveryState: 'failed', error: 'initiator_requires_recovery' })
     ledger.bindRole(db, { id: 'worker-next', role: 'worker', sessionId: 'worker-next-session', ticketId: 'T1', projectId: 'p', repository: target.repository, branch: 'ticket/T1-next', worktree: directory, previousBindingId: 'worker', recoveryReason: 'Verified stopped original' }, project)
     ledger.transferMessages(db, 'worker', 'worker-next')
-    expect(ledger.load(db, 'message', 'answer:await-recovery')).toMatchObject({ recipient: 'worker-next', deliveryState: 'pending', error: null })
+    expect(ledger.listMail(db, 'worker-next')).toMatchObject([{ id: 'answer:await-recovery', recipient: 'nexus:worker:T1', content: 'first', handledAt: null }])
+    expect(ledger.load(db, 'message', 'answer:await-recovery')).toMatchObject({ recipient: 'worker', error: 'initiator_requires_recovery' })
     expect(ledger.list(db, 'message').filter(message => message.kind === 'answer')).toHaveLength(1)
     expect(() => answer('await-recovery', 'second', web)).toThrow('ask_settled')
   })
@@ -666,7 +667,7 @@ describe('message and attention facts', () => {
     expect(() => ledger.sendMessage(db, 'cross', 'main', 'T1', 'Hello', worker)).toThrow('scope_denied')
     expect(ledger.list(db, 'message')).toEqual([])
   })
-  it('moves only unread responsibility to a verified replacement and retains read history', () => {
+  it('binds a replacement to the same mailbox including read but unhandled mail without moving history', () => {
     ledger.sendMessage(db, 'unread', 'project', 'T1', 'Unread', worker)
     ledger.sendMessage(db, 'read', 'project', 'T1', 'Read', worker)
     ledger.updateMessage(db, 'unread', 'delivered')
@@ -675,7 +676,8 @@ describe('message and attention facts', () => {
     ledger.updateBinding(db, 'project', 'closed', 'Session closed')
     ledger.bindRole(db, { id: 'replacement', role: 'project', sessionId: 'replacement-session', projectId: 'p', previousBindingId: 'project', recoveryReason: 'Original session closed' })
     ledger.transferMessages(db, 'project', 'replacement')
-    expect(ledger.load(db, 'message', 'read')).toMatchObject({ recipient: 'replacement', deliveredAt: null, readAt: null })
+    expect(ledger.listMail(db, 'replacement')).toMatchObject([{ id: 'unread', recipient: 'nexus:project:p', readAt: expect.any(String), handledAt: null }, { id: 'read', recipient: 'nexus:project:p', readAt: null }])
+    expect(ledger.load(db, 'message', 'read')).toMatchObject({ recipient: 'project', deliveredAt: expect.any(String), readAt: null })
     expect(ledger.load(db, 'message', 'unread')).toMatchObject({ recipient: 'project', readAt: expect.any(String) })
   })
   it('persists reminder progress, due time, attempt failure and handling independently from asks', () => {

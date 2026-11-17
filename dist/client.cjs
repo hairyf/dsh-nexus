@@ -4,8 +4,8 @@ Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod, mod.exports), cb = null), mod.exports);
 let react = require("react");
 let react_jsx_runtime = require("react/jsx-runtime");
-let react_dom = require("react-dom");
 let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
+let react_dom = require("react-dom");
 let _deepseek_ai_dsh_client_store = require("@deepseek-ai/dsh-client-store");
 // src/config/constants.ts
 /**
@@ -643,7 +643,7 @@ function NexusIcon(props) {
 	} else t3 = $[4];
 	return t3;
 }
-// ../../../node_modules/.pnpm/@reause+shared@0.1.9_react@18.3.1/node_modules/@reause/shared/dist/index.js
+// node_modules/.pnpm/@reause+shared@0.1.9_react@18.3.1/node_modules/@reause/shared/dist/index.js
 function promiseTimeout(ms, throwOnTimeout = false, reason = "Timeout") {
 	return new Promise((resolve, reject) => {
 		if (throwOnTimeout) setTimeout(reject, ms, reason);
@@ -653,8 +653,59 @@ function promiseTimeout(ms, throwOnTimeout = false, reason = "Timeout") {
 function toArray(value) {
 	return Array.isArray(value) ? value : [value];
 }
+const assert = (condition, ...infos) => {
+	if (!condition) console.warn(...infos);
+};
 const toString$1 = Object.prototype.toString;
 const isObject = (val) => toString$1.call(val) === "[object Object]";
+function toValue(value) {
+	if (Array.isArray(value) && value.length === 2 && typeof value[1] === "function") return value[0];
+	if (value !== null && value !== void 0 && typeof value === "object" && "value" in value && !("addEventListener" in value)) return value.value;
+	if (typeof value === "function") return value();
+	return value;
+}
+function isTuple(state) {
+	return Array.isArray(state) && state.length === 2 && typeof state[1] === "function";
+}
+function isObjectState$1(state) {
+	return typeof state === "object" && state !== null && !Array.isArray(state) && "value" in state;
+}
+/**
+* Combine controlled and uncontrolled state sources.
+*
+*/
+function useControllableState(state, options = {}) {
+	const { defaultValue, shouldUpdate = (prev, next) => !Object.is(prev, next), passive = false } = options;
+	const controlled = isTuple(state) || isObjectState$1(state) || !passive;
+	const externalValue = toValue(state);
+	const initial = defaultValue === void 0 ? externalValue : typeof defaultValue === "function" ? defaultValue() : defaultValue;
+	const [internal, setInternal] = (0, react.useState)(initial);
+	const value = controlled ? externalValue : internal;
+	const valueRef = (0, react.useRef)(value);
+	const previousExternalRef = (0, react.useRef)(externalValue);
+	valueRef.current = value;
+	const stateRef = (0, react.useRef)(state);
+	stateRef.current = state;
+	(0, react.useEffect)(() => {
+		if (passive && (typeof state === "function" || externalValue === null || typeof externalValue !== "object") && !isTuple(state) && !isObjectState$1(state) && !Object.is(previousExternalRef.current, externalValue) && shouldUpdate(valueRef.current, externalValue)) setInternal(externalValue);
+		previousExternalRef.current = externalValue;
+	}, [
+		externalValue,
+		passive,
+		shouldUpdate
+	]);
+	return [value, (0, react.useCallback)((action) => {
+		var _currentState$onChang;
+		const prev = valueRef.current;
+		const next = typeof action === "function" ? action(prev) : action;
+		if (!shouldUpdate(prev, next)) return;
+		const currentState = stateRef.current;
+		if (isTuple(currentState)) currentState[1](next);
+		else if (isObjectState$1(currentState)) (_currentState$onChang = currentState.onChange) === null || _currentState$onChang === void 0 || _currentState$onChang.call(currentState, next);
+		else if (!controlled) setInternal(next);
+		else assert(false, "useControllableState: `setValue` on a controlled source without a write channel (a plain value or getter with `passive: false`) is ignored. Pass a [value, setter] tuple, a { value, onChange } pair, or use `passive: true`.");
+	}, [controlled, shouldUpdate])];
+}
 /**
 * Map from @vueuse/shared `useIntervalFn`.
 *
@@ -729,7 +780,7 @@ function useUnmount(fn) {
 }
 Set.prototype;
 function noop() {}
-// ../../../node_modules/.pnpm/@reause+core@0.1.9_react@18.3.1/node_modules/@reause/core/dist/index.js
+// node_modules/.pnpm/@reause+core@0.1.9_react@18.3.1/node_modules/@reause/core/dist/index.js
 /**
 * Resolve the target argument into the flat list of targets to bind: a ref holding an array
 * contributes its members, an array of refs contributes each ref's `current`, and a single ref
@@ -811,6 +862,84 @@ function useEventListener(...args) {
 		(_cleanupRef$current3 = cleanupRef.current) === null || _cleanupRef$current3 === void 0 || _cleanupRef$current3.call(cleanupRef);
 		cleanupRef.current = null;
 	}, []);
+}
+/**
+* Default `onError` — mirrors upstream's `globalThis.reportError` fallback. `reportError` must be
+* invoked with the global object as `this`, otherwise Chromium throws "Illegal invocation" for a
+* detached call.
+*/
+function defaultOnError$3(e) {
+	if (typeof globalThis.reportError === "function") globalThis.reportError(e);
+}
+function isPromiseLike(value) {
+	return typeof (value === null || value === void 0 ? void 0 : value.then) === "function";
+}
+const EMPTY_DEPS = [];
+function useAsync(evaluationCallback, initialState, options) {
+	const { deps = EMPTY_DEPS, skipInitial: skipInitialOption, lazy = false, onEvaluating = noop, onError = defaultOnError$3 } = options !== null && options !== void 0 ? options : {};
+	const skipInitial = skipInitialOption !== null && skipInitialOption !== void 0 ? skipInitialOption : lazy;
+	const [state, setState] = useControllableState(initialState, { passive: true });
+	const evaluationCallbackRef = (0, react.useRef)(evaluationCallback);
+	evaluationCallbackRef.current = evaluationCallback;
+	const skipInitialRef = (0, react.useRef)(skipInitial);
+	skipInitialRef.current = skipInitial;
+	const onEvaluatingRef = (0, react.useRef)(onEvaluating);
+	onEvaluatingRef.current = onEvaluating;
+	const onErrorRef = (0, react.useRef)(onError);
+	onErrorRef.current = onError;
+	const evaluationIdRef = (0, react.useRef)(0);
+	const isMountedRef = (0, react.useRef)(true);
+	const hasEvaluatedRef = (0, react.useRef)(false);
+	(0, react.useEffect)(() => {
+		const isFirstRun = !hasEvaluatedRef.current;
+		hasEvaluatedRef.current = true;
+		if (isFirstRun && skipInitialRef.current) return;
+		const id = evaluationIdRef.current += 1;
+		let hasFinished = false;
+		let settled = false;
+		const cancelCallbacks = [];
+		const settle = () => {
+			if (settled || !isMountedRef.current) return;
+			settled = true;
+			onEvaluatingRef.current(false);
+		};
+		const invalidate = () => {
+			settle();
+			if (!hasFinished) cancelCallbacks.splice(0, cancelCallbacks.length).forEach((cancelCallback) => cancelCallback());
+		};
+		onEvaluatingRef.current(true);
+		try {
+			const result = evaluationCallbackRef.current((cancelCallback) => {
+				cancelCallbacks.push(cancelCallback);
+			});
+			if (isPromiseLike(result)) result.then((value) => {
+				hasFinished = true;
+				if (id === evaluationIdRef.current && isMountedRef.current) setState(value);
+				settle();
+			}, (error) => {
+				hasFinished = true;
+				onErrorRef.current(error);
+				settle();
+			});
+			else {
+				hasFinished = true;
+				setState(result);
+				settle();
+			}
+		} catch (error) {
+			hasFinished = true;
+			onErrorRef.current(error);
+			settle();
+		}
+		return invalidate;
+	}, deps);
+	(0, react.useEffect)(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
+	return state;
 }
 /**
 * Default `onError` — mirrors upstream's `globalThis.reportError` fallback. `reportError` must be
@@ -960,6 +1089,205 @@ function useAsyncState(promise, initialState, options) {
 }
 (0, react.createContext)(void 0);
 /mac|iphone|ipod|ipad/i.test(typeof navigator === "undefined" ? "" : navigator.platform);
+// src/client/apis/nexus.ts
+async function request(path, method = "GET", body, signal) {
+	const response = await fetch("api/nexus/dispatch", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({
+			path,
+			method,
+			body
+		}),
+		signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15e3)]) : AbortSignal.timeout(15e3)
+	});
+	const text = await response.text();
+	let value = null;
+	try {
+		value = JSON.parse(text);
+	} catch {
+		if (response.ok) throw new Error("Nexus 服务返回了无效数据，请重试并检查宿主插件状态。");
+	}
+	if (!response.ok) {
+		if (response.status === 404 && !value?.data?.code && !value?.message) throw new Error("Nexus 服务接口未就绪（HTTP 404），请确认宿主插件已启用并完成初始化。");
+		throw new Error(value?.data?.code ?? value?.message ?? `HTTP ${response.status}`);
+	}
+	if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error("Nexus 服务返回了无效数据，请重试并检查宿主插件状态。");
+	return value;
+}
+const nexus = {
+	read: () => request("panel"),
+	mailbox: (id, signal) => request(`sessions/${encodeURIComponent(id)}/mailbox`, "GET", void 0, signal),
+	ticket: (id) => request(`tickets/${encodeURIComponent(id)}`),
+	context: (id) => request(`sessions/${encodeURIComponent(id)}/context`),
+	answer: (input) => {
+		const { askId, ...body } = input;
+		return request(`asks/${encodeURIComponent(askId)}/answers`, "POST", body);
+	},
+	command: (id, action, reason) => request(`tickets/${encodeURIComponent(id)}/${action}`, "POST", { reason }),
+	policy: (id, policy, reason) => request(`tickets/${encodeURIComponent(id)}`, "PATCH", {
+		...policy,
+		reason
+	}),
+	settings: (patch) => request("settings", "PATCH", patch),
+	project: (id, enabled) => request(`projects/${encodeURIComponent(id)}`, "PATCH", { enabled }),
+	refreshProjects: () => request("projects/refresh", "POST", {})
+};
+// src/client/components/mailbox.tsx
+function Mailbox(props) {
+	const $ = (0, import_dist.c)(2);
+	let t0;
+	if ($[0] !== props) {
+		t0 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SessionMailbox, { ...props }, props.sessionId);
+		$[0] = props;
+		$[1] = t0;
+	} else t0 = $[1];
+	return t0;
+}
+function SessionMailbox({ sessionId, useSession, t }) {
+	const running = useSession((session) => session.running);
+	const [revision, setRevision] = (0, react.useState)(0);
+	const [collapsed, setCollapsed] = (0, react.useState)(true);
+	const [selected, setSelected] = (0, react.useState)(null);
+	const lastModel = (0, react.useRef)(null);
+	const pending = (0, react.useRef)(null);
+	const listId = (0, react.useId)();
+	const refresh = () => setRevision((value) => value + 1);
+	const result = useAsync(async (onCancel) => {
+		const abort = new AbortController();
+		pending.current = abort;
+		onCancel(() => abort.abort());
+		try {
+			const model = await nexus.mailbox(sessionId, abort.signal);
+			if (!abort.signal.aborted) lastModel.current = model;
+			return {
+				model,
+				error: ""
+			};
+		} catch (error) {
+			return {
+				model: lastModel.current,
+				error: error instanceof Error ? error.message : String(error)
+			};
+		} finally {
+			if (pending.current === abort) pending.current = null;
+		}
+	}, {
+		model: null,
+		error: ""
+	}, { deps: [
+		sessionId,
+		running,
+		revision
+	] });
+	useEventListener("online", refresh);
+	useEventListener("focus", refresh);
+	useIntervalFn(() => {
+		if (document.visibilityState === "visible" && !pending.current && (result.model?.active || result.error)) refresh();
+	}, 5e3);
+	if (!result.model?.active || !result.error && result.model.pendingCount === 0 && !selected) return null;
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+		className: "nexus-mailbox-root",
+		"data-testid": "agent-mailbox",
+		"aria-label": t("mailboxTitle"),
+		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			className: "nexus-mailbox-body",
+			children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+					type: "button",
+					className: "nexus-mailbox-header",
+					"aria-expanded": !collapsed,
+					"aria-controls": listId,
+					onClick: () => setCollapsed((value_0) => !value_0),
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "nexus-mailbox-lead",
+							"aria-hidden": "true",
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChecklistOutlineRegular, {})
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "nexus-mailbox-title",
+							children: t("mailboxTitle")
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "nexus-mailbox-progress",
+							children: result.error ? t("mailboxReadFailed") : t("mailboxPending", { count: result.model.pendingCount })
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: "nexus-mailbox-chevron",
+							"aria-hidden": "true",
+							children: collapsed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronUpOutlineRegular, {}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutlineRegular, {})
+						})
+					]
+				}),
+				result.error && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					role: "alert",
+					className: "nexus-mailbox-letter",
+					children: [result.error, /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						type: "button",
+						size: "sm",
+						variant: "ghost",
+						onClick: refresh,
+						children: t("mailboxRetry")
+					})]
+				}),
+				!collapsed && result.model?.active && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+					id: listId,
+					className: "nexus-mailbox-list",
+					children: result.model.messages.map((message) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+						className: "nexus-mailbox-item",
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							className: "nexus-mailbox-message",
+							onClick: () => setSelected(message),
+							"aria-label": t("mailboxOpen", {
+								sender: message.sender,
+								content: (message.title || message.content).slice(0, 80)
+							}),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: "nexus-mailbox-glyph",
+								role: "img",
+								"aria-label": t("mailboxUnhandled"),
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.StateDot, { state: "idle" })
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: "nexus-mailbox-content",
+								children: [
+									message.sender,
+									" ",
+									"·",
+									" ",
+									message.content
+								]
+							})]
+						})
+					}, message.id))
+				})
+			]
+		}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+			open: selected !== null,
+			title: t("mailboxTitle"),
+			description: selected ? `${selected.sender} · ${new Date(selected.acceptedAt).toLocaleString()}` : void 0,
+			closeLabel: t("mailboxClose"),
+			onClose: () => setSelected(null),
+			children: [
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: "nexus-mailbox-letter",
+					children: selected?.content
+				}),
+				selected && !result.model.messages.some((message_0) => message_0.id === selected.id) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					role: "status",
+					className: "nexus-mailbox-letter",
+					children: t("mailboxNoLongerPending")
+				}),
+				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: "nexus-mailbox-letter",
+					children: t("mailboxReadOnly")
+				})
+			]
+		})]
+	});
+}
 // src/client/config/context.ts
 const PluginContext = (0, react.createContext)({
 	ctx: {},
@@ -974,7 +1302,15 @@ const dicts = {
 		title: "Nexus",
 		desc: "项目、工单与本人待决事项",
 		tabsLabel: "面板分区",
-		tabInbox: "信箱",
+		mailboxTitle: "Agent 信箱",
+		mailboxPending: "{count} 封待处理",
+		mailboxUnhandled: "未处理",
+		mailboxReadFailed: "读取失败，不代表没有信件",
+		mailboxRetry: "重试",
+		mailboxOpen: "阅读 {sender} 的信件：{content}",
+		mailboxClose: "关闭信件",
+		mailboxNoLongerPending: "此信件已处理或已撤销，不再属于待处理信件。",
+		mailboxReadOnly: "仅阅读信件，不会将其标为已处理。",
 		tabOverview: "概览",
 		tabTickets: "工单",
 		tabTriggers: "来源",
@@ -997,7 +1333,15 @@ const dicts = {
 		title: "Nexus",
 		desc: "Projects, tickets and decisions waiting for you",
 		tabsLabel: "Panel sections",
-		tabInbox: "Inbox",
+		mailboxTitle: "Agent mailbox",
+		mailboxPending: "{count} pending",
+		mailboxUnhandled: "Unhandled",
+		mailboxReadFailed: "Read failed; mail may still be pending",
+		mailboxRetry: "Retry",
+		mailboxOpen: "Read mail from {sender}: {content}",
+		mailboxClose: "Close mail",
+		mailboxNoLongerPending: "This message has been handled or withdrawn and is no longer pending.",
+		mailboxReadOnly: "Reading a message does not mark it as handled.",
 		tabOverview: "Overview",
 		tabTickets: "Tickets",
 		tabTriggers: "Sources",
@@ -1015,36 +1359,6 @@ const dicts = {
 		graphDependency: "Dependency",
 		overviewOpenDetails: "Open ticket"
 	}
-};
-// src/client/apis/nexus.ts
-async function request(path, method = "GET", body) {
-	const response = await fetch(`/api/nexus/${path}`, {
-		method,
-		credentials: "same-origin",
-		headers: body === void 0 ? void 0 : { "content-type": "application/json" },
-		body: body === void 0 ? void 0 : JSON.stringify(body),
-		signal: AbortSignal.timeout(15e3)
-	});
-	const value = await response.json();
-	if (!response.ok) throw new Error(value.data?.code ?? value.message ?? `HTTP ${response.status}`);
-	return value;
-}
-const nexus = {
-	read: () => request("panel"),
-	ticket: (id) => request(`tickets/${encodeURIComponent(id)}`),
-	context: (id) => request(`sessions/${encodeURIComponent(id)}/context`),
-	answer: (input) => {
-		const { askId, ...body } = input;
-		return request(`asks/${encodeURIComponent(askId)}/answers`, "POST", body);
-	},
-	command: (id, action, reason) => request(`tickets/${encodeURIComponent(id)}/${action}`, "POST", { reason }),
-	policy: (id, policy, reason) => request(`tickets/${encodeURIComponent(id)}`, "PATCH", {
-		...policy,
-		reason
-	}),
-	settings: (patch) => request("settings", "PATCH", patch),
-	project: (id, enabled) => request(`projects/${encodeURIComponent(id)}`, "PATCH", { enabled }),
-	refreshProjects: () => request("projects/refresh", "POST", {})
 };
 // src/client/hooks/use-dsh-context.ts
 /**
@@ -1072,9 +1386,9 @@ function useActions() {
 }
 // src/client/hooks/use-navigation.ts
 function usePage() {
-	return useStore(_temp$13);
+	return useStore(_temp$12);
 }
-function _temp$13(state) {
+function _temp$12(state) {
 	return state.navigation.page;
 }
 function useNavigate() {
@@ -1084,7 +1398,7 @@ function useNavigate() {
 const RefreshContext = (0, react.createContext)(async () => {});
 function usePanel() {
 	const $ = (0, import_dist.c)(3);
-	const data = useStore(_temp$12);
+	const data = useStore(_temp$11);
 	const t0 = (0, react.useContext)(RefreshContext);
 	let t1;
 	if ($[0] !== data || $[1] !== t0) {
@@ -1098,7 +1412,7 @@ function usePanel() {
 	} else t1 = $[2];
 	return t1;
 }
-function _temp$12(state) {
+function _temp$11(state) {
 	return state.model;
 }
 function useCommand() {
@@ -1153,7 +1467,7 @@ function ChannelDetail() {
 	const $ = (0, import_dist.c)(8);
 	const { data } = usePanel();
 	const { go } = useActions();
-	const id = useStore(_temp$11);
+	const id = useStore(_temp$10);
 	let t0;
 	if ($[0] !== data.channels || $[1] !== go || $[2] !== id) {
 		let t1;
@@ -1193,7 +1507,7 @@ function ChannelDetail() {
 						"。不可用时请在宿主修复 gh 环境或项目范围，再由宿主重新核验。刷新本页只读取事实，不伪造连接。"
 					]
 				}),
-				channel.facts.map(_temp2$10),
+				channel.facts.map(_temp2$9),
 				!channel.facts.length && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "尚无环境核验或采集事实；请通过宿主完成环境选择与核验。" })
 			] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: "项目渠道未找到，请返回列表刷新。" })]
 		});
@@ -1204,7 +1518,7 @@ function ChannelDetail() {
 	} else t0 = $[3];
 	return t0;
 }
-function _temp2$10(fact) {
+function _temp2$9(fact) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
 		className: "rounded-xl border border-[var(--dsw-alias-border-l3)] p-4",
 		children: [
@@ -1223,7 +1537,7 @@ function _temp2$10(fact) {
 		]
 	}, fact.name);
 }
-function _temp$11(state) {
+function _temp$10(state) {
 	return state.channel.selected;
 }
 // src/client/pages/channel/page.tsx
@@ -1439,7 +1753,7 @@ function SourceSession(t0) {
 	} else t5 = $[9];
 	let t6;
 	if ($[10] !== context?.entries || $[11] !== expanded) {
-		t6 = context?.entries.slice(expanded ? 0 : -3).map(_temp$10);
+		t6 = context?.entries.slice(expanded ? 0 : -3).map(_temp$9);
 		$[10] = context?.entries;
 		$[11] = expanded;
 		$[12] = t6;
@@ -1526,7 +1840,7 @@ function SourceSession(t0) {
 		t14 = context && context.entries.length > 3 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 			size: "sm",
 			variant: "ghost",
-			onClick: () => setExpanded(_temp2$9),
+			onClick: () => setExpanded(_temp2$8),
 			children: expanded ? "收起背景" : "更多近期背景"
 		});
 		$[29] = context;
@@ -1603,10 +1917,10 @@ function SourceSession(t0) {
 	} else t18 = $[50];
 	return t18;
 }
-function _temp2$9(value) {
+function _temp2$8(value) {
 	return !value;
 }
-function _temp$10(entry, index) {
+function _temp$9(entry, index) {
 	return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("blockquote", {
 		className: "m-0 border-l border-[var(--dsw-alias-border-l2)] pl-3 text-xs",
 		children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
@@ -1624,7 +1938,7 @@ function _temp$10(entry, index) {
 		})]
 	}, entry.at + index);
 }
-// src/client/pages/inbox/page.tsx
+// src/client/components/ask-card.tsx
 function AskCard({ ask: initial, onSettled }) {
 	const { refresh } = usePanel();
 	const { openTicket } = useActions();
@@ -1876,227 +2190,6 @@ function AskCard({ ask: initial, onSettled }) {
 			}, publication.id))
 		]
 	});
-}
-function Inbox() {
-	const $ = (0, import_dist.c)(35);
-	const { data } = usePanel();
-	const { openTicket, go } = useActions();
-	const heading = (0, react.useRef)(null);
-	const inbox = data.inbox;
-	const [showResolved, setShowResolved] = (0, react.useState)(false);
-	let t0;
-	if ($[0] !== inbox.resolved) {
-		t0 = inbox.resolved.filter(_temp2$8);
-		$[0] = inbox.resolved;
-		$[1] = t0;
-	} else t0 = $[1];
-	const syncProblems = t0;
-	let t1;
-	if ($[2] !== inbox.pending.length) {
-		t1 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h2", {
-			ref: heading,
-			tabIndex: -1,
-			className: "m-0 text-base font-medium",
-			children: [
-				"本人信箱 ·",
-				inbox.pending.length,
-				" ",
-				"个待答问题"
-			]
-		});
-		$[2] = inbox.pending.length;
-		$[3] = t1;
-	} else t1 = $[3];
-	let t2;
-	if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-		t2 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-			className: "m-0 text-xs text-[var(--dsw-alias-label-secondary)]",
-			children: "只显示需要本人处理的决定。打开侧聊不会回答问题，也不会解除人工暂停。"
-		});
-		$[4] = t2;
-	} else t2 = $[4];
-	let t3;
-	if ($[5] !== go || $[6] !== inbox.blocked.length || $[7] !== inbox.pending.length || $[8] !== inbox.reminders.length) {
-		t3 = !inbox.pending.length && !inbox.blocked.length && !inbox.reminders.length && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-			className: "rounded-xl border border-[var(--dsw-alias-border-l3)] p-5",
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-				className: "mt-0",
-				children: "目前没有需要本人回答或处置的事项。"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				size: "sm",
-				variant: "outline",
-				onClick: () => go("overview"),
-				children: "查看目标与进展"
-			})]
-		});
-		$[5] = go;
-		$[6] = inbox.blocked.length;
-		$[7] = inbox.pending.length;
-		$[8] = inbox.reminders.length;
-		$[9] = t3;
-	} else t3 = $[9];
-	let t4;
-	if ($[10] !== inbox.pending) {
-		t4 = inbox.pending.map((ask_0) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AskCard, {
-			ask: ask_0,
-			onSettled: () => heading.current?.focus()
-		}, ask_0.id));
-		$[10] = inbox.pending;
-		$[11] = t4;
-	} else t4 = $[11];
-	let t5;
-	if ($[12] !== inbox.blocked || $[13] !== openTicket) {
-		let t6;
-		if ($[15] !== openTicket) {
-			t6 = (item_0) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
-				className: "rounded-xl border border-[var(--dsw-alias-border-l3)] p-4",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", {
-						className: "m-0 text-sm",
-						children: ["人工暂停 ·", item_0.ticket.title]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: "text-xs",
-						children: [
-							item_0.reason,
-							" ",
-							"·",
-							" ",
-							item_0.since,
-							" ",
-							"· 等待本人明确处置，普通留言不恢复执行。"
-						]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-						size: "sm",
-						variant: "outline",
-						onClick: () => openTicket(item_0.ticket.id),
-						children: "查看工单并管理"
-					})
-				]
-			}, item_0.ticket.id);
-			$[15] = openTicket;
-			$[16] = t6;
-		} else t6 = $[16];
-		t5 = inbox.blocked.map(t6);
-		$[12] = inbox.blocked;
-		$[13] = openTicket;
-		$[14] = t5;
-	} else t5 = $[14];
-	let t6;
-	if ($[17] !== inbox.reminders || $[18] !== openTicket) {
-		let t7;
-		if ($[20] !== openTicket) {
-			t7 = (item_1) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
-				className: "rounded-xl border border-[var(--dsw-alias-border-l3)] p-4",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h3", {
-						className: "m-0 text-sm",
-						children: ["待本人处置 ·", item_1.reason]
-					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: "text-xs",
-						children: [
-							"等待",
-							item_1.waitingFor,
-							" ",
-							"· 自",
-							item_1.progressAt,
-							" ",
-							"· 提醒",
-							item_1.remindedAt ?? item_1.dueAt,
-							" ",
-							"·",
-							item_1.deliveryError ?? item_1.deliveryState
-						]
-					}),
-					item_1.ticketId && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-						size: "sm",
-						variant: "outline",
-						onClick: () => openTicket(item_1.ticketId),
-						children: "查看工单"
-					})
-				]
-			}, item_1.id);
-			$[20] = openTicket;
-			$[21] = t7;
-		} else t7 = $[21];
-		t6 = inbox.reminders.map(t7);
-		$[17] = inbox.reminders;
-		$[18] = openTicket;
-		$[19] = t6;
-	} else t6 = $[19];
-	let t7;
-	if ($[22] !== syncProblems.length) {
-		t7 = !!syncProblems.length && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-			role: "status",
-			className: "m-0 text-xs text-[var(--dsw-alias-state-warn-primary)]",
-			children: [
-				syncProblems.length,
-				" ",
-				"个已答问题有 GitHub 同步问题，无需重答。",
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					size: "sm",
-					variant: "ghost",
-					onClick: () => setShowResolved(true),
-					children: "查看同步结果"
-				})
-			]
-		});
-		$[22] = syncProblems.length;
-		$[23] = t7;
-	} else t7 = $[23];
-	let t8;
-	if ($[24] !== inbox.resolved || $[25] !== showResolved) {
-		t8 = !!inbox.resolved.length && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
-			open: showResolved,
-			onToggle: (event) => setShowResolved(event.currentTarget.open),
-			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", {
-				className: "cursor-pointer",
-				children: "最近生效答案、目标撤销与同步结果（最多 50 条）"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: "mt-3 flex flex-col gap-3",
-				children: showResolved && inbox.resolved.map(_temp3$5)
-			})]
-		});
-		$[24] = inbox.resolved;
-		$[25] = showResolved;
-		$[26] = t8;
-	} else t8 = $[26];
-	let t9;
-	if ($[27] !== t1 || $[28] !== t3 || $[29] !== t4 || $[30] !== t5 || $[31] !== t6 || $[32] !== t7 || $[33] !== t8) {
-		t9 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-			className: "flex min-w-0 flex-col gap-4",
-			children: [
-				t1,
-				t2,
-				t3,
-				t4,
-				t5,
-				t6,
-				t7,
-				t8
-			]
-		});
-		$[27] = t1;
-		$[28] = t3;
-		$[29] = t4;
-		$[30] = t5;
-		$[31] = t6;
-		$[32] = t7;
-		$[33] = t8;
-		$[34] = t9;
-	} else t9 = $[34];
-	return t9;
-}
-function _temp3$5(ask_1) {
-	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AskCard, { ask: ask_1 }, ask_1.id);
-}
-function _temp2$8(ask) {
-	return ask.publications.some(_temp$9);
-}
-function _temp$9(item) {
-	return item.syncProblem || item.state === "failed" || item.state === "unknown";
 }
 // src/client/pages/ticket/page.tsx
 function Filters() {
@@ -2353,23 +2446,58 @@ function _temp4$3(state) {
 	return state.filters;
 }
 function Ticket() {
-	const $ = (0, import_dist.c)(1);
+	const $ = (0, import_dist.c)(7);
+	const { data } = usePanel();
 	let t0;
 	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-		t0 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-			className: "flex flex-col gap-4",
-			children: [
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
-					className: "m-0 text-base font-medium",
-					children: "工单目标与进展"
-				}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Filters, {}),
-				/* @__PURE__ */ (0, react_jsx_runtime.jsx)(TicketRows, {})
-			]
+		t0 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+			className: "m-0 text-base font-medium",
+			children: "工单目标与进展"
 		});
 		$[0] = t0;
 	} else t0 = $[0];
-	return t0;
+	let t1;
+	if ($[1] !== data.inbox.pending) {
+		t1 = data.inbox.pending.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "flex flex-col gap-3",
+			"aria-label": "待本人决定",
+			children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+				className: "m-0 text-sm font-medium",
+				children: "待本人决定"
+			}), data.inbox.pending.map(_temp5$3)]
+		});
+		$[1] = data.inbox.pending;
+		$[2] = t1;
+	} else t1 = $[2];
+	let t2;
+	let t3;
+	if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
+		t2 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Filters, {});
+		t3 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TicketRows, {});
+		$[3] = t2;
+		$[4] = t3;
+	} else {
+		t2 = $[3];
+		t3 = $[4];
+	}
+	let t4;
+	if ($[5] !== t1) {
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+			className: "flex flex-col gap-4",
+			children: [
+				t0,
+				t1,
+				t2,
+				t3
+			]
+		});
+		$[5] = t1;
+		$[6] = t4;
+	} else t4 = $[6];
+	return t4;
+}
+function _temp5$3(ask) {
+	return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(AskCard, { ask }, ask.id);
 }
 // src/client/pages/overview/components/graph-layout.ts
 const AGENT_GRAPH = {
@@ -3187,9 +3315,8 @@ function _temp$6(state) {
 }
 // src/client/pages/overview/page.tsx
 function Overview() {
-	const $ = (0, import_dist.c)(18);
+	const $ = (0, import_dist.c)(15);
 	const { data } = usePanel();
-	const { go } = useActions();
 	let t0;
 	if ($[0] !== data.projects.length) {
 		t0 = ["项目", data.projects.length];
@@ -3224,48 +3351,35 @@ function Overview() {
 		$[9] = t3;
 	} else t3 = $[9];
 	let t4;
-	if ($[10] !== go) {
-		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-			size: "sm",
-			variant: "outline",
-			onClick: () => go("inbox"),
-			children: "处理信箱"
-		});
-		$[10] = go;
-		$[11] = t4;
-	} else t4 = $[11];
 	let t5;
 	let t6;
-	let t7;
-	if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-		t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Filters, {});
-		t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Graph, {});
-		t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TicketRows, {});
-		$[12] = t5;
-		$[13] = t6;
-		$[14] = t7;
+	if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
+		t4 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Filters, {});
+		t5 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Graph, {});
+		t6 = /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TicketRows, {});
+		$[10] = t4;
+		$[11] = t5;
+		$[12] = t6;
 	} else {
-		t5 = $[12];
-		t6 = $[13];
-		t7 = $[14];
+		t4 = $[10];
+		t5 = $[11];
+		t6 = $[12];
 	}
-	let t8;
-	if ($[15] !== t3 || $[16] !== t4) {
-		t8 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+	let t7;
+	if ($[13] !== t3) {
+		t7 = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 			className: "flex min-w-0 flex-col gap-5",
 			children: [
 				t3,
 				t4,
 				t5,
-				t6,
-				t7
+				t6
 			]
 		});
-		$[15] = t3;
-		$[16] = t4;
-		$[17] = t8;
-	} else t8 = $[17];
-	return t8;
+		$[13] = t3;
+		$[14] = t7;
+	} else t7 = $[14];
+	return t7;
 }
 function _temp$5(t0) {
 	const [label, value] = t0;
@@ -5120,10 +5234,6 @@ function _temp$1(kind_0) {
 // src/client/store/index.ts
 const TABS = [
 	{
-		kind: "inbox",
-		label: "tabInbox"
-	},
-	{
 		kind: "overview",
 		label: "tabOverview"
 	},
@@ -5150,7 +5260,7 @@ function tabOf(page) {
 const store = (0, _deepseek_ai_dsh_client_store.defineStore)({
 	init: () => ({
 		navigation: {
-			page: "inbox",
+			page: "overview",
 			ticketId: null,
 			returnTo: "ticket"
 		},
@@ -5505,7 +5615,6 @@ function Panel() {
 	let t28;
 	if ($[64] !== model || $[65] !== page) {
 		t28 = model && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-			page === "inbox" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Inbox, {}),
 			page === "overview" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Overview, {}),
 			page === "ticket" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Ticket, {}),
 			page === "ticket/detail" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TicketDetail, {}),
@@ -5578,6 +5687,12 @@ const inject = [
 function apply(ctx) {
 	ctx.effect(() => ctx.locale.register(NS, dicts), `${NS}: dictionaries`);
 	const t = ctx.locale.bind(NS);
+	ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
+		name: "conversation.input.dock",
+		id: "nexus-mailbox",
+		order: 10,
+		locale: NS
+	}, Mailbox));
 	ctx.slots.inject("main", () => ctx.slots.register({
 		name: "main",
 		key: PANEL_ID,
