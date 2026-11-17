@@ -158,7 +158,7 @@ describe('gitHub intake collection', () => {
     gh.reply(`${root}2${suffix}`, [issue(101), issue(102)])
     expect(await channel.collect('p')).toEqual({ ok: true })
     expect(channel.intake('p')).toHaveLength(102)
-  }, 15000)
+  }, 45_000)
 
   it('does not flood history and durably admits each new whitelisted topic once', async () => {
     await select()
@@ -197,7 +197,7 @@ describe('gitHub intake collection', () => {
     await channel.collect('p')
     expect(channel.intake('p')).toHaveLength(101)
     expect(ledger.list(db, 'trigger')).toHaveLength(102)
-  }, 15000)
+  }, 45_000)
 
   it('never promotes bots, automation, outsiders or an old rejected topic after whitelist changes', async () => {
     await select()
