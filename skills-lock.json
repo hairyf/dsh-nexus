@@ -1,11 +1,6 @@
 {
   "version": 2,
   "skills": {
-    "testing": {
-      "source": "./skills",
-      "sourceType": "local",
-      "computedHash": "05dd51e1ee38b405d74ce8d7f1a20cb4f067fa8ec975b2e6f9bdc9fc28be8e08"
-    },
     "unjs": {
       "source": "hairyf/skills",
       "sourceType": "github",

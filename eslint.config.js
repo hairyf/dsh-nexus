@@ -10,6 +10,8 @@ export default antfu(
     },
     ignores: [
       'soruce/*',
+      'docs/specs/plugin.host.md',
+      'docs/specs/plugin.host.service.md',
       'src/database/migrations.ts',
       'src/database/types.ts',
     ],

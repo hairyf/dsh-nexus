@@ -14,7 +14,7 @@ Spec 04 的主动调用适配器，不启动轮询器、模型、会话或 Web �
 - intake(projectId)：读取未确认的持久 main 分诊候选、订阅上下文与 PR/CI 事实；它不是建票或 Worker 派发。
 - acknowledgeIntake(projectId, id)：消费者可靠地按 intake.id 去重落账后确认。崩溃后未确认输入仍可读；02 必须用稳定 intake.id 实现自己的消息注入幂等，不以一次函数返回充当持久交接。
 - publish(outboxId, signal?)：投递已由 ledger.publishMessage 建立的地址。同话题串行；先 POST 一条 Nexus 评论，之后只 PATCH 已核验的关联。再次传入 sent 的 ID 会按最新领域状态刷新投影，而不是重发原请求；pending/failed 的 superseded 请求绝不发送。02 可用同一入口刷新答复状态和提醒（提醒正文来自新的合法出站消息），不会创建 ask。
-- preflight(askId, signal?)：供宿主 MergeVerifier 在 allow_merge 答复前调用，返回 Promise<{ target: MergeTarget, verified: boolean, reason?: string }>。从 merge ask 的唯一关联工单核对当前交付目标、项目、所选环境和 PR 话题订阅，再复用 PR/CI 采集及仓库保护核验；head/base 变化、非 open、CI 或保护失败均返回 verified=false 与具体 reason。target 是已成功观测的当前 PR 目标；尚未观测到 PR 时保留 ask 目标。不存在或无法定位 merge ask/目标时抛 GhError(invalid_merge_decision)。仅执行远端 GET 与 POST graphql query，绝不合并或发布；本地仍保存环境/PR/CI 事实，目标变化按 ledger 规则取消过期 ask。它不回答问题、不检查已有批准、不替代 ledger 的身份、策略及验收门禁；宿主可接线为 (ask, _actor, signal) => github.preflight(ask.id, signal)。
+- preflight(askId, signal?)：供宿主 MergeVerifier 在 allow_merge 答复前调用，返回 Promise<{ target: MergeTarget, verified: boolean, reason?: string }>。从 merge ask 的唯一关联工单核对当前交付目标、项目、所选环境和 PR 话题订阅，再复用 PR/CI 采集及仓库保护核验；head/base 变化、非 open、CI 或保护失败均返回 verified=false 与具体 reason。target 是已成功观测的当前 PR 目标；尚未观测到 PR 时保留 ask 目标。不存在或无法定位 merge ask/目标时抛 GhError(invalid_merge_decision)。仅执行远端 GET 与 POST graphql query，绝不合并或发布；本地仍保存环境/PR/CI 事实，目标变化按 ledger 规则取消过期 ask。它不回答问题、不检查已有批准、不替代 ledger 的身份、策略及验收门禁；宿主可接线为 (ask, actor, signal) => github.preflight(ask.id, signal)。
 - merge(askId, signal?)：由 ledger 的具体 merge 决定确定唯一工单、仓库、PR、head/base，重新采集和核验保护后才发送带 sha 的合并请求。实际 merged 只调用 recordPullRequest，不完成工单；已外部合并时只记录事实，不补造批准。
 - status(projectId)：供 02/05/06 读取持久环境、采集、答复、投递、合并状态与原因。送达不代表已读，不清除 Web 待答项。
 

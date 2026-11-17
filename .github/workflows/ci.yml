@@ -36,6 +36,7 @@ jobs:
         run: pnpm run test
 
       - name: Test (E2E)
+        if: vars.DSH_E2E_MAGPIE_BASE_URL != ''
         run: node ./node_modules/vitest/vitest.mjs run --project e2e
         env:
           DSH_E2E_REQUIRED: '1'
