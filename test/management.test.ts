@@ -202,6 +202,8 @@ async function execution() {
   await mkdir(root)
   const git = promisify(execFile)
   await git('git', ['init', '-b', 'main'], { cwd: root })
+  await git('git', ['config', 'user.name', 'Nexus Test'], { cwd: root })
+  await git('git', ['config', 'user.email', 'nexus@example.invalid'], { cwd: root })
   await git('git', ['commit', '--allow-empty', '-m', 'fixture'], { cwd: root })
   await git('git', ['remote', 'add', 'origin', 'https://github.com/org/p'], { cwd: root })
   return call('p', 'create_worker', { ticketId: 'P' })

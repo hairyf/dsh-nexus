@@ -14,6 +14,8 @@ beforeEach(async () => {
   root = join(directory, 'repository')
   await mkdir(root, { recursive: true })
   await execute('git', ['init', '-b', 'main'], { cwd: root })
+  await execute('git', ['config', 'user.name', 'Nexus Test'], { cwd: root })
+  await execute('git', ['config', 'user.email', 'nexus@example.invalid'], { cwd: root })
   await execute('git', ['commit', '--allow-empty', '-m', 'fixture'], { cwd: root })
   await execute('git', ['remote', 'add', 'origin', 'https://github.com/org/repository.git'], { cwd: root })
 })
